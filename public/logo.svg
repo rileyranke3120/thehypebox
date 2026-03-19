@@ -1,0 +1,35 @@
+<svg width="680" height="513" viewBox="0 0 680 513.38" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="blackout" color-interpolation-filters="sRGB">
+      <feColorMatrix type="matrix" values="0 0 0 0 0&#10;                0 0 0 0 0&#10;                0 0 0 0 0&#10;                0 0 0 10 -1"/>
+    </filter>
+  </defs>
+
+  <!-- LEFT FRONT FACE — same yellow as everything else -->
+  <polygon points="160,205 340,305 340,465 160,365" fill="#F5C400" stroke="#111" stroke-width="6" stroke-linejoin="round" style="fill:rgb(245, 196, 0);stroke:rgb(17, 17, 17);color:rgb(255, 255, 255);stroke-width:6px;stroke-linecap:butt;stroke-linejoin:round;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- RIGHT FRONT FACE -->
+  <polygon points="340,305 520,205 520,365 340,465" fill="#F5C400" stroke="#111" stroke-width="6" stroke-linejoin="round" style="fill:rgb(245, 196, 0);stroke:rgb(17, 17, 17);color:rgb(255, 255, 255);stroke-width:6px;stroke-linecap:butt;stroke-linejoin:round;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- TOP FACE -->
+  <polygon points="160,205 340,105 520,205 340,305" fill="#F5C400" stroke="#111" stroke-width="6" stroke-linejoin="round" style="fill:rgb(245, 196, 0);stroke:rgb(17, 17, 17);color:rgb(255, 255, 255);stroke-width:6px;stroke-linecap:butt;stroke-linejoin:round;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- LEFT FACE: ⚡ black -->
+  <g transform="translate(250,335) skewY(27) skewX(-4)" filter="url(#blackout)" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-family="'Barlow Condensed','Arial Black',sans-serif" font-size="155" font-weight="900" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Barlow Condensed&quot;, &quot;Arial Black&quot;, sans-serif;font-size:155px;font-weight:900;text-anchor:middle;dominant-baseline:central">⚡</text>
+  </g>
+
+  <!-- RIGHT FACE: ! -->
+  <g transform="translate(430,335) skewY(-27) skewX(4)" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-family="'Barlow Condensed','Arial Black',sans-serif" font-size="155" font-weight="900" fill="#111" style="fill:rgb(17, 17, 17);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Barlow Condensed&quot;, &quot;Arial Black&quot;, sans-serif;font-size:155px;font-weight:900;text-anchor:middle;dominant-baseline:central">!</text>
+  </g>
+
+  <!-- TOP FACE TEXT -->
+  <g transform="translate(340,207) rotate(-28)" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+    <text x="-38" y="-46" text-anchor="middle" dominant-baseline="central" font-family="'Barlow Condensed','Arial Black',sans-serif" font-size="24" font-weight="900" fill="#111" letter-spacing="4" style="fill:rgb(17, 17, 17);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Barlow Condensed&quot;, &quot;Arial Black&quot;, sans-serif;font-size:24px;font-weight:900;text-anchor:middle;dominant-baseline:central">THE</text>
+    <text x="8" y="4" text-anchor="middle" dominant-baseline="central" font-family="'Barlow Condensed','Arial Black',sans-serif" font-size="50" font-weight="900" fill="#111" letter-spacing="1" style="fill:rgb(17, 17, 17);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Barlow Condensed&quot;, &quot;Arial Black&quot;, sans-serif;font-size:50px;font-weight:900;text-anchor:middle;dominant-baseline:central">HYPE</text>
+    <text x="52" y="54" text-anchor="middle" dominant-baseline="central" font-family="'Barlow Condensed','Arial Black',sans-serif" font-size="36" font-weight="900" fill="#111" letter-spacing="4" style="fill:rgb(17, 17, 17);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Barlow Condensed&quot;, &quot;Arial Black&quot;, sans-serif;font-size:36px;font-weight:900;text-anchor:middle;dominant-baseline:central">BOX</text>
+  </g>
+
+
+</svg>

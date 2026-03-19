@@ -1,0 +1,181 @@
+/* ============================================================
+   BASE.CSS — TheHypeBox shared design system
+   Fonts, colors, resets, typography, utility classes
+   ============================================================ */
+
+/* --- Variables --- */
+:root {
+  --yellow:   #F5C400;
+  --black:    #0A0A0A;
+  --grey-900: #111111;
+  --grey-800: #1A1A1A;
+  --grey-700: #2A2A2A;
+  --grey-500: #555555;
+  --grey-300: #AAAAAA;
+  --grey-100: #E5E5E5;
+  --white:    #FFFFFF;
+
+  --font-heading: 'Barlow Condensed', sans-serif;
+  --font-body:    'DM Sans', sans-serif;
+
+  --radius: 4px;
+  --transition: 150ms ease;
+}
+
+/* --- Reset --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--black);
+  color: var(--white);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+img, video {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: var(--yellow);
+  text-decoration: none;
+  transition: opacity var(--transition);
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+/* --- Typography --- */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+h1 { font-size: clamp(2.5rem, 8vw, 5.5rem); }
+h2 { font-size: clamp(1.8rem, 5vw, 3.2rem); }
+h3 { font-size: clamp(1.3rem, 3vw, 2rem); }
+h4 { font-size: 1.2rem; }
+
+p {
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: var(--grey-300);
+}
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--yellow);
+  color: var(--black);
+  border-color: var(--yellow);
+}
+
+.btn-primary:hover {
+  background: transparent;
+  color: var(--yellow);
+  opacity: 1;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--white);
+  border-color: var(--grey-700);
+}
+
+.btn-ghost:hover {
+  border-color: var(--yellow);
+  color: var(--yellow);
+  opacity: 1;
+}
+
+/* --- Layout helpers --- */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.section {
+  padding: 6rem 0;
+}
+
+/* --- Tag / badge --- */
+.tag {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--yellow);
+  border: 1px solid var(--yellow);
+  padding: 0.2rem 0.6rem;
+  border-radius: 2px;
+}
+
+/* --- Divider --- */
+.divider {
+  height: 1px;
+  background: var(--grey-700);
+  border: none;
+}
+
+/* --- Utility --- */
+.text-yellow { color: var(--yellow); }
+.text-muted  { color: var(--grey-300); }
+.text-center { text-align: center; }
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+}
+
+/* --- Logo display --- */
+.nav__logo img,
+.topbar__logo img,
+.footer__logo img,
+.login-brand__logo img {
+  width: auto;
+  display: block;
+}

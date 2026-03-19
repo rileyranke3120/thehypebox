@@ -1,0 +1,209 @@
+/* ============================================================
+   LOGIN.MODULE.CSS — TheHypeBox client login page
+   ============================================================ */
+
+.loginLayout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+}
+
+/* --- Brand panel (left) --- */
+.loginBrand {
+  background: var(--grey-900);
+  border-right: 1px solid var(--grey-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.loginBrand::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  left: -20%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(245, 196, 0, 0.07) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.loginBrandInner {
+  max-width: 360px;
+  position: relative;
+  z-index: 1;
+}
+
+.loginBrandLogo {
+  font-family: var(--font-heading);
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--white);
+  margin-bottom: 0.75rem;
+}
+
+.loginBrandLogo span {
+  color: var(--yellow);
+}
+
+.loginBrandTagline {
+  font-size: 1rem;
+  color: var(--grey-300);
+  line-height: 1.6;
+  margin-bottom: 2.5rem;
+  border-left: 3px solid var(--yellow);
+  padding-left: 1rem;
+}
+
+.loginBrandFeatures {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.loginBrandFeatures li {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--grey-300);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.loginBrandCheck {
+  color: var(--yellow);
+  font-weight: 700;
+}
+
+/* --- Login form (right) --- */
+.loginMain {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  background: var(--black);
+}
+
+.loginBox {
+  width: 100%;
+  max-width: 400px;
+}
+
+.loginBoxHeader {
+  margin-bottom: 2rem;
+}
+
+.loginBoxHeader .tag {
+  margin-bottom: 1rem;
+  display: inline-block;
+}
+
+.loginBoxTitle {
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  margin-bottom: 0.5rem;
+}
+
+.loginBoxSub {
+  font-size: 0.85rem;
+  color: var(--grey-300);
+}
+
+/* --- Form --- */
+.loginForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.formLabel {
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--grey-300);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.formLabelLink {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--grey-500);
+  transition: color var(--transition);
+}
+
+.formLabelLink:hover {
+  color: var(--yellow);
+  opacity: 1;
+}
+
+.formInput {
+  background: var(--grey-900);
+  border: 1px solid var(--grey-700);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--white);
+  outline: none;
+  transition: border-color var(--transition);
+  width: 100%;
+}
+
+.formInput::placeholder {
+  color: var(--grey-500);
+}
+
+.formInput:focus {
+  border-color: var(--yellow);
+}
+
+.loginBtn {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.5rem;
+  padding: 1rem;
+}
+
+.loginBoxFooter {
+  font-size: 0.78rem;
+  color: var(--grey-500);
+  text-align: center;
+}
+
+.loginBoxFooter a {
+  color: var(--yellow);
+}
+
+/* --- Responsive --- */
+@media (max-width: 700px) {
+  .loginLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .loginBrand {
+    display: none;
+  }
+
+  .loginMain {
+    padding: 2rem 1.5rem;
+  }
+}
