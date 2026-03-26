@@ -1,0 +1,5 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS business_name text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS plan text DEFAULT 'starter';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS active boolean DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role text DEFAULT 'client';
