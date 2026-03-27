@@ -18,6 +18,33 @@ export async function GET() {
   }
 }
 
+export async function PATCH(request) {
+  try {
+    const { email, business_name, phone, hours } = await request.json();
+
+    if (!email) {
+      return NextResponse.json(
+        { ok: false, error: 'email is required to identify the user' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('users')
+      .update({ business_name: business_name || null, phone: phone || null, hours: hours || null })
+      .eq('email', email)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ ok: true, client: data });
+  } catch (error) {
+    console.error('[clients PATCH]', error);
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  }
+}
+
 export async function POST(request) {
   try {
     const { email, name, business_name, phone, plan } = await request.json();

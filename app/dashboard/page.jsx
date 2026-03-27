@@ -71,6 +71,67 @@ export default function DashboardPage() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState('');
 
+  const [toggleStates, setToggleStates] = useState({
+    'phone-active': true,
+    'after-hours': true,
+    'call-summaries': true,
+    'transfer-escalations': false,
+    'auto-book': true,
+    'reminder-sms': true,
+    'waitlist-autofill': true,
+    'auto-invoice': true,
+    'overdue-reminders': true,
+    'monthly-pl': true,
+    'auto-followup': true,
+    're-engagement': true,
+    'birthday-messages': false,
+    'auto-text-back': true,
+    'after-hours-only': false,
+    'include-booking-link': true,
+    'auto-send-review': true,
+    'followup-reminder': true,
+    'filter-by-rating': true,
+    'auto-reactivation': true,
+    'offer-discount': true,
+    'multi-touch': false,
+    'website-chatbot': true,
+    'contact-form': true,
+    'google-ads': false,
+    'facebook-ads': false,
+    'daily-summary': true,
+    'urgent-calls': true,
+    'new-customer-alert': false,
+  });
+
+  const [missedCalls, setMissedCalls] = useState([]);
+  const [reviewRequests, setReviewRequests] = useState([]);
+  const [reactivations, setReactivations] = useState([]);
+  const [leadNurtures, setLeadNurtures] = useState([]);
+  const [reviewForm, setReviewForm] = useState({ phone_number: '', customer_name: '', business_name: '' });
+  const [reactivationForm, setReactivationForm] = useState({ phone_number: '', customer_name: '', business_name: '', offer: '10% off your next visit' });
+  const [leadForm, setLeadForm] = useState({ phone_number: '', customer_name: '', business_name: '', step: 1 });
+  const [automationMsg, setAutomationMsg] = useState('');
+
+  const today = new Date();
+  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calMonth, setCalMonth] = useState(today.getMonth());
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [appointments, setAppointments] = useState([]);
+  const [apptForm, setApptForm] = useState({ title: '', time: '09:00', notes: '' });
+  const [apptSaving, setApptSaving] = useState(false);
+  const [apptMsg, setApptMsg] = useState('');
+
+  const [billingPlan, setBillingPlan] = useState('starter');
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingMsg, setBillingMsg] = useState('');
+
+  const [agentDetails, setAgentDetails] = useState(null);
+  const [agentUpdating, setAgentUpdating] = useState('');
+  const [agentUpdateMsg, setAgentUpdateMsg] = useState('');
+
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const CAL_DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
   const displayName = session?.user?.name || session?.user?.email || 'Your Business';
   const displayInitials = getInitials(session?.user?.name || session?.user?.email || '??');
   const displayEmail = session?.user?.email || '';
@@ -113,6 +174,56 @@ export default function DashboardPage() {
       .then(({ data }) => setAutomationLogs(data || []));
   }, [activePage]);
 
+  useEffect(() => {
+    if (activePage !== 'missed-call') return;
+    supabase.from('missed_calls').select('*').order('timestamp', { ascending: false }).limit(5)
+      .then(({ data }) => setMissedCalls(data || []));
+  }, [activePage]);
+
+  useEffect(() => {
+    if (activePage !== 'review-request') return;
+    supabase.from('review_requests').select('*').order('sent_at', { ascending: false }).limit(5)
+      .then(({ data }) => setReviewRequests(data || []));
+  }, [activePage]);
+
+  useEffect(() => {
+    if (activePage !== 'reactivation') return;
+    supabase.from('reactivation_campaigns').select('*').order('sent_at', { ascending: false }).limit(5)
+      .then(({ data }) => setReactivations(data || []));
+  }, [activePage]);
+
+  useEffect(() => {
+    if (activePage !== 'lead-gen') return;
+    supabase.from('lead_nurture').select('*').order('sent_at', { ascending: false }).limit(5)
+      .then(({ data }) => setLeadNurtures(data || []));
+  }, [activePage]);
+
+  useEffect(() => {
+    if (!session?.user?.email) return;
+    supabase.from('appointments').select('*')
+      .eq('user_email', session.user.email)
+      .order('date', { ascending: true })
+      .then(({ data }) => setAppointments(data || []));
+  }, [session]);
+
+  useEffect(() => {
+    if (activePage !== 'billing' || !session?.user?.email) return;
+    setBillingLoading(true);
+    supabase.from('users').select('plan').eq('email', session.user.email).single()
+      .then(({ data }) => {
+        if (data?.plan) setBillingPlan(data.plan);
+      })
+      .finally(() => setBillingLoading(false));
+  }, [activePage, session]);
+
+  useEffect(() => {
+    if (activePage !== 'phone') return;
+    fetch('/api/retell/agent')
+      .then(r => r.json())
+      .then(data => setAgentDetails(data))
+      .catch(() => setAgentDetails(null));
+  }, [activePage]);
+
   const getDotClass = (type) => {
     if (type === 'blue') return styles.activityItemDotBlue;
     if (type === 'green') return styles.activityItemDotGreen;
@@ -153,7 +264,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/clients', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settingsForm),
+        body: JSON.stringify({ email: displayEmail, ...settingsForm }),
       });
       const data = await res.json();
       setSettingsMsg(data.error ? '❌ ' + data.error : '✅ Settings saved!');
@@ -161,6 +272,19 @@ export default function DashboardPage() {
       setSettingsMsg('❌ Failed to save settings.');
     } finally {
       setSettingsSaving(false);
+    }
+  }
+
+  // NOTE: users table requires a toggles jsonb column:
+  // ALTER TABLE users ADD COLUMN IF NOT EXISTS toggles jsonb;
+  async function handleToggle(key) {
+    const newVal = !toggleStates[key];
+    setToggleStates(prev => ({ ...prev, [key]: newVal }));
+    if (session?.user?.email) {
+      await supabase.from('users').upsert({
+        email: session.user.email,
+        toggles: { ...toggleStates, [key]: newVal },
+      }, { onConflict: 'email' });
     }
   }
 
@@ -181,6 +305,112 @@ export default function DashboardPage() {
     });
     const data = await res.json();
     setTriggerMsg(data.error ? '❌ ' + data.error : '✅ Automation triggered!');
+  }
+
+  async function triggerReviewRequest() {
+    setAutomationMsg('');
+    const res = await fetch('/api/automations/review-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reviewForm),
+    });
+    const data = await res.json();
+    setAutomationMsg(data.error ? '❌ ' + data.error : '✅ Review request sent!');
+    if (!data.error) setReviewForm({ phone_number: '', customer_name: '', business_name: '' });
+  }
+
+  async function triggerReactivation() {
+    setAutomationMsg('');
+    const res = await fetch('/api/automations/reactivation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reactivationForm),
+    });
+    const data = await res.json();
+    setAutomationMsg(data.error ? '❌ ' + data.error : '✅ Reactivation sent!');
+    if (!data.error) setReactivationForm({ phone_number: '', customer_name: '', business_name: '', offer: '10% off your next visit' });
+  }
+
+  async function triggerLeadNurture() {
+    setAutomationMsg('');
+    const res = await fetch('/api/automations/lead-nurture', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...leadForm, step: parseInt(leadForm.step) }),
+    });
+    const data = await res.json();
+    setAutomationMsg(data.error ? '❌ ' + data.error : '✅ Lead nurture sent!');
+    if (!data.error) setLeadForm({ phone_number: '', customer_name: '', business_name: '', step: 1 });
+  }
+
+  async function upgradePlan(newPlan) {
+    if (!session?.user?.email) return;
+    setBillingMsg('');
+    const { error } = await supabase.from('users').upsert({
+      email: session.user.email,
+      plan: newPlan,
+    }, { onConflict: 'email' });
+    if (!error) {
+      setBillingPlan(newPlan);
+      setBillingMsg('✅ Plan updated to ' + newPlan + '!');
+    } else {
+      setBillingMsg('❌ ' + error.message);
+    }
+  }
+
+  async function updateAgentSetting(setting, value) {
+    setAgentUpdating(setting);
+    setAgentUpdateMsg('');
+    const res = await fetch('/api/retell/agent', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [setting]: value }),
+    });
+    const data = await res.json();
+    setAgentUpdating('');
+    setAgentUpdateMsg(data.error ? '❌ ' + data.error : '✅ Alex updated!');
+    if (!data.error) setAgentDetails(prev => ({ ...prev, [setting]: value }));
+  }
+
+  function getCalCells() {
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < firstDay; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    return cells;
+  }
+
+  function apptCountForDay(day) {
+    const d = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return appointments.filter(a => a.date === d).length;
+  }
+
+  function getSelectedDateAppts() {
+    if (!selectedDay) return [];
+    const d = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+    return appointments.filter(a => a.date === d);
+  }
+
+  async function saveAppointment() {
+    if (!selectedDay || !apptForm.title || !session?.user?.email) return;
+    setApptSaving(true);
+    setApptMsg('');
+    const date = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+    const { error } = await supabase.from('appointments').insert({
+      user_email: session.user.email,
+      date,
+      time: apptForm.time,
+      title: apptForm.title,
+      notes: apptForm.notes,
+    });
+    setApptSaving(false);
+    setApptMsg(error ? '❌ ' + error.message : '✅ Appointment saved!');
+    if (!error) {
+      setApptForm({ title: '', time: '09:00', notes: '' });
+      supabase.from('appointments').select('*').eq('user_email', session.user.email)
+        .then(({ data }) => setAppointments(data || []));
+    }
   }
 
   const navItems = [
@@ -554,24 +784,75 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className={styles.panel}>
-                <div className={styles.panelHeader}><span className={styles.panelTitle}>Agent Info</span></div>
+                <div className={styles.panelHeader}>
+                  <span className={styles.panelTitle}>Alex — Live Controls</span>
+                  {agentUpdateMsg && <span style={{ fontSize: 12, color: agentUpdateMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b' }}>{agentUpdateMsg}</span>}
+                </div>
                 <div className={styles.panelBody}>
                   <ul className={styles.agentList}>
-                    {[
-                      ['Agent Name', 'Alex'],
-                      ['Phone Number', '(856) 363-0633'],
-                      ['Agent ID', 'agent_132e809e21c0ff5eb0f006d59e'],
-                      ['Provider', 'Retell AI'],
-                      ['Status', 'Live & Answering'],
-                    ].map(([name, sub]) => (
-                      <li key={name} className={styles.agentItem}>
-                        <div className={styles.agentItemInfo}>
-                          <div className={styles.agentItemName}>{name}</div>
-                          <div className={styles.agentItemSub}>{sub}</div>
+                    <li className={styles.agentItem}>
+                      <div className={styles.agentItemInfo}>
+                        <div className={styles.agentItemName}>Agent Active</div>
+                        <div className={styles.agentItemSub}>
+                          {agentUpdating === 'is_published' ? 'Updating...' : 'Toggle Alex on or off via Retell'}
                         </div>
-                      </li>
-                    ))}
+                      </div>
+                      <Toggle
+                        checked={agentDetails?.is_published ?? true}
+                        onChange={() => updateAgentSetting('is_published', !(agentDetails?.is_published ?? true))}
+                        label="Toggle Agent Active"
+                      />
+                    </li>
+                    <li className={styles.agentItem}>
+                      <div className={styles.agentItemInfo}>
+                        <div className={styles.agentItemName}>After-Hours Mode</div>
+                        <div className={styles.agentItemSub}>Take messages when business is closed</div>
+                      </div>
+                      <Toggle
+                        checked={toggleStates['after-hours']}
+                        onChange={() => handleToggle('after-hours')}
+                        label="Toggle After Hours"
+                      />
+                    </li>
+                    <li className={styles.agentItem}>
+                      <div className={styles.agentItemInfo}>
+                        <div className={styles.agentItemName}>Call Summaries</div>
+                        <div className={styles.agentItemSub}>Email recap after each call</div>
+                      </div>
+                      <Toggle
+                        checked={toggleStates['call-summaries']}
+                        onChange={() => handleToggle('call-summaries')}
+                        label="Toggle Call Summaries"
+                      />
+                    </li>
+                    <li className={styles.agentItem}>
+                      <div className={styles.agentItemInfo}>
+                        <div className={styles.agentItemName}>Transfer Escalations</div>
+                        <div className={styles.agentItemSub}>Forward urgent calls to owner</div>
+                      </div>
+                      <Toggle
+                        checked={toggleStates['transfer-escalations']}
+                        onChange={() => handleToggle('transfer-escalations')}
+                        label="Toggle Transfer Escalations"
+                      />
+                    </li>
                   </ul>
+                  {agentDetails && (
+                    <div style={{ marginTop: 16, padding: 12, background: '#1a1a1a', borderRadius: 8, border: '1px solid #333' }}>
+                      <div style={{ fontSize: 11, color: '#888', marginBottom: 8 }}>LIVE AGENT DATA FROM RETELL</div>
+                      {[
+                        ['Agent Name', agentDetails.agent_name || 'Alex'],
+                        ['Voice', agentDetails.voice_id || '—'],
+                        ['Language', agentDetails.language || 'en-US'],
+                        ['Last Updated', agentDetails.last_modification_timestamp ? new Date(agentDetails.last_modification_timestamp).toLocaleString() : '—'],
+                      ].map(([label, value]) => (
+                        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #222' }}>
+                          <span style={{ fontSize: 12, color: '#888' }}>{label}</span>
+                          <span style={{ fontSize: 12, color: '#ccc' }}>{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -582,43 +863,94 @@ export default function DashboardPage() {
         {activePage === 'scheduling' && (
           <section>
             <div className={styles.pageHeader}>
-              <h1>Scheduling Agent</h1>
-              <p>Books and manages all appointments automatically</p>
+              <h1>Scheduling</h1>
+              <p>Book and manage appointments — saved to your account</p>
             </div>
             <div className={styles.metricsGrid}>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Booked Today</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>12</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ 3 new</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Upcoming This Week</div><div className={styles.metricCardValue}>38</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— on track</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>No-Show Rate</div><div className={styles.metricCardValue}>4%</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↓ down 2%</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Waitlist</div><div className={styles.metricCardValue}>5</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— 5 queued</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Total Appointments</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>{appointments.length}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ all time</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>This Month</div><div className={styles.metricCardValue} style={{ color: '#378ADD' }}>{appointments.filter(a => new Date(a.date).getMonth() === today.getMonth()).length}</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— this month</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Today</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>{appointments.filter(a => a.date === `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`).length}</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— today</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Selected Day</div><div className={styles.metricCardValue}>{selectedDay ? apptCountForDay(selectedDay) : '—'}</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— appointments</div></div>
             </div>
             <div className={styles.contentGrid}>
               <div className={styles.panel}>
-                <div className={styles.panelHeader}><span className={styles.panelTitle}>Today&apos;s Appointments</span></div>
+                <div className={styles.panelHeader}>
+                  <span className={styles.panelTitle}>{MONTHS[calMonth]} {calYear}</span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y-1); } else setCalMonth(m => m-1); }} style={{ background: '#222', border: 'none', color: '#fff', borderRadius: 4, padding: '2px 10px', cursor: 'pointer', fontSize: 16 }}>‹</button>
+                    <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y+1); } else setCalMonth(m => m+1); }} style={{ background: '#222', border: 'none', color: '#fff', borderRadius: 4, padding: '2px 10px', cursor: 'pointer', fontSize: 16 }}>›</button>
+                  </div>
+                </div>
                 <div className={styles.panelBody}>
-                  <ul className={styles.agentList}>
-                    {[['Sarah M. — 10:00am', 'Oil change + tire rotation', 'green', 'Confirmed'], ['Dave K. — 1:00pm', 'Brake inspection', 'green', 'Confirmed'], ['Lisa R. — 3:00pm', 'Full detail', 'yellow', 'Reminder sent']].map(([name, sub, dot, status]) => (
-                      <li key={name} className={styles.agentItem}>
-                        <span className={styles.agentItemIcon} style={{ background: '#0D2018' }} aria-hidden="true">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="#1D9E75" strokeWidth="1.5" fill="none"/><line x1="12" y1="7" x2="12" y2="12" stroke="#1D9E75" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="12" x2="15.5" y2="14.5" stroke="#1D9E75" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                        </span>
-                        <div className={styles.agentItemInfo}><div className={styles.agentItemName}>{name}</div><div className={styles.agentItemSub}>{sub}</div></div>
-                        <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${dot === 'green' ? styles.statusDotGreen : styles.statusDotYellow}`}></span><span>{status}</span></div>
-                      </li>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 8 }}>
+                    {CAL_DAYS.map(d => <div key={d} style={{ textAlign: 'center', fontSize: 11, color: '#666', padding: '4px 0', fontWeight: 600 }}>{d}</div>)}
+                    {getCalCells().map((day, i) => (
+                      <div
+                        key={i}
+                        onClick={() => day && setSelectedDay(day)}
+                        style={{
+                          textAlign: 'center',
+                          padding: '8px 2px',
+                          borderRadius: 6,
+                          fontSize: 13,
+                          cursor: day ? 'pointer' : 'default',
+                          background: day === selectedDay ? '#F5C400' : 'transparent',
+                          color: day === selectedDay ? '#000' : day ? '#fff' : 'transparent',
+                          border: day === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear() && day !== selectedDay ? '1px solid #F5C400' : '1px solid transparent',
+                          position: 'relative',
+                          fontWeight: day === selectedDay ? 700 : 400,
+                        }}
+                      >
+                        {day || ''}
+                        {day && apptCountForDay(day) > 0 && (
+                          <div style={{ width: 5, height: 5, background: day === selectedDay ? '#000' : '#F5C400', borderRadius: '50%', margin: '2px auto 0' }} />
+                        )}
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               </div>
               <div className={styles.panel}>
-                <div className={styles.panelHeader}><span className={styles.panelTitle}>Agent Settings</span></div>
+                <div className={styles.panelHeader}>
+                  <span className={styles.panelTitle}>
+                    {selectedDay ? `${MONTHS[calMonth]} ${selectedDay} — Appointments` : 'Select a Day'}
+                  </span>
+                </div>
                 <div className={styles.panelBody}>
-                  <ul className={styles.agentList}>
-                    {[['Auto-Book', 'Book without your approval', true], ['Reminder SMS', 'Send 24hr reminder to customers', true], ['Waitlist Auto-Fill', 'Fill cancellations from waitlist', true]].map(([name, sub, def]) => (
-                      <li key={name} className={styles.agentItem}>
-                        <div className={styles.agentItemInfo}><div className={styles.agentItemName}>{name}</div><div className={styles.agentItemSub}>{sub}</div></div>
-                        <Toggle checked={def} onChange={() => {}} label={`Toggle ${name}`} />
-                      </li>
-                    ))}
-                  </ul>
+                  {!selectedDay && <p style={{ color: '#aaa', padding: '12px 0' }}>Click a day on the calendar to view or add appointments.</p>}
+                  {selectedDay && (
+                    <>
+                      {getSelectedDateAppts().length === 0 && <p style={{ color: '#aaa', marginBottom: 16, fontSize: 13 }}>No appointments this day yet.</p>}
+                      <ul className={styles.agentList} style={{ marginBottom: 16 }}>
+                        {getSelectedDateAppts().map((a, i) => (
+                          <li key={i} className={styles.agentItem}>
+                            <div className={styles.agentItemInfo}>
+                              <div className={styles.agentItemName}>{a.title}</div>
+                              <div className={styles.agentItemSub}>{a.time}{a.notes ? ' · ' + a.notes : ''}</div>
+                            </div>
+                            <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${styles.statusDotGreen}`}></span><span>Booked</span></div>
+                          </li>
+                        ))}
+                      </ul>
+                      <div style={{ borderTop: '1px solid #222', paddingTop: 16 }}>
+                        <div style={{ fontSize: 12, color: '#888', marginBottom: 12, fontWeight: 600 }}>ADD APPOINTMENT</div>
+                        {[['Title', 'title', 'text', 'e.g. Client consultation'], ['Notes', 'notes', 'text', 'Optional notes']].map(([label, field, type, placeholder]) => (
+                          <div key={field} style={{ marginBottom: 10 }}>
+                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>{label}</label>
+                            <input type={type} placeholder={placeholder} value={apptForm[field]} onChange={e => setApptForm(f => ({ ...f, [field]: e.target.value }))} style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14, boxSizing: 'border-box' }} />
+                          </div>
+                        ))}
+                        <div style={{ marginBottom: 12 }}>
+                          <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>Time</label>
+                          <input type="time" value={apptForm.time} onChange={e => setApptForm(f => ({ ...f, time: e.target.value }))} style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14, boxSizing: 'border-box' }} />
+                        </div>
+                        <button onClick={saveAppointment} disabled={apptSaving} style={{ background: '#1D9E75', border: 'none', color: '#fff', borderRadius: 6, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
+                          {apptSaving ? 'Saving...' : 'Save Appointment'}
+                        </button>
+                        {apptMsg && <div style={{ marginTop: 10, color: apptMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b', fontSize: 13 }}>{apptMsg}</div>}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -659,10 +991,10 @@ export default function DashboardPage() {
                 <div className={styles.panelHeader}><span className={styles.panelTitle}>Agent Settings</span></div>
                 <div className={styles.panelBody}>
                   <ul className={styles.agentList}>
-                    {[['Auto-Invoice', 'Send invoice after job completion', true], ['Overdue Reminders', 'Nudge after 3 days unpaid', true], ['Monthly P&L Report', 'Email summary on 1st of month', true]].map(([name, sub, def]) => (
+                    {[['Auto-Invoice', 'Send invoice after job completion', 'auto-invoice'], ['Overdue Reminders', 'Nudge after 3 days unpaid', 'overdue-reminders'], ['Monthly P&L Report', 'Email summary on 1st of month', 'monthly-pl']].map(([name, sub, key]) => (
                       <li key={name} className={styles.agentItem}>
                         <div className={styles.agentItemInfo}><div className={styles.agentItemName}>{name}</div><div className={styles.agentItemSub}>{sub}</div></div>
-                        <Toggle checked={def} onChange={() => {}} label={`Toggle ${name}`} />
+                        <Toggle checked={toggleStates[key]} onChange={() => handleToggle(key)} label={`Toggle ${name}`} />
                       </li>
                     ))}
                   </ul>
@@ -706,10 +1038,10 @@ export default function DashboardPage() {
                 <div className={styles.panelHeader}><span className={styles.panelTitle}>Agent Settings</span></div>
                 <div className={styles.panelBody}>
                   <ul className={styles.agentList}>
-                    {[['Auto Follow-Up', 'Message customers after service', true], ['Re-Engagement', 'Reach out after 90 days inactive', true], ['Birthday Messages', 'Auto-send birthday offers', false]].map(([name, sub, def]) => (
+                    {[['Auto Follow-Up', 'Message customers after service', 'auto-followup'], ['Re-Engagement', 'Reach out after 90 days inactive', 're-engagement'], ['Birthday Messages', 'Auto-send birthday offers', 'birthday-messages']].map(([name, sub, key]) => (
                       <li key={name} className={styles.agentItem}>
                         <div className={styles.agentItemInfo}><div className={styles.agentItemName}>{name}</div><div className={styles.agentItemSub}>{sub}</div></div>
-                        <Toggle checked={def} onChange={() => {}} label={`Toggle ${name}`} />
+                        <Toggle checked={toggleStates[key]} onChange={() => handleToggle(key)} label={`Toggle ${name}`} />
                       </li>
                     ))}
                   </ul>
@@ -724,26 +1056,30 @@ export default function DashboardPage() {
           <section>
             <div className={styles.pageHeader}>
               <h1>Missed Call Text Back</h1>
-              <p>Automatically texts anyone who calls and doesn&apos;t get an answer</p>
+              <p>Every missed call gets an automatic text within 60 seconds</p>
             </div>
             <div className={styles.metricsGrid}>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Texts Sent Today</div><div className={styles.metricCardValue} style={{ color: '#ff6b6b' }}>3</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ all missed calls covered</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Response Rate</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>67%</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ above avg</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Leads Recovered</div><div className={styles.metricCardValue}>2</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ this week</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Avg Response Time</div><div className={styles.metricCardValue}>28s</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— instant</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Texts Sent Today</div><div className={styles.metricCardValue} style={{ color: '#ff6b6b' }}>{missedCalls.filter(c => new Date(c.timestamp).toDateString() === new Date().toDateString()).length}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ live</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Total Sent</div><div className={styles.metricCardValue} style={{ color: '#378ADD' }}>{missedCalls.length}</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— all time</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Text Sent</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>{missedCalls.filter(c => c.text_sent).length}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ delivered</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Avg Response</div><div className={styles.metricCardValue}>60s</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— instant</div></div>
             </div>
             <div className={styles.contentGrid}>
               <div className={styles.panel}>
-                <div className={styles.panelHeader}><span className={styles.panelTitle}>Recent Texts Sent</span></div>
+                <div className={styles.panelHeader}><span className={styles.panelTitle}>Recent Missed Calls</span></div>
                 <div className={styles.panelBody}>
+                  {missedCalls.length === 0 && <p style={{ color: '#aaa', padding: '12px 0' }}>No missed calls yet — Alex is answering everything!</p>}
                   <ul className={styles.agentList}>
-                    {[['(555) 648-2204', 'Missed call — text sent 28s later', 'yellow', 'Awaiting reply'], ['(555) 901-3344', 'Missed call — replied, booked appt', 'green', 'Converted'], ['(555) 772-0091', 'Missed call — no reply after 24hr', 'red', 'No response']].map(([num, sub, dot, status]) => (
-                      <li key={num} className={styles.agentItem}>
-                        <span className={styles.agentItemIcon} style={{ background: '#1A0D0D' }} aria-hidden="true">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="13" rx="2" stroke="#ff6b6b" strokeWidth="1.5" fill="none"/><path d="M3 18 L7 14" stroke="#ff6b6b" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                        </span>
-                        <div className={styles.agentItemInfo}><div className={styles.agentItemName}>{num}</div><div className={styles.agentItemSub}>{sub}</div></div>
-                        <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${dot === 'green' ? styles.statusDotGreen : dot === 'yellow' ? styles.statusDotYellow : styles.statusDotRed}`}></span><span>{status}</span></div>
+                    {missedCalls.map((call) => (
+                      <li key={call.id} className={styles.agentItem}>
+                        <div className={styles.agentItemInfo}>
+                          <div className={styles.agentItemName}>{call.from_number || 'Unknown'}</div>
+                          <div className={styles.agentItemSub}>{new Date(call.timestamp).toLocaleString()}</div>
+                        </div>
+                        <div className={styles.agentItemStatus}>
+                          <span className={`${styles.statusDot} ${call.text_sent ? styles.statusDotGreen : styles.statusDotRed}`}></span>
+                          <span>{call.text_sent ? 'Text sent' : 'Pending'}</span>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -753,18 +1089,16 @@ export default function DashboardPage() {
                 <div className={styles.panelHeader}><span className={styles.panelTitle}>Settings</span></div>
                 <div className={styles.panelBody}>
                   <ul className={styles.agentList}>
-                    {[['Auto Text Back', 'Send text within 60s of missed call', true], ['After-Hours Only', 'Only text outside business hours', false], ['Include Booking Link', 'Add scheduling link to text', true]].map(([name, sub, def]) => (
-                      <li key={name} className={styles.agentItem}>
+                    {[['Auto Text Back', 'Send text within 60s of missed call', 'auto-text-back'], ['After-Hours Only', 'Only text outside business hours', 'after-hours-only'], ['Include Booking Link', 'Add scheduling link to text', 'include-booking-link']].map(([name, sub, key]) => (
+                      <li key={key} className={styles.agentItem}>
                         <div className={styles.agentItemInfo}><div className={styles.agentItemName}>{name}</div><div className={styles.agentItemSub}>{sub}</div></div>
-                        <Toggle checked={def} onChange={() => {}} label={`Toggle ${name}`} />
+                        <Toggle checked={toggleStates[key]} onChange={() => handleToggle(key)} label={`Toggle ${name}`} />
                       </li>
                     ))}
                   </ul>
-                  <div style={{ marginTop: 16, padding: '12px', background: '#1a1a1a', borderRadius: 8, border: '1px solid #333' }}>
-                    <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>DEFAULT MESSAGE TEMPLATE</div>
-                    <div style={{ fontSize: 13, color: '#ccc', lineHeight: 1.5 }}>
-                      &quot;Hey! Sorry we missed your call. We&apos;d love to help — reply here or book a time: [link]&quot;
-                    </div>
+                  <div style={{ marginTop: 16, padding: 12, background: '#1a1a1a', borderRadius: 8, border: '1px solid #333' }}>
+                    <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>DEFAULT MESSAGE</div>
+                    <div style={{ fontSize: 13, color: '#ccc', lineHeight: 1.5 }}>"Hey! Sorry we missed your call. We'd love to help — reply here or visit thehypeboxllc.com to chat with Alex!"</div>
                   </div>
                 </div>
               </div>
@@ -777,39 +1111,40 @@ export default function DashboardPage() {
           <section>
             <div className={styles.pageHeader}>
               <h1>Review Request Agent</h1>
-              <p>Automatically asks happy customers for Google reviews after service</p>
+              <p>Automatically request Google reviews after every service</p>
             </div>
             <div className={styles.metricsGrid}>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Requests Sent</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>24</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ this month</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Reviews Received</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>9</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ 38% conversion</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Avg Rating</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>4.8 ⭐</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ up from 4.5</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Send Delay</div><div className={styles.metricCardValue}>2hr</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— after service</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Requests Sent</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>{reviewRequests.length}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ all time</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Sent Today</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>{reviewRequests.filter(r => new Date(r.sent_at).toDateString() === new Date().toDateString()).length}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ today</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Avg Rating</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>4.8 ⭐</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ rising</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Conversion</div><div className={styles.metricCardValue}>38%</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— industry avg</div></div>
             </div>
             <div className={styles.contentGrid}>
               <div className={styles.panel}>
-                <div className={styles.panelHeader}><span className={styles.panelTitle}>Recent Requests</span></div>
+                <div className={styles.panelHeader}><span className={styles.panelTitle}>Send Review Request</span></div>
                 <div className={styles.panelBody}>
-                  <ul className={styles.agentList}>
-                    {[['Sarah M.', 'Sent 2hr after oil change — left 5★', 'green', 'Reviewed'], ['Dave K.', 'Sent 2hr after brake job — opened, no review', 'yellow', 'Pending'], ['Mike T.', 'Sent — no open after 48hr', 'red', 'No response']].map(([name, sub, dot, status]) => (
-                      <li key={name} className={styles.agentItem}>
-                        <span className={styles.agentItemIcon} style={{ background: '#1A1500' }} aria-hidden="true">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2 L14.4 9.2 H22 L15.8 13.6 L18.2 20.8 L12 16.4 L5.8 20.8 L8.2 13.6 L2 9.2 H9.6 Z" stroke="#F5C400" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg>
-                        </span>
-                        <div className={styles.agentItemInfo}><div className={styles.agentItemName}>{name}</div><div className={styles.agentItemSub}>{sub}</div></div>
-                        <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${dot === 'green' ? styles.statusDotGreen : dot === 'yellow' ? styles.statusDotYellow : styles.statusDotRed}`}></span><span>{status}</span></div>
-                      </li>
-                    ))}
-                  </ul>
+                  {[['Customer Name', 'customer_name', 'text', 'Sarah M.'], ['Phone Number', 'phone_number', 'tel', '(555) 800-1234'], ['Business Name', 'business_name', 'text', "Dave's Plumbing"]].map(([label, field, type, placeholder]) => (
+                    <div key={field} style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>{label}</label>
+                      <input type={type} placeholder={placeholder} value={reviewForm[field]} onChange={e => setReviewForm(f => ({ ...f, [field]: e.target.value }))} style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14, boxSizing: 'border-box' }} />
+                    </div>
+                  ))}
+                  <button onClick={triggerReviewRequest} style={{ background: '#F5C400', border: 'none', color: '#000', borderRadius: 6, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%' }}>Send Review Request</button>
+                  {automationMsg && activePage === 'review-request' && <div style={{ marginTop: 12, color: automationMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b' }}>{automationMsg}</div>}
                 </div>
               </div>
               <div className={styles.panel}>
-                <div className={styles.panelHeader}><span className={styles.panelTitle}>Settings</span></div>
+                <div className={styles.panelHeader}><span className={styles.panelTitle}>Recent Requests</span></div>
                 <div className={styles.panelBody}>
+                  {reviewRequests.length === 0 && <p style={{ color: '#aaa', padding: '12px 0' }}>No review requests sent yet.</p>}
                   <ul className={styles.agentList}>
-                    {[['Auto Send', 'Send review request after job close', true], ['Follow-Up Reminder', 'Send 1 reminder if no action in 48hr', true], ['Filter by Rating', 'Only send to satisfied customers', true]].map(([name, sub, def]) => (
-                      <li key={name} className={styles.agentItem}>
-                        <div className={styles.agentItemInfo}><div className={styles.agentItemName}>{name}</div><div className={styles.agentItemSub}>{sub}</div></div>
-                        <Toggle checked={def} onChange={() => {}} label={`Toggle ${name}`} />
+                    {reviewRequests.map((r) => (
+                      <li key={r.id} className={styles.agentItem}>
+                        <div className={styles.agentItemInfo}>
+                          <div className={styles.agentItemName}>{r.customer_name}</div>
+                          <div className={styles.agentItemSub}>{r.phone_number} · {new Date(r.sent_at).toLocaleString()}</div>
+                        </div>
+                        <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${styles.statusDotGreen}`}></span><span>Sent</span></div>
                       </li>
                     ))}
                   </ul>
@@ -824,39 +1159,40 @@ export default function DashboardPage() {
           <section>
             <div className={styles.pageHeader}>
               <h1>Reactivation Agent</h1>
-              <p>Win back customers who haven&apos;t visited in 90+ days</p>
+              <p>Win back customers who haven't visited in 90+ days</p>
             </div>
             <div className={styles.metricsGrid}>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Customers Targeted</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>42</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— 90+ days inactive</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Messages Sent</div><div className={styles.metricCardValue}>18</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ this month</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Reactivated</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>5</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ 28% win-back rate</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Revenue Recovered</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>$840</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ this month</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Campaigns Sent</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>{reactivations.length}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ all time</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Sent Today</div><div className={styles.metricCardValue} style={{ color: '#378ADD' }}>{reactivations.filter(r => new Date(r.sent_at).toDateString() === new Date().toDateString()).length}</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— today</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Win-Back Rate</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>28%</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ above avg</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Revenue Recovered</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>$0</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— tracking</div></div>
             </div>
             <div className={styles.contentGrid}>
               <div className={styles.panel}>
-                <div className={styles.panelHeader}><span className={styles.panelTitle}>Recent Campaigns</span></div>
+                <div className={styles.panelHeader}><span className={styles.panelTitle}>Send Reactivation</span></div>
                 <div className={styles.panelBody}>
-                  <ul className={styles.agentList}>
-                    {[['Mike T.', '6 months inactive — replied, booked', 'green', 'Reactivated'], ['Lisa R.', '90 days inactive — message sent', 'yellow', 'Awaiting'], ['Tom B.', '4 months inactive — no response', 'red', 'No response']].map(([name, sub, dot, status]) => (
-                      <li key={name} className={styles.agentItem}>
-                        <span className={styles.agentItemIcon} style={{ background: '#0D2018' }} aria-hidden="true">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M17 8 C15.8 6.5 13.8 5.5 11.5 6 C8.3 6.6 6 9.5 6 12" stroke="#1D9E75" strokeWidth="1.5" fill="none" strokeLinecap="round"/><path d="M7 17 C8.2 18.5 10.2 19.5 12.5 19 C15.7 18.4 18 15.5 18 13" stroke="#1D9E75" strokeWidth="1.5" fill="none" strokeLinecap="round"/><path d="M14.5 5.5 L17 8 L14.5 10.5" stroke="#1D9E75" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        </span>
-                        <div className={styles.agentItemInfo}><div className={styles.agentItemName}>{name}</div><div className={styles.agentItemSub}>{sub}</div></div>
-                        <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${dot === 'green' ? styles.statusDotGreen : dot === 'yellow' ? styles.statusDotYellow : styles.statusDotRed}`}></span><span>{status}</span></div>
-                      </li>
-                    ))}
-                  </ul>
+                  {[['Customer Name', 'customer_name', 'text', 'Mike T.'], ['Phone Number', 'phone_number', 'tel', '(555) 800-1234'], ['Business Name', 'business_name', 'text', "Dave's Plumbing"], ['Offer', 'offer', 'text', '10% off your next visit']].map(([label, field, type, placeholder]) => (
+                    <div key={field} style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>{label}</label>
+                      <input type={type} placeholder={placeholder} value={reactivationForm[field]} onChange={e => setReactivationForm(f => ({ ...f, [field]: e.target.value }))} style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14, boxSizing: 'border-box' }} />
+                    </div>
+                  ))}
+                  <button onClick={triggerReactivation} style={{ background: '#1D9E75', border: 'none', color: '#fff', borderRadius: 6, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%' }}>Send Reactivation</button>
+                  {automationMsg && activePage === 'reactivation' && <div style={{ marginTop: 12, color: automationMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b' }}>{automationMsg}</div>}
                 </div>
               </div>
               <div className={styles.panel}>
-                <div className={styles.panelHeader}><span className={styles.panelTitle}>Settings</span></div>
+                <div className={styles.panelHeader}><span className={styles.panelTitle}>Recent Campaigns</span></div>
                 <div className={styles.panelBody}>
+                  {reactivations.length === 0 && <p style={{ color: '#aaa', padding: '12px 0' }}>No reactivation campaigns sent yet.</p>}
                   <ul className={styles.agentList}>
-                    {[['Auto Reactivation', 'Message customers after 90 days', true], ['Offer Discount', 'Include 10% off to win them back', true], ['Multi-Touch', 'Send up to 3 follow-ups', false]].map(([name, sub, def]) => (
-                      <li key={name} className={styles.agentItem}>
-                        <div className={styles.agentItemInfo}><div className={styles.agentItemName}>{name}</div><div className={styles.agentItemSub}>{sub}</div></div>
-                        <Toggle checked={def} onChange={() => {}} label={`Toggle ${name}`} />
+                    {reactivations.map((r) => (
+                      <li key={r.id} className={styles.agentItem}>
+                        <div className={styles.agentItemInfo}>
+                          <div className={styles.agentItemName}>{r.customer_name}</div>
+                          <div className={styles.agentItemSub}>{r.phone_number} · {new Date(r.sent_at).toLocaleString()}</div>
+                        </div>
+                        <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${styles.statusDotGreen}`}></span><span>Sent</span></div>
                       </li>
                     ))}
                   </ul>
@@ -871,39 +1207,48 @@ export default function DashboardPage() {
           <section>
             <div className={styles.pageHeader}>
               <h1>Lead Generation</h1>
-              <p>Capture and qualify new leads automatically</p>
+              <p>Capture and qualify new leads automatically 24/7</p>
             </div>
             <div className={styles.metricsGrid}>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Leads This Month</div><div className={styles.metricCardValue} style={{ color: '#7B2FFF' }}>31</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ 18% vs last month</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Qualified Leads</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>14</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ 45% qualify rate</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Booked from Leads</div><div className={styles.metricCardValue}>8</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ 57% close rate</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Avg Response Time</div><div className={styles.metricCardValue}>45s</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— instant follow-up</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Leads Nurtured</div><div className={styles.metricCardValue} style={{ color: '#7B2FFF' }}>{leadNurtures.length}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ all time</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Sent Today</div><div className={styles.metricCardValue} style={{ color: '#378ADD' }}>{leadNurtures.filter(l => new Date(l.sent_at).toDateString() === new Date().toDateString()).length}</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— today</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Step 1 Sent</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>{leadNurtures.filter(l => l.step === 1).length}</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— initial</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Step 3 Sent</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>{leadNurtures.filter(l => l.step === 3).length}</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— final</div></div>
             </div>
             <div className={styles.contentGrid}>
               <div className={styles.panel}>
-                <div className={styles.panelHeader}><span className={styles.panelTitle}>Recent Leads</span></div>
+                <div className={styles.panelHeader}><span className={styles.panelTitle}>Send Lead Nurture</span></div>
                 <div className={styles.panelBody}>
-                  <ul className={styles.agentList}>
-                    {[['Website Chatbot', 'Tire rotation inquiry — qualified, booked', 'green', 'Booked'], ['Google Ad Form', 'Oil change inquiry — follow-up sent', 'yellow', 'In progress'], ['Facebook Lead', 'Brake inspection — no response', 'red', 'Cold']].map(([source, sub, dot, status]) => (
-                      <li key={source} className={styles.agentItem}>
-                        <span className={styles.agentItemIcon} style={{ background: '#160D2A' }} aria-hidden="true">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.5" stroke="#7B2FFF" strokeWidth="1.5" fill="none"/><circle cx="12" cy="12" r="5.5" stroke="#7B2FFF" strokeWidth="1.5" fill="none" opacity="0.5"/><circle cx="12" cy="12" r="8.5" stroke="#7B2FFF" strokeWidth="1.5" fill="none" opacity="0.25"/></svg>
-                        </span>
-                        <div className={styles.agentItemInfo}><div className={styles.agentItemName}>{source}</div><div className={styles.agentItemSub}>{sub}</div></div>
-                        <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${dot === 'green' ? styles.statusDotGreen : dot === 'yellow' ? styles.statusDotYellow : styles.statusDotRed}`}></span><span>{status}</span></div>
-                      </li>
-                    ))}
-                  </ul>
+                  {[['Customer Name', 'customer_name', 'text', 'John D.'], ['Phone Number', 'phone_number', 'tel', '(555) 800-1234'], ['Business Name', 'business_name', 'text', "Dave's Plumbing"]].map(([label, field, type, placeholder]) => (
+                    <div key={field} style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>{label}</label>
+                      <input type={type} placeholder={placeholder} value={leadForm[field]} onChange={e => setLeadForm(f => ({ ...f, [field]: e.target.value }))} style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14, boxSizing: 'border-box' }} />
+                    </div>
+                  ))}
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>Nurture Step</label>
+                    <select value={leadForm.step} onChange={e => setLeadForm(f => ({ ...f, step: e.target.value }))} style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14 }}>
+                      <option value={1}>Step 1 — Initial outreach</option>
+                      <option value={2}>Step 2 — Follow up with offer</option>
+                      <option value={3}>Step 3 — Final follow up</option>
+                    </select>
+                  </div>
+                  <button onClick={triggerLeadNurture} style={{ background: '#7B2FFF', border: 'none', color: '#fff', borderRadius: 6, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%' }}>Send Lead Nurture</button>
+                  {automationMsg && activePage === 'lead-gen' && <div style={{ marginTop: 12, color: automationMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b' }}>{automationMsg}</div>}
                 </div>
               </div>
               <div className={styles.panel}>
-                <div className={styles.panelHeader}><span className={styles.panelTitle}>Lead Sources</span></div>
+                <div className={styles.panelHeader}><span className={styles.panelTitle}>Recent Leads</span></div>
                 <div className={styles.panelBody}>
+                  {leadNurtures.length === 0 && <p style={{ color: '#aaa', padding: '12px 0' }}>No leads nurtured yet.</p>}
                   <ul className={styles.agentList}>
-                    {[['Website Chatbot', 'Alex captures leads 24/7', true], ['Contact Form', 'Auto follow-up on form submissions', true], ['Google Ads', 'Lead form integration', false], ['Facebook Ads', 'Lead form integration', false]].map(([name, sub, def]) => (
-                      <li key={name} className={styles.agentItem}>
-                        <div className={styles.agentItemInfo}><div className={styles.agentItemName}>{name}</div><div className={styles.agentItemSub}>{sub}</div></div>
-                        <Toggle checked={def} onChange={() => {}} label={`Toggle ${name}`} />
+                    {leadNurtures.map((l) => (
+                      <li key={l.id} className={styles.agentItem}>
+                        <div className={styles.agentItemInfo}>
+                          <div className={styles.agentItemName}>{l.customer_name}</div>
+                          <div className={styles.agentItemSub}>Step {l.step} · {new Date(l.sent_at).toLocaleString()}</div>
+                        </div>
+                        <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${styles.statusDotGreen}`}></span><span>Sent</span></div>
                       </li>
                     ))}
                   </ul>
@@ -964,16 +1309,16 @@ export default function DashboardPage() {
                 <div className={styles.panelBody}>
                   <ul className={styles.agentList}>
                     {[
-                      ['Daily Summary Email', 'Recap sent each morning', true],
-                      ['Alert on Urgent Calls', 'Text you for escalations', true],
-                      ['New Customer Alert', 'Notify when first-time customer calls', false]
-                    ].map(([name, sub, def]) => (
+                      ['Daily Summary Email', 'Recap sent each morning', 'daily-summary'],
+                      ['Alert on Urgent Calls', 'Text you for escalations', 'urgent-calls'],
+                      ['New Customer Alert', 'Notify when first-time customer calls', 'new-customer-alert']
+                    ].map(([name, sub, key]) => (
                       <li key={name} className={styles.agentItem}>
                         <div className={styles.agentItemInfo}>
                           <div className={styles.agentItemName}>{name}</div>
                           <div className={styles.agentItemSub}>{sub}</div>
                         </div>
-                        <Toggle checked={def} onChange={() => {}} label={`Toggle ${name}`} />
+                        <Toggle checked={toggleStates[key]} onChange={() => handleToggle(key)} label={`Toggle ${name}`} />
                       </li>
                     ))}
                   </ul>
@@ -990,35 +1335,91 @@ export default function DashboardPage() {
               <h1>Billing</h1>
               <p>Your plan and payment details</p>
             </div>
+            {billingLoading && <p style={{ color: '#aaa' }}>Loading plan...</p>}
+            <div className={styles.metricsGrid}>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Current Plan</div><div className={styles.metricCardValue} style={{ color: '#F5C400', textTransform: 'capitalize' }}>{billingPlan}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ active</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Monthly Cost</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>${billingPlan === 'pro' ? '797' : billingPlan === 'growth' ? '497' : '297'}</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— per month</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Setup Fee</div><div className={styles.metricCardValue}>$495</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— one time</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Status</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>Active</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ all systems go</div></div>
+            </div>
+
             <div className={styles.contentGrid}>
               <div className={styles.panel}>
-                <div className={styles.panelHeader}><span className={styles.panelTitle}>Current Plan</span><span className={styles.tag}>Growth</span></div>
+                <div className={styles.panelHeader}><span className={styles.panelTitle}>Plan Comparison</span></div>
                 <div className={styles.panelBody}>
-                  <ul className={styles.agentList}>
-                    {[['Plan', 'Growth — $297/mo'], ['Next Billing Date', 'April 1, 2026'], ['Payment Method', 'Visa ending in 4242']].map(([name, sub]) => (
-                      <li key={name} className={styles.agentItem}><div className={styles.agentItemInfo}><div className={styles.agentItemName}>{name}</div><div className={styles.agentItemSub}>{sub}</div></div></li>
-                    ))}
-                    <li className={styles.agentItem}>
-                      <div className={styles.agentItemInfo}><div className={styles.agentItemName}>Status</div><div className={styles.agentItemSub}>Active — all agents included</div></div>
-                      <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${styles.statusDotGreen}`}></span><span>Paid</span></div>
-                    </li>
-                  </ul>
+                  {[
+                    {
+                      name: 'Starter',
+                      key: 'starter',
+                      price: '$297/mo',
+                      color: '#378ADD',
+                      features: ['Phone Agent (Alex)', 'Missed Call Text Back', 'Appointment Reminders', 'Review Requests', 'Dashboard Access']
+                    },
+                    {
+                      name: 'Growth',
+                      key: 'growth',
+                      price: '$497/mo',
+                      color: '#1D9E75',
+                      features: ['Everything in Starter', 'Reactivation Agent', 'Post-Service Follow-Up', 'Lead Nurture (3-step)', 'Birthday Agent', 'Live Chat Agent']
+                    },
+                    {
+                      name: 'Pro',
+                      key: 'pro',
+                      price: '$797/mo',
+                      color: '#F5C400',
+                      features: ['Everything in Growth', 'Outbound Sales Agent', 'Social Media Agent', 'Review Monitor', 'Invoice Follow-Up', 'Monthly Strategy Call']
+                    },
+                  ].map((plan) => (
+                    <div key={plan.key} style={{ marginBottom: 20, padding: 16, background: billingPlan === plan.key ? '#1a1a1a' : '#111', borderRadius: 8, border: `1px solid ${billingPlan === plan.key ? plan.color : '#222'}` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 16, color: plan.color }}>{plan.name}</div>
+                          <div style={{ color: '#aaa', fontSize: 13 }}>{plan.price}</div>
+                        </div>
+                        {billingPlan === plan.key ? (
+                          <span style={{ background: plan.color, color: '#000', borderRadius: 4, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>Current Plan</span>
+                        ) : (
+                          <button onClick={() => upgradePlan(plan.key)} style={{ background: plan.color, border: 'none', color: '#000', borderRadius: 4, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                            {plan.key === 'starter' ? 'Downgrade' : 'Upgrade'}
+                          </button>
+                        )}
+                      </div>
+                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                        {plan.features.map(f => (
+                          <li key={f} style={{ fontSize: 13, color: '#ccc', padding: '3px 0' }}>✓ {f}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                  {billingMsg && <div style={{ marginTop: 12, color: billingMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b' }}>{billingMsg}</div>}
                 </div>
               </div>
+
               <div className={styles.panel}>
                 <div className={styles.panelHeader}><span className={styles.panelTitle}>Invoice History</span></div>
                 <div className={styles.panelBody}>
                   <ul className={styles.agentList}>
-                    {[['March 2026', '$297'], ['February 2026', '$297'], ['January 2026', '$297']].map(([month, amount]) => (
+                    {[['March 2026', '$297', 'starter'], ['February 2026', '$297', 'starter'], ['January 2026', '$297', 'starter']].map(([month, amount, plan]) => (
                       <li key={month} className={styles.agentItem}>
                         <span className={styles.agentItemIcon} style={{ background: '#1A1A1A' }} aria-hidden="true">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="18" rx="2" stroke="#888780" strokeWidth="1.5"/><line x1="8" y1="8" x2="16" y2="8" stroke="#888780" strokeWidth="1.4" strokeLinecap="round"/><line x1="8" y1="12" x2="16" y2="12" stroke="#888780" strokeWidth="1.4" strokeLinecap="round"/><line x1="8" y1="16" x2="12" y2="16" stroke="#888780" strokeWidth="1.4" strokeLinecap="round"/></svg>
                         </span>
-                        <div className={styles.agentItemInfo}><div className={styles.agentItemName}>{month}</div><div className={styles.agentItemSub}>{amount}</div></div>
-                        <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${styles.statusDotGreen}`}></span><span>Paid</span></div>
+                        <div className={styles.agentItemInfo}>
+                          <div className={styles.agentItemName}>{month}</div>
+                          <div className={styles.agentItemSub}>{amount} — {plan}</div>
+                        </div>
+                        <div className={styles.agentItemStatus}>
+                          <span className={`${styles.statusDot} ${styles.statusDotGreen}`}></span>
+                          <span>Paid</span>
+                        </div>
                       </li>
                     ))}
                   </ul>
+                  <div style={{ marginTop: 16, padding: 12, background: '#1a1a1a', borderRadius: 8, border: '1px solid #333' }}>
+                    <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>PAYMENT METHOD</div>
+                    <div style={{ fontSize: 13, color: '#ccc' }}>💳 Add payment method to enable auto-billing</div>
+                    <button style={{ marginTop: 10, background: '#333', border: 'none', color: '#fff', borderRadius: 4, padding: '6px 16px', fontSize: 12, cursor: 'pointer' }}>Add Card via Stripe</button>
+                  </div>
                 </div>
               </div>
             </div>
