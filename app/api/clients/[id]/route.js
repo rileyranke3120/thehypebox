@@ -22,14 +22,19 @@ export async function GET(_request, { params }) {
 export async function PATCH(request, { params }) {
   try {
     const updates = await request.json();
-    const allowed = ['plan', 'active', 'business_name', 'phone'];
+    const allowed = [
+      'plan', 'active', 'business_name',
+      'business_phone', 'business_hours', 'business_industry',
+      'after_hours_handling', 'primary_goal', 'onboarding_complete',
+      'retell_agent_id', 'retell_phone_number', 'toggles', 'role',
+    ];
     const sanitized = Object.fromEntries(
       Object.entries(updates).filter(([k]) => allowed.includes(k))
     );
 
     if (Object.keys(sanitized).length === 0) {
       return NextResponse.json(
-        { ok: false, error: 'No valid fields to update. Allowed: plan, active, business_name, phone' },
+        { ok: false, error: `No valid fields to update. Allowed: ${allowed.join(', ')}` },
         { status: 400 }
       );
     }

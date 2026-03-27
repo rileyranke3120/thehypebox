@@ -34,7 +34,7 @@ export async function POST(request) {
     // Look up client to get business_name
     const { data: client, error: clientError } = await supabase
       .from('users')
-      .select('id, name, business_name, email, phone')
+      .select('id, name, business_name, email, business_phone')
       .eq('id', client_id)
       .single();
 

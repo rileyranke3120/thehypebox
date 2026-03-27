@@ -20,7 +20,7 @@ export async function GET() {
 
 export async function PATCH(request) {
   try {
-    const { email, business_name, phone, hours } = await request.json();
+    const { email, business_name, business_phone, business_hours } = await request.json();
 
     if (!email) {
       return NextResponse.json(
@@ -32,7 +32,7 @@ export async function PATCH(request) {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('users')
-      .update({ business_name: business_name || null, phone: phone || null, hours: hours || null })
+      .update({ business_name: business_name || null, business_phone: business_phone || null, business_hours: business_hours || null })
       .eq('email', email)
       .select()
       .single();
@@ -47,7 +47,7 @@ export async function PATCH(request) {
 
 export async function POST(request) {
   try {
-    const { email, name, business_name, phone, plan } = await request.json();
+    const { email, name, business_name, business_phone, plan } = await request.json();
 
     if (!email || !name) {
       return NextResponse.json(
@@ -63,7 +63,7 @@ export async function POST(request) {
         email,
         name,
         business_name: business_name || null,
-        phone: phone || null,
+        business_phone: business_phone || null,
         plan: plan || 'starter',
         role: 'client',
         active: true,

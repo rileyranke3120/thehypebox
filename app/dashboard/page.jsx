@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import styles from '@/styles/dashboard.module.css';
 import { createClient } from '@supabase/supabase-js';
+import { hasFeature, getPlanPrice } from '@/lib/planFeatures';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -58,6 +59,11 @@ export default function DashboardPage() {
   const [agentToggles, setAgentToggles] = useState({
     phone: true, scheduling: true, accounting: true, crm: true,
   });
+
+  const [userRole, setUserRole] = useState('client');
+  const [userPlan, setUserPlan] = useState('starter');
+  const [clientProfile, setClientProfile] = useState(null);
+  const [onboardingComplete, setOnboardingComplete] = useState(true);
 
   const [clients, setClients] = useState([]);
   const [clientsLoading, setClientsLoading] = useState(false);
@@ -137,6 +143,12 @@ export default function DashboardPage() {
   const displayEmail = session?.user?.email || '';
 
   useEffect(() => {
+    if (session && onboardingComplete === false) {
+      window.location.href = '/onboarding';
+    }
+  }, [session, onboardingComplete]);
+
+  useEffect(() => {
     const addActivity = (text, type) => {
       setActivityItems(prev => {
         const newItem = { text, time: 'Just now', type };
@@ -175,28 +187,58 @@ export default function DashboardPage() {
   }, [activePage]);
 
   useEffect(() => {
-    if (activePage !== 'missed-call') return;
-    supabase.from('missed_calls').select('*').order('timestamp', { ascending: false }).limit(5)
+    if (activePage !== 'missed-call' || !clientProfile?.id) return;
+    supabase.from('missed_calls').select('*')
+      .eq('client_id', clientProfile.id)
+      .order('timestamp', { ascending: false }).limit(5)
       .then(({ data }) => setMissedCalls(data || []));
-  }, [activePage]);
+  }, [activePage, clientProfile]);
 
   useEffect(() => {
-    if (activePage !== 'review-request') return;
-    supabase.from('review_requests').select('*').order('sent_at', { ascending: false }).limit(5)
+    if (activePage !== 'review-request' || !clientProfile?.id) return;
+    supabase.from('review_requests').select('*')
+      .eq('client_id', clientProfile.id)
+      .order('sent_at', { ascending: false }).limit(5)
       .then(({ data }) => setReviewRequests(data || []));
-  }, [activePage]);
+  }, [activePage, clientProfile]);
 
   useEffect(() => {
-    if (activePage !== 'reactivation') return;
-    supabase.from('reactivation_campaigns').select('*').order('sent_at', { ascending: false }).limit(5)
+    if (activePage !== 'reactivation' || !clientProfile?.id) return;
+    supabase.from('reactivation_campaigns').select('*')
+      .eq('client_id', clientProfile.id)
+      .order('sent_at', { ascending: false }).limit(5)
       .then(({ data }) => setReactivations(data || []));
-  }, [activePage]);
+  }, [activePage, clientProfile]);
 
   useEffect(() => {
-    if (activePage !== 'lead-gen') return;
-    supabase.from('lead_nurture').select('*').order('sent_at', { ascending: false }).limit(5)
+    if (activePage !== 'lead-gen' || !clientProfile?.id) return;
+    supabase.from('lead_nurture').select('*')
+      .eq('client_id', clientProfile.id)
+      .order('sent_at', { ascending: false }).limit(5)
       .then(({ data }) => setLeadNurtures(data || []));
-  }, [activePage]);
+  }, [activePage, clientProfile]);
+
+  useEffect(() => {
+    if (!session?.user?.email) return;
+    supabase.from('users').select('*')
+      .eq('email', session.user.email)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setUserRole(data.role || 'client');
+          setUserPlan(data.plan || 'starter');
+          setClientProfile(data);
+          setOnboardingComplete(data.onboarding_complete ?? false);
+          if (data.business_name) {
+            setSettingsForm({
+              business_name: data.business_name || '',
+              phone: data.business_phone || '',
+              hours: data.business_hours || '',
+            });
+          }
+        }
+      });
+  }, [session]);
 
   useEffect(() => {
     if (!session?.user?.email) return;
@@ -413,12 +455,12 @@ export default function DashboardPage() {
     }
   }
 
-  const navItems = [
+  const allNavItems = [
     {
       section: 'Overview',
       items: [
         {
-          page: 'overview', label: 'Dashboard', icon: (
+          page: 'overview', label: 'Dashboard', requiredFeature: 'overview', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#1A1500', display: 'block' }}>
               <rect x="6" y="6" width="7" height="7" rx="1" stroke="#F5C400" strokeWidth="1.5"/>
               <rect x="19" y="6" width="7" height="7" rx="1" stroke="#F5C400" strokeWidth="1.5"/>
@@ -433,14 +475,14 @@ export default function DashboardPage() {
       section: 'Agents',
       items: [
         {
-          page: 'phone', label: 'Phone Agent', icon: (
+          page: 'phone', label: 'Phone Agent', requiredFeature: 'phone', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#0D1F35', display: 'block' }}>
               <path d="M11 17 C10.5 18.5 11 20.5 13 21.5 C14 22 15 21.5 16.5 20 C17.3 19.2 17.3 18 16.5 17.2 L15.75 16.45 C15.5 16.2 15.5 15.8 15.75 15.55 L17.45 13.85 C17.7 13.6 18.1 13.6 18.35 13.85 L19.1 14.6 C19.9 15.4 21.1 15.4 21.9 14.6 L23 13.5 C23.8 12.7 23.8 11.5 23 10.7 C21.5 9.2 19 8.5 17 9 C15 9.5 11.5 14.5 11 17 Z" stroke="#378ADD" strokeWidth="1.5" fill="none" strokeLinejoin="round"/>
             </svg>
           )
         },
         {
-          page: 'scheduling', label: 'Scheduling', icon: (
+          page: 'scheduling', label: 'Scheduling', requiredFeature: 'scheduling', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#0D2018', display: 'block' }}>
               <rect x="6" y="9" width="20" height="16" rx="2" stroke="#1D9E75" strokeWidth="1.5"/>
               <line x1="6" y1="14" x2="26" y2="14" stroke="#1D9E75" strokeWidth="1.5"/>
@@ -455,7 +497,7 @@ export default function DashboardPage() {
           )
         },
         {
-          page: 'accounting', label: 'Accounting', icon: (
+          page: 'accounting', label: 'Accounting', requiredFeature: 'accounting', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#1A0D00', display: 'block' }}>
               <line x1="6" y1="6" x2="6" y2="25" stroke="#EF9F27" strokeWidth="1.5" strokeLinecap="round"/>
               <line x1="6" y1="25" x2="26" y2="25" stroke="#EF9F27" strokeWidth="1.5" strokeLinecap="round"/>
@@ -466,7 +508,7 @@ export default function DashboardPage() {
           )
         },
         {
-          page: 'crm', label: 'CRM', icon: (
+          page: 'crm', label: 'CRM', requiredFeature: 'crm', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#160D2A', display: 'block' }}>
               <circle cx="12" cy="11" r="3.5" stroke="#7B2FFF" strokeWidth="1.5" fill="none"/>
               <path d="M5 26 C5 21.6 8.1 18 12 18 C15.9 18 19 21.6 19 26" stroke="#7B2FFF" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
@@ -481,7 +523,7 @@ export default function DashboardPage() {
       section: 'Automations',
       items: [
         {
-          page: 'missed-call', label: 'Missed Call Text Back', icon: (
+          page: 'missed-call', label: 'Missed Call Text Back', requiredFeature: 'missed-call', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#1A0D0D', display: 'block' }}>
               <path d="M11 17 C10.5 18.5 11 20.5 13 21.5 C14 22 15 21.5 16.5 20 C17.3 19.2 17.3 18 16.5 17.2 L15.75 16.45 C15.5 16.2 15.5 15.8 15.75 15.55 L17.45 13.85 C17.7 13.6 18.1 13.6 18.35 13.85 L19.1 14.6 C19.9 15.4 21.1 15.4 21.9 14.6 L23 13.5 C23.8 12.7 23.8 11.5 23 10.7 C21.5 9.2 19 8.5 17 9 C15 9.5 11.5 14.5 11 17 Z" stroke="#ff6b6b" strokeWidth="1.5" fill="none" strokeLinejoin="round"/>
               <line x1="20" y1="7" x2="26" y2="13" stroke="#ff6b6b" strokeWidth="1.5" strokeLinecap="round"/>
@@ -490,14 +532,14 @@ export default function DashboardPage() {
           )
         },
         {
-          page: 'review-request', label: 'Review Request Agent', icon: (
+          page: 'review-request', label: 'Review Request Agent', requiredFeature: 'review-request', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#1A1500', display: 'block' }}>
               <path d="M16 7 L17.8 12.5 H23.5 L18.9 15.8 L20.7 21.3 L16 18 L11.3 21.3 L13.1 15.8 L8.5 12.5 H14.2 Z" stroke="#F5C400" strokeWidth="1.5" fill="none" strokeLinejoin="round"/>
             </svg>
           )
         },
         {
-          page: 'reactivation', label: 'Reactivation Agent', icon: (
+          page: 'reactivation', label: 'Reactivation Agent', requiredFeature: 'reactivation', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#0D2018', display: 'block' }}>
               <path d="M22 10 C20.3 8 17.8 7 15 7.5 C10.9 8.3 8 12 8 16" stroke="#1D9E75" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
               <path d="M10 25 C11.7 27 14.2 28 17 27.5 C21.1 26.7 24 23 24 19" stroke="#1D9E75" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
@@ -507,7 +549,7 @@ export default function DashboardPage() {
           )
         },
         {
-          page: 'lead-gen', label: 'Lead Generation', icon: (
+          page: 'lead-gen', label: 'Lead Generation', requiredFeature: 'lead-gen', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#160D2A', display: 'block' }}>
               <circle cx="16" cy="16" r="3" stroke="#7B2FFF" strokeWidth="1.5" fill="none"/>
               <circle cx="16" cy="16" r="7" stroke="#7B2FFF" strokeWidth="1.5" fill="none" opacity="0.5"/>
@@ -522,7 +564,7 @@ export default function DashboardPage() {
       section: 'Clients',
       items: [
         {
-          page: 'clients', label: 'All Clients', icon: (
+          page: 'clients', label: 'All Clients', requiredFeature: 'clients', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#160D2A', display: 'block' }}>
               <circle cx="12" cy="11" r="3.5" stroke="#7B2FFF" strokeWidth="1.5" fill="none"/>
               <path d="M5 26 C5 21.6 8.1 18 12 18 C15.9 18 19 21.6 19 26" stroke="#7B2FFF" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
@@ -532,7 +574,7 @@ export default function DashboardPage() {
           )
         },
         {
-          page: 'add-client', label: 'Add Client', icon: (
+          page: 'add-client', label: 'Add Client', requiredFeature: 'add-client', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#0D2018', display: 'block' }}>
               <line x1="16" y1="8" x2="16" y2="24" stroke="#1D9E75" strokeWidth="1.5" strokeLinecap="round"/>
               <line x1="8" y1="16" x2="24" y2="16" stroke="#1D9E75" strokeWidth="1.5" strokeLinecap="round"/>
@@ -540,7 +582,7 @@ export default function DashboardPage() {
           )
         },
         {
-          page: 'automation-logs', label: 'Automation Logs', icon: (
+          page: 'automation-logs', label: 'Automation Logs', requiredFeature: 'automation-logs', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#1A1500', display: 'block' }}>
               <line x1="8" y1="11" x2="24" y2="11" stroke="#F5C400" strokeWidth="1.5" strokeLinecap="round"/>
               <line x1="8" y1="16" x2="24" y2="16" stroke="#F5C400" strokeWidth="1.5" strokeLinecap="round"/>
@@ -554,7 +596,7 @@ export default function DashboardPage() {
       section: 'Account',
       items: [
         {
-          page: 'settings', label: 'Settings', icon: (
+          page: 'settings', label: 'Settings', requiredFeature: 'settings', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#1A1A1A', display: 'block' }}>
               <circle cx="16" cy="16" r="6" fill="#888780"/>
               <rect x="14.5" y="6" width="3" height="5" rx="0.5" fill="#888780"/>
@@ -572,7 +614,7 @@ export default function DashboardPage() {
           )
         },
         {
-          page: 'billing', label: 'Billing', icon: (
+          page: 'billing', label: 'Billing', requiredFeature: 'billing', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#1A1A1A', display: 'block' }}>
               <rect x="8" y="5" width="16" height="22" rx="2" stroke="#888780" strokeWidth="1.5"/>
               <line x1="12" y1="12" x2="20" y2="12" stroke="#888780" strokeWidth="1.5" strokeLinecap="round"/>
@@ -584,6 +626,13 @@ export default function DashboardPage() {
       ]
     },
   ];
+
+  const navItems = allNavItems.map(section => ({
+    ...section,
+    items: section.items.filter(item =>
+      hasFeature(userRole === 'super_admin' ? 'super_admin' : userPlan, item.requiredFeature)
+    ),
+  })).filter(section => section.items.length > 0);
 
   const Toggle = ({ checked, onChange, label }) => (
     <label className={styles.toggle} aria-label={label}>
@@ -614,6 +663,18 @@ export default function DashboardPage() {
           <div className={styles.topbarUser}>
             <div className={styles.topbarAvatar} aria-hidden="true">{displayInitials}</div>
             <span>{displayName}</span>
+            <span style={{
+              fontSize: 10,
+              background: userRole === 'super_admin' ? '#F5C400' : userPlan === 'pro' ? '#7B2FFF' : userPlan === 'growth' ? '#1D9E75' : '#378ADD',
+              color: userRole === 'super_admin' ? '#000' : '#fff',
+              borderRadius: 4,
+              padding: '2px 6px',
+              marginLeft: 8,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+            }}>
+              {userRole === 'super_admin' ? 'Admin' : userPlan}
+            </span>
           </div>
         </div>
       </header>
@@ -737,10 +798,24 @@ export default function DashboardPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
                   <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#0D1F35', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🤖</div>
                   <div>
-                    <div style={{ fontSize: 20, fontWeight: 700 }}>Alex</div>
-                    <div style={{ color: '#aaa', fontSize: 13 }}>Retell AI Voice Agent</div>
+                    <div style={{ fontSize: 20, fontWeight: 700 }}>
+                      {userRole === 'super_admin'
+                        ? 'Alex'
+                        : clientProfile?.business_name
+                          ? `${clientProfile.business_name} AI Agent`
+                          : 'AI Agent'}
+                    </div>
+                    <div style={{ color: '#aaa', fontSize: 13 }}>
+                      {userRole === 'super_admin'
+                        ? 'agent_132e809e21c0ff5eb0f006d59e'
+                        : clientProfile?.retell_agent_id || 'No agent provisioned yet'}
+                    </div>
                     <div style={{ marginTop: 6, display: 'flex', gap: 16 }}>
-                      <span style={{ color: '#378ADD', fontSize: 13 }}>📞 (856) 363-0633</span>
+                      <span style={{ color: '#378ADD', fontSize: 13 }}>
+                        📞 {userRole === 'super_admin'
+                          ? '(856) 363-0633'
+                          : clientProfile?.retell_phone_number || 'No number assigned'}
+                      </span>
                       <span style={{ color: '#1D9E75', fontSize: 13 }}>● Live & Answering</span>
                     </div>
                   </div>
