@@ -1,3 +1,4 @@
+"use client";
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -216,8 +217,12 @@ const s = {
   },
 };
 
+export const dynamic = 'force-dynamic';
+
 export default function OnboardingPage() {
-  const { data: session, status } = useSession();
+  const sessionResult = useSession();
+  const session = sessionResult?.data;
+  const status = sessionResult?.status ?? 'loading';
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [userId, setUserId] = useState(null);
