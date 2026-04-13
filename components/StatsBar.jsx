@@ -11,7 +11,7 @@ export default function StatsBar() {
           </div>
           <div>
             <dt className={styles.statsLabel}>Setup Time</dt>
-            <dd className={styles.statsValue}>&lt; 48hrs</dd>
+            <dd className={styles.statsValue}>15 Min</dd>
           </div>
           <div>
             <dt className={styles.statsLabel}>US-Based Support</dt>

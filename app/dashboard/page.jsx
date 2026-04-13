@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import styles from '@/styles/dashboard.module.css';
@@ -12,18 +12,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-const autoEvents = [
-  ['Phone answered — oil change inquiry resolved.', 'blue'],
-  ['Appointment booked — Dave K. for Friday 2pm.', 'green'],
-  ['Invoice #1043 flagged — Garcia Auto 4 days overdue.', 'yellow'],
-  ['CRM follow-up sent to Lisa R. — 90 day re-engagement.', 'purple'],
-  ['New lead captured — brake inspection via chatbot.', 'lime'],
-  ['Phone answered — hours inquiry resolved.', 'blue'],
-  ['Appointment booked — Sarah M. rescheduled to Mon.', 'green'],
-  ['Invoice #1044 sent — $180 to Thompson HVAC.', 'yellow'],
-  ['CRM follow-up sent to Mike T. — review request.', 'purple'],
-  ['New lead captured — website chatbot, tire rotation.', 'lime'],
-];
 
 function getInitials(name) {
   if (!name) return '??';
@@ -46,15 +34,9 @@ export default function DashboardPage() {
       .catch(() => setCalls([]))
       .finally(() => setCallsLoading(false));
   }, [activePage]);
-  const [activityItems, setActivityItems] = useState([
-    { text: 'Call answered — customer asked about oil change pricing.', time: '2 min ago', type: 'blue' },
-    { text: 'Appointment booked — Sarah M. for Thursday 10am.', time: '8 min ago', type: 'green' },
-    { text: "Invoice #1042 flagged — Dave's Plumbing $340 overdue.", time: '22 min ago', type: 'yellow' },
-    { text: 'CRM follow-up sent to Mike T. — last visit was 6 months ago.', time: '1 hr ago', type: 'purple' },
-    { text: 'New lead captured — tire rotation inquiry via chatbot.', time: '1 hr ago', type: 'lime' },
-  ]);
-  const [metrics, setMetrics] = useState({ calls: 47, appointments: 12, revenue: '$4,820' });
-  const autoIndexRef = useRef(0);
+  const [activityItems, setActivityItems] = useState([]);
+  const [overviewData, setOverviewData] = useState(null);
+  const [overviewLoading, setOverviewLoading] = useState(false);
 
   const [agentToggles, setAgentToggles] = useState({
     phone: true, scheduling: true, accounting: true, crm: true,
@@ -149,25 +131,29 @@ export default function DashboardPage() {
   }, [session, onboardingComplete]);
 
   useEffect(() => {
-    const addActivity = (text, type) => {
-      setActivityItems(prev => {
-        const newItem = { text, time: 'Just now', type };
-        return [newItem, ...prev].slice(0, 5);
-      });
-    };
-    const activityInterval = setInterval(() => {
-      const ev = autoEvents[autoIndexRef.current % autoEvents.length];
-      autoIndexRef.current++;
-      addActivity(ev[0], ev[1]);
-    }, 3000);
-    const metricsInterval = setInterval(() => {
-      setMetrics({
-        calls: 47 + Math.floor((Math.random() - 0.5) * 6),
-        appointments: 12 + Math.floor((Math.random() - 0.5) * 4),
-        revenue: '$' + (4820 + Math.floor((Math.random() - 0.5) * 200)).toLocaleString(),
-      });
-    }, 8000);
-    return () => { clearInterval(activityInterval); clearInterval(metricsInterval); };
+    setOverviewLoading(true);
+    fetch('/api/overview')
+      .then((r) => r.json())
+      .then((data) => {
+        setOverviewData(data);
+        if (data.recentActivity?.length) {
+          setActivityItems(
+            data.recentActivity.slice(0, 5).map((log) => ({
+              text: [
+                log.business_name ? `[${log.business_name}]` : null,
+                log.automation_type || 'Automation',
+                log.status ? `— ${log.status}` : null,
+              ].filter(Boolean).join(' '),
+              time: log.created_at
+                ? new Date(log.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                : '',
+              type: log.status === 'success' ? 'green' : log.status === 'failed' ? 'yellow' : 'blue',
+            }))
+          );
+        }
+      })
+      .catch(() => {})
+      .finally(() => setOverviewLoading(false));
   }, []);
 
   useEffect(() => {
@@ -593,6 +579,28 @@ export default function DashboardPage() {
       ]
     },
     {
+      section: 'CRM Data',
+      items: [
+        {
+          page: 'contacts', href: '/dashboard/contacts', label: 'Contacts', requiredFeature: 'contacts', icon: (
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#0D1F35', display: 'block' }}>
+              <circle cx="16" cy="12" r="4" stroke="#378ADD" strokeWidth="1.5" fill="none"/>
+              <path d="M8 26 C8 21.6 11.6 18 16 18 C20.4 18 24 21.6 24 26" stroke="#378ADD" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+            </svg>
+          )
+        },
+        {
+          page: 'pipeline', href: '/dashboard/pipeline', label: 'Pipeline', requiredFeature: 'pipeline', icon: (
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#0D2018', display: 'block' }}>
+              <rect x="6" y="18" width="5" height="8" rx="1" fill="#1D9E75"/>
+              <rect x="13.5" y="12" width="5" height="14" rx="1" fill="#1D9E75"/>
+              <rect x="21" y="7" width="5" height="19" rx="1" fill="#1D9E75"/>
+            </svg>
+          )
+        },
+      ]
+    },
+    {
       section: 'Account',
       items: [
         {
@@ -685,16 +693,23 @@ export default function DashboardPage() {
           <div key={section}>
             <span className={styles.sidebarSectionLabel}>{section}</span>
             <ul className={styles.sidebarNav}>
-              {items.map(({ page, label, icon }) => (
+              {items.map(({ page, href, label, icon }) => (
                 <li key={page}>
-                  <a
-                    href="#"
-                    onClick={(e) => { e.preventDefault(); setActivePage(page); }}
-                    className={activePage === page ? styles.sidebarNavActive : ''}
-                  >
-                    <span className={styles.sidebarIcon} aria-hidden="true">{icon}</span>
-                    {label}
-                  </a>
+                  {href ? (
+                    <Link href={href}>
+                      <span className={styles.sidebarIcon} aria-hidden="true">{icon}</span>
+                      {label}
+                    </Link>
+                  ) : (
+                    <a
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); setActivePage(page); }}
+                      className={activePage === page ? styles.sidebarNavActive : ''}
+                    >
+                      <span className={styles.sidebarIcon} aria-hidden="true">{icon}</span>
+                      {label}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
@@ -716,10 +731,21 @@ export default function DashboardPage() {
               <p>Today&apos;s snapshot — updated live</p>
             </div>
             <div className={styles.metricsGrid}>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Calls Today</div><div className={styles.metricCardValue} style={{ color: '#378ADD' }}>{metrics.calls}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ 12% vs yesterday</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Appointments</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>{metrics.appointments}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ 3 new today</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Revenue Today</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>{metrics.revenue}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ 8% vs avg</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Open Invoices</div><div className={styles.metricCardValue} style={{ color: '#EF9F27' }}>3</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— no change</div></div>
+              {overviewData?.isSuperAdmin ? (
+                <>
+                  <div className={styles.metricCard}><div className={styles.metricCardLabel}>Total Clients</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>{overviewLoading ? '…' : (overviewData.stats.totalClients ?? '—')}</div><div className={styles.metricCardDelta}>All time</div></div>
+                  <div className={styles.metricCard}><div className={styles.metricCardLabel}>Active Clients</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>{overviewLoading ? '…' : (overviewData.stats.activeClients ?? '—')}</div><div className={styles.metricCardDelta}>Subscribed</div></div>
+                  <div className={styles.metricCard}><div className={styles.metricCardLabel}>Monthly Revenue</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>{overviewLoading ? '…' : overviewData.stats.monthlyRevenue != null ? '$' + overviewData.stats.monthlyRevenue.toLocaleString() : '—'}</div><div className={styles.metricCardDelta}>MRR</div></div>
+                  <div className={styles.metricCard}><div className={styles.metricCardLabel}>New This Month</div><div className={styles.metricCardValue} style={{ color: '#378ADD' }}>{overviewLoading ? '…' : (overviewData.stats.newClientsThisMonth ?? '—')}</div><div className={styles.metricCardDelta}>Last 30 days</div></div>
+                </>
+              ) : (
+                <>
+                  <div className={styles.metricCard}><div className={styles.metricCardLabel}>Total Contacts</div><div className={styles.metricCardValue} style={{ color: '#378ADD' }}>{overviewLoading ? '…' : (overviewData?.stats?.totalContacts ?? '—')}</div><div className={styles.metricCardDelta}>In your CRM</div></div>
+                  <div className={styles.metricCard}><div className={styles.metricCardLabel}>Open Opportunities</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>{overviewLoading ? '…' : (overviewData?.stats?.leadsActive ?? '—')}</div><div className={styles.metricCardDelta}>Active pipeline</div></div>
+                  <div className={styles.metricCard}><div className={styles.metricCardLabel}>Pipeline Value</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>{overviewLoading ? '…' : overviewData?.stats?.pipelineValue != null ? '$' + overviewData.stats.pipelineValue.toLocaleString() : '—'}</div><div className={styles.metricCardDelta}>Open deals</div></div>
+                  <div className={styles.metricCard}><div className={styles.metricCardLabel}>Completed Jobs</div><div className={styles.metricCardValue} style={{ color: '#EF9F27' }}>{overviewLoading ? '…' : (overviewData?.stats?.completedJobs ?? '—')}</div><div className={styles.metricCardDelta}>Won / closed</div></div>
+                </>
+              )}
             </div>
             <div className={styles.contentGrid}>
               <div className={styles.panel}>
@@ -728,25 +754,25 @@ export default function DashboardPage() {
                   <ul className={styles.agentList}>
                     <li className={styles.agentItem}>
                       <span className={styles.agentItemIcon} style={{ background: '#0D1F35' }} aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M8 12.5 C7.5 13.8 8 15.5 9.7 16.3 C10.5 16.8 11.2 16.3 12.4 15.1 C13 14.5 13 13.7 12.4 13.1 L11.8 12.5 C11.6 12.3 11.6 11.9 11.8 11.7 L13.1 10.4 C13.3 10.2 13.7 10.2 13.9 10.4 L14.5 11 C15.1 11.6 15.9 11.6 16.5 11 L17.5 10 C18.1 9.4 18.1 8.6 17.5 8 C16.3 6.8 14.2 6.4 12.8 7 C11.4 7.6 8.5 11.2 8 12.5 Z" stroke="#378ADD" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg></span>
-                      <div className={styles.agentItemInfo}><div className={styles.agentItemName}>Phone Agent</div><div className={styles.agentItemSub}>47 calls handled today</div></div>
+                      <div className={styles.agentItemInfo}><div className={styles.agentItemName}>Phone Agent</div><div className={styles.agentItemSub}>{overviewData?.stats?.callsThisMonth != null ? `${overviewData.stats.callsThisMonth} calls this month` : 'Live & answering'}</div></div>
                       <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${agentToggles.phone ? styles.statusDotGreen : ''}`}></span><span>{agentToggles.phone ? 'Active' : 'Paused'}</span></div>
                       <Toggle checked={agentToggles.phone} onChange={() => handleAgentToggle('phone', 'Phone Agent')} label="Toggle Phone Agent" />
                     </li>
                     <li className={styles.agentItem}>
                       <span className={styles.agentItemIcon} style={{ background: '#0D2018' }} aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="15" rx="2" stroke="#1D9E75" strokeWidth="1.5" fill="none"/><line x1="3" y1="10" x2="21" y2="10" stroke="#1D9E75" strokeWidth="1.5"/><line x1="8" y1="5" x2="8" y2="3" stroke="#1D9E75" strokeWidth="1.5" strokeLinecap="round"/><line x1="16" y1="5" x2="16" y2="3" stroke="#1D9E75" strokeWidth="1.5" strokeLinecap="round"/><circle cx="8" cy="14" r="1.1" fill="#1D9E75"/><circle cx="12" cy="14" r="1.1" fill="#1D9E75"/><circle cx="16" cy="14" r="1.1" fill="#1D9E75"/></svg></span>
-                      <div className={styles.agentItemInfo}><div className={styles.agentItemName}>Scheduling Agent</div><div className={styles.agentItemSub}>12 appointments today</div></div>
+                      <div className={styles.agentItemInfo}><div className={styles.agentItemName}>Scheduling Agent</div><div className={styles.agentItemSub}>{overviewData?.stats?.apptThisMonth != null ? `${overviewData.stats.apptThisMonth} appointments this month` : 'Booking & scheduling'}</div></div>
                       <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${agentToggles.scheduling ? styles.statusDotGreen : ''}`}></span><span>{agentToggles.scheduling ? 'Active' : 'Paused'}</span></div>
                       <Toggle checked={agentToggles.scheduling} onChange={() => handleAgentToggle('scheduling', 'Scheduling Agent')} label="Toggle Scheduling Agent" />
                     </li>
                     <li className={styles.agentItem}>
                       <span className={styles.agentItemIcon} style={{ background: '#1A0D00' }} aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><line x1="4" y1="3.5" x2="4" y2="19.5" stroke="#EF9F27" strokeWidth="1.5" strokeLinecap="round"/><line x1="4" y1="19.5" x2="20" y2="19.5" stroke="#EF9F27" strokeWidth="1.5" strokeLinecap="round"/><rect x="5.5" y="15" width="3.5" height="4.5" fill="#EF9F27"/><rect x="10.5" y="9" width="3.5" height="10.5" fill="#EF9F27"/><rect x="15.5" y="12" width="3.5" height="7.5" fill="#EF9F27"/></svg></span>
-                      <div className={styles.agentItemInfo}><div className={styles.agentItemName}>Accounting Agent</div><div className={styles.agentItemSub}>3 invoices pending</div></div>
+                      <div className={styles.agentItemInfo}><div className={styles.agentItemName}>Accounting Agent</div><div className={styles.agentItemSub}>Tracking invoices & payments</div></div>
                       <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${agentToggles.accounting ? styles.statusDotYellow : ''}`}></span><span>{agentToggles.accounting ? 'Attention' : 'Paused'}</span></div>
                       <Toggle checked={agentToggles.accounting} onChange={() => handleAgentToggle('accounting', 'Accounting Agent')} label="Toggle Accounting Agent" />
                     </li>
                     <li className={styles.agentItem}>
                       <span className={styles.agentItemIcon} style={{ background: '#160D2A' }} aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="2.8" stroke="#7B2FFF" strokeWidth="1.5" fill="none"/><path d="M3.5 19.5 C3.5 15.9 6 13 9 13 C12 13 14.5 15.9 14.5 19.5" stroke="#7B2FFF" strokeWidth="1.5" fill="none" strokeLinecap="round"/><circle cx="17.5" cy="7.5" r="2.2" stroke="#7B2FFF" strokeWidth="1.5" fill="none" opacity="0.65"/><path d="M14 19 C14 16 15.5 13.5 17.5 13.5 C19.5 13.5 21 16 21 19" stroke="#7B2FFF" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.65"/></svg></span>
-                      <div className={styles.agentItemInfo}><div className={styles.agentItemName}>CRM Agent</div><div className={styles.agentItemSub}>2 follow-ups queued</div></div>
+                      <div className={styles.agentItemInfo}><div className={styles.agentItemName}>CRM Agent</div><div className={styles.agentItemSub}>{overviewData?.stats?.leadsActive != null ? `${overviewData.stats.leadsActive} active leads` : 'Managing follow-ups'}</div></div>
                       <div className={styles.agentItemStatus}><span className={`${styles.statusDot} ${agentToggles.crm ? styles.statusDotGreen : ''}`}></span><span>{agentToggles.crm ? 'Active' : 'Paused'}</span></div>
                       <Toggle checked={agentToggles.crm} onChange={() => handleAgentToggle('crm', 'CRM Agent')} label="Toggle CRM Agent" />
                     </li>
@@ -773,11 +799,16 @@ export default function DashboardPage() {
                 <table className={styles.callsTable}>
                   <thead><tr><th>Caller</th><th>Time</th><th>Duration</th><th>Outcome</th><th>Agent</th></tr></thead>
                   <tbody>
-                    <tr><td>(555) 204-1187</td><td>2 min ago</td><td>1m 22s</td><td><span className={`${styles.outcomeTag} ${styles.outcomeResolved}`}>Resolved</span></td><td>Phone Agent</td></tr>
-                    <tr><td>(555) 391-0042</td><td>1 hr ago</td><td>2m 08s</td><td><span className={`${styles.outcomeTag} ${styles.outcomeBooked}`}>Booked</span></td><td>Phone Agent</td></tr>
-                    <tr><td>(555) 877-3300</td><td>2 hr ago</td><td>0m 54s</td><td><span className={`${styles.outcomeTag} ${styles.outcomeResolved}`}>Resolved</span></td><td>Phone Agent</td></tr>
-                    <tr><td>(555) 103-9921</td><td>3 hr ago</td><td>3m 17s</td><td><span className={`${styles.outcomeTag} ${styles.outcomeEscalated}`}>Escalated</span></td><td>Phone Agent</td></tr>
-                    <tr><td>(555) 648-2204</td><td>4 hr ago</td><td>—</td><td><span className={`${styles.outcomeTag} ${styles.outcomeMissed}`}>Missed</span></td><td>Phone Agent</td></tr>
+                    <tr>
+                      <td colSpan={5} style={{ padding: '24px 16px', textAlign: 'center', color: '#666', fontSize: 13 }}>
+                        {overviewLoading
+                          ? 'Loading…'
+                          : overviewData?.stats?.callsThisMonth != null
+                            ? <>{overviewData.stats.callsThisMonth} calls this month. <Link href="/dashboard/calls" style={{ color: '#378ADD', textDecoration: 'none' }}>View full call log →</Link></>
+                            : <Link href="/dashboard/calls" style={{ color: '#378ADD', textDecoration: 'none' }}>View call log →</Link>
+                        }
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -1191,7 +1222,7 @@ export default function DashboardPage() {
             <div className={styles.metricsGrid}>
               <div className={styles.metricCard}><div className={styles.metricCardLabel}>Requests Sent</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>{reviewRequests.length}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ all time</div></div>
               <div className={styles.metricCard}><div className={styles.metricCardLabel}>Sent Today</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>{reviewRequests.filter(r => new Date(r.sent_at).toDateString() === new Date().toDateString()).length}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ today</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Avg Rating</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>4.8 ⭐</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ rising</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Avg Rating</div><div className={styles.metricCardValue} style={{ color: '#F5C400', display: 'flex', alignItems: 'center', gap: 6 }}>4.8 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 7 L17.8 12.5 H23.5 L18.9 15.8 L20.7 21.3 L16 18 L11.3 21.3 L13.1 15.8 L8.5 12.5 H14.2 Z" stroke="#F5C400" strokeWidth="1.5" fill="#F5C400" strokeLinejoin="round"/></svg></div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ rising</div></div>
               <div className={styles.metricCard}><div className={styles.metricCardLabel}>Conversion</div><div className={styles.metricCardValue}>38%</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— industry avg</div></div>
             </div>
             <div className={styles.contentGrid}>

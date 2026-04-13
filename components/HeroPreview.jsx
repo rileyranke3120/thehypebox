@@ -61,6 +61,7 @@ export default function HeroPreview() {
             customers coming back — so you can focus on the work.
           </p>
           <div className={styles.heroActions}>
+            <a href="#booking" className="btn btn-primary">Book a Free Call</a>
             <a href="#how" className="btn btn-ghost">See How It Works</a>
           </div>
           <div className={styles.heroDemo}>

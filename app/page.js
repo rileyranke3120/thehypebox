@@ -1,9 +1,10 @@
+import Script from 'next/script';
 import Nav from '@/components/Nav';
 import HeroPreview from '@/components/HeroPreview';
 import StatsBar from '@/components/StatsBar';
 import AgentCard from '@/components/AgentCard';
+import PricingSection from '@/components/PricingSection';
 import BookingSection from '@/components/BookingSection';
-import ContactSection from '@/components/ContactSection';
 import Footer from '@/components/Footer';
 import styles from '@/styles/marketing.module.css';
 
@@ -87,6 +88,7 @@ export default function Home() {
 
   return (
     <>
+      <Script src="https://api.leadconnectorhq.com/js/form_embed.js" strategy="afterInteractive" />
       <Nav />
       <main>
         <HeroPreview />
@@ -136,7 +138,7 @@ export default function Home() {
           </div>
         </section>
 
-        <ContactSection />
+        <PricingSection />
         <BookingSection />
       </main>
       <Footer />

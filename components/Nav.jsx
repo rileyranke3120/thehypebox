@@ -4,36 +4,90 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from '@/styles/marketing.module.css';
 
+const NAV_LINKS = [
+  { href: '#services', label: 'Services' },
+  { href: '#how', label: 'How It Works' },
+  { href: '#pricing', label: 'Pricing' },
+  { href: '#booking', label: 'Book a Call' },
+];
+
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
+    const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [menuOpen]);
+
+  function close() { setMenuOpen(false); }
+
   return (
-    <header className={`${styles.nav}${scrolled ? ' ' + styles.navScrolled : ''}`} role="banner">
-      <div className={`container ${styles.navInner}`}>
-        <Link href="/" className={styles.navLogo} aria-label="TheHypeBox — Home">
-          The<span>Hype</span>Box
-        </Link>
-        <nav aria-label="Primary">
-          <ul className={styles.navLinks}>
-            <li><a href="#services">Services</a></li>
-            <li><a href="#how">How It Works</a></li>
-            <li><a href="#booking">Book a Call</a></li>
+    <>
+      <header className={`${styles.nav}${scrolled ? ' ' + styles.navScrolled : ''}`} role="banner">
+        <div className={`container ${styles.navInner}`}>
+          <Link href="/" className={styles.navLogo} aria-label="TheHypeBox — Home">
+            The<span>Hype</span>Box
+          </Link>
+
+          <nav aria-label="Primary">
+            <ul className={styles.navLinks}>
+              {NAV_LINKS.map(({ href, label }) => (
+                <li key={href}><a href={href}>{label}</a></li>
+              ))}
+            </ul>
+          </nav>
+
+          <div className={styles.navCta}>
+            <Link href="/login" className="btn btn-ghost">Log In</Link>
+            <a href="#booking" className="btn btn-primary">Book Free Call</a>
+          </div>
+
+          {/* Hamburger — mobile only */}
+          <button
+            className={styles.hamburger}
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen}
+          >
+            <span className={`${styles.hamburgerLine} ${menuOpen ? styles.hamburgerLineTop : ''}`} />
+            <span className={`${styles.hamburgerLine} ${menuOpen ? styles.hamburgerLineMid : ''}`} />
+            <span className={`${styles.hamburgerLine} ${menuOpen ? styles.hamburgerLineBot : ''}`} />
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile drawer overlay */}
+      {menuOpen && (
+        <div className={styles.mobileOverlay} onClick={close} aria-hidden="true" />
+      )}
+
+      <div className={`${styles.mobileDrawer} ${menuOpen ? styles.mobileDrawerOpen : ''}`} aria-hidden={!menuOpen}>
+        <nav aria-label="Mobile navigation">
+          <ul className={styles.mobileNavLinks}>
+            {NAV_LINKS.map(({ href, label }) => (
+              <li key={href}>
+                <a href={href} onClick={close}>{label}</a>
+              </li>
+            ))}
           </ul>
         </nav>
-        <div className={styles.navCta}>
-          <Link href="/login" className="btn btn-ghost">Log In</Link>
-          <a href="#booking" className="btn btn-primary">Schedule a Free Estimate</a>
+        <div className={styles.mobileDrawerCta}>
+          <a href="#booking" className="btn btn-primary" onClick={close} style={{ width: '100%', justifyContent: 'center' }}>
+            Book Free Call
+          </a>
+          <Link href="/login" className="btn btn-ghost" onClick={close} style={{ width: '100%', justifyContent: 'center' }}>
+            Log In
+          </Link>
         </div>
       </div>
-    </header>
+    </>
   );
 }
