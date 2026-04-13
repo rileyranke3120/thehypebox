@@ -1,3 +1,4 @@
+import { auth } from '@/auth';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 
@@ -19,20 +20,32 @@ export async function GET() {
 }
 
 export async function PATCH(request) {
-  try {
-    const { email, business_name, business_phone, business_hours } = await request.json();
+  const session = await auth();
+  if (!session) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
 
-    if (!email) {
-      return NextResponse.json(
-        { ok: false, error: 'email is required to identify the user' },
-        { status: 400 }
-      );
+  try {
+    const body = await request.json();
+
+    // Allow callers to identify by email in body; fall back to session email
+    const email = body.email || session.user.email;
+
+    // Accept both short form (phone/hours — dashboard form) and canonical (business_phone/business_hours)
+    const updates = {};
+    if (body.business_name  !== undefined) updates.business_name  = body.business_name  || null;
+    if (body.business_phone !== undefined) updates.business_phone = body.business_phone || null;
+    if (body.phone          !== undefined) updates.business_phone = body.phone          || null;
+    if (body.business_hours !== undefined) updates.business_hours = body.business_hours || null;
+    if (body.hours          !== undefined) updates.business_hours = body.hours          || null;
+    if (body.avatar_url     !== undefined) updates.avatar_url     = body.avatar_url     || null;
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ ok: false, error: 'No updatable fields provided' }, { status: 400 });
     }
 
     const supabase = createClient();
     const { data, error } = await supabase
       .from('users')
-      .update({ business_name: business_name || null, business_phone: business_phone || null, business_hours: business_hours || null })
+      .update(updates)
       .eq('email', email)
       .select()
       .single();

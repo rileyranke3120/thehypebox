@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import styles from '@/styles/dashboard.module.css';
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { hasFeature, getPlanPrice } from '@/lib/planFeatures';
 
-const supabase = createClient(
+// Read-only anon client — used only for reads (profile, automation logs, missed calls)
+// All writes go through authenticated API routes
+const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
@@ -55,7 +57,7 @@ export default function DashboardPage() {
   const [automationLogs, setAutomationLogs] = useState([]);
   const [triggerForm, setTriggerForm] = useState({ automation: 'review-request', phone_number: '', customer_name: '' });
   const [triggerMsg, setTriggerMsg] = useState('');
-  const [settingsForm, setSettingsForm] = useState({ business_name: '', phone: '', hours: '' });
+  const [settingsForm, setSettingsForm] = useState({ business_name: '', phone: '', hours: '', avatar_url: '' });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState('');
 
@@ -215,12 +217,17 @@ export default function DashboardPage() {
           setUserPlan(data.plan || 'starter');
           setClientProfile(data);
           setOnboardingComplete(data.onboarding_complete ?? false);
+          setSettingsForm({
+            business_name: data.business_name || '',
+            phone: data.business_phone || '',
+            hours: data.business_hours || '',
+            avatar_url: data.avatar_url || '',
+          });
+          // Pre-populate review/reactivation forms with business name
           if (data.business_name) {
-            setSettingsForm({
-              business_name: data.business_name || '',
-              phone: data.business_phone || '',
-              hours: data.business_hours || '',
-            });
+            setReviewForm(f => ({ ...f, business_name: data.business_name }));
+            setReactivationForm(f => ({ ...f, business_name: data.business_name }));
+            setLeadForm(f => ({ ...f, business_name: data.business_name }));
           }
         }
       });
@@ -228,21 +235,21 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!session?.user?.email) return;
-    supabase.from('appointments').select('*')
-      .eq('user_email', session.user.email)
-      .order('date', { ascending: true })
-      .then(({ data }) => setAppointments(data || []));
+    fetch('/api/appointments')
+      .then(r => r.json())
+      .then(d => setAppointments(d.appointments || []))
+      .catch(() => setAppointments([]));
   }, [session]);
 
   useEffect(() => {
-    if (activePage !== 'billing' || !session?.user?.email) return;
+    if (activePage !== 'billing') return;
     setBillingLoading(true);
-    supabase.from('users').select('plan').eq('email', session.user.email).single()
-      .then(({ data }) => {
-        if (data?.plan) setBillingPlan(data.plan);
-      })
+    fetch('/api/billing')
+      .then(r => r.json())
+      .then(d => { if (d.plan) setBillingPlan(d.plan); })
+      .catch(() => {})
       .finally(() => setBillingLoading(false));
-  }, [activePage, session]);
+  }, [activePage]);
 
   useEffect(() => {
     if (activePage !== 'phone') return;
@@ -303,17 +310,15 @@ export default function DashboardPage() {
     }
   }
 
-  // NOTE: users table requires a toggles jsonb column:
-  // ALTER TABLE users ADD COLUMN IF NOT EXISTS toggles jsonb;
-  async function handleToggle(key) {
+  function handleToggle(key) {
     const newVal = !toggleStates[key];
     setToggleStates(prev => ({ ...prev, [key]: newVal }));
-    if (session?.user?.email) {
-      await supabase.from('users').upsert({
-        email: session.user.email,
-        toggles: { ...toggleStates, [key]: newVal },
-      }, { onConflict: 'email' });
-    }
+    // Persist via API (fire-and-forget; users table needs a toggles jsonb column)
+    fetch('/api/clients', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ toggles: { ...toggleStates, [key]: newVal } }),
+    }).catch(() => {});
   }
 
   async function triggerAutomation(clientId, businessName) {
@@ -372,17 +377,22 @@ export default function DashboardPage() {
   }
 
   async function upgradePlan(newPlan) {
-    if (!session?.user?.email) return;
     setBillingMsg('');
-    const { error } = await supabase.from('users').upsert({
-      email: session.user.email,
-      plan: newPlan,
-    }, { onConflict: 'email' });
-    if (!error) {
-      setBillingPlan(newPlan);
-      setBillingMsg('✅ Plan updated to ' + newPlan + '!');
-    } else {
-      setBillingMsg('❌ ' + error.message);
+    try {
+      const res = await fetch('/api/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: newPlan }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setBillingPlan(newPlan);
+        setBillingMsg('✅ Plan updated to ' + newPlan + '!');
+      } else {
+        setBillingMsg('❌ ' + (data.error || 'Failed to update plan'));
+      }
+    } catch {
+      setBillingMsg('❌ Failed to update plan.');
     }
   }
 
@@ -421,23 +431,28 @@ export default function DashboardPage() {
   }
 
   async function saveAppointment() {
-    if (!selectedDay || !apptForm.title || !session?.user?.email) return;
+    if (!selectedDay || !apptForm.title) return;
     setApptSaving(true);
     setApptMsg('');
     const date = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
-    const { error } = await supabase.from('appointments').insert({
-      user_email: session.user.email,
-      date,
-      time: apptForm.time,
-      title: apptForm.title,
-      notes: apptForm.notes,
-    });
-    setApptSaving(false);
-    setApptMsg(error ? '❌ ' + error.message : '✅ Appointment saved!');
-    if (!error) {
+    try {
+      const res = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, time: apptForm.time, title: apptForm.title, notes: apptForm.notes }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setApptMsg('✅ Appointment saved!');
       setApptForm({ title: '', time: '09:00', notes: '' });
-      supabase.from('appointments').select('*').eq('user_email', session.user.email)
-        .then(({ data }) => setAppointments(data || []));
+      // Refresh appointments list
+      fetch('/api/appointments')
+        .then(r => r.json())
+        .then(d => setAppointments(d.appointments || []));
+    } catch (err) {
+      setApptMsg('❌ ' + err.message);
+    } finally {
+      setApptSaving(false);
     }
   }
 
@@ -1379,6 +1394,7 @@ export default function DashboardPage() {
                     ['Business Name', 'business_name', 'text', 'Your business name'],
                     ['Phone Number', 'phone', 'tel', '(555) 800-1234'],
                     ['Business Hours', 'hours', 'text', 'Mon–Fri 8am–6pm'],
+                    ['Profile Photo URL', 'avatar_url', 'url', 'https://example.com/photo.jpg'],
                   ].map(([label, field, type, placeholder]) => (
                     <div key={field} style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>{label}</label>
