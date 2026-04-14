@@ -15,8 +15,10 @@ export async function POST(request) {
 
     const locationId = process.env.GHL_LOCATION_ID;
 
+    const apiKey = process.env.GHL_API_KEY;
+
     // Create or update contact in GoHighLevel
-    const contactRes = await ghlFetch('/contacts/', {
+    const contactRes = await ghlFetch('/contacts/', apiKey, {
       method: 'POST',
       body: JSON.stringify({
         firstName,
@@ -33,7 +35,7 @@ export async function POST(request) {
 
     // Attach the message as a note on the contact
     if (contactId && message?.trim()) {
-      await ghlFetch(`/contacts/${contactId}/notes`, {
+      await ghlFetch(`/contacts/${contactId}/notes`, apiKey, {
         method: 'POST',
         body: JSON.stringify({
           body: `Website inquiry from ${name}:\n\n${message.trim()}`,
