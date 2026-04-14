@@ -8,8 +8,9 @@ export async function POST(request) {
 
     console.log('[retell webhook] full payload:', JSON.stringify(payload, null, 2));
 
+    const { event, call = {} } = payload;
+
     const {
-      event,
       call_id,
       agent_id,
       call_status,
@@ -18,9 +19,11 @@ export async function POST(request) {
       start_timestamp,
       end_timestamp,
       transcript,
-      call_summary,
+      call_analysis,
       disconnection_reason,
-    } = payload;
+    } = call;
+
+    const call_summary = call_analysis?.call_summary || null;
 
     console.log('[retell webhook] event:', event, '| call_status:', call_status, '| call_id:', call_id);
 
