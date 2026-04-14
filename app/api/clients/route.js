@@ -36,7 +36,8 @@ export async function PATCH(request) {
     if (body.phone          !== undefined) updates.business_phone = body.phone          || null;
     if (body.business_hours !== undefined) updates.business_hours = body.business_hours || null;
     if (body.hours          !== undefined) updates.business_hours = body.hours          || null;
-    if (body.avatar_url     !== undefined) updates.avatar_url     = body.avatar_url     || null;
+    if (body.avatar_url          !== undefined) updates.avatar_url          = body.avatar_url          || null;
+    if (body.google_review_url   !== undefined) updates.google_review_url   = body.google_review_url   || null;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ ok: false, error: 'No updatable fields provided' }, { status: 400 });

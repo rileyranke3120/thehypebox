@@ -6,6 +6,7 @@ import Link from 'next/link';
 import styles from '@/styles/dashboard.module.css';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { hasFeature, getPlanPrice } from '@/lib/planFeatures';
+import { logout } from '@/app/actions/auth';
 
 // Read-only anon client — used only for reads (profile, automation logs, missed calls)
 // All writes go through authenticated API routes
@@ -18,6 +19,28 @@ const supabase = createSupabaseClient(
 function getInitials(name) {
   if (!name) return '??';
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function Msg({ text }) {
+  if (!text) return null;
+  const ok = !text.startsWith('❌');
+  const clean = text.replace(/^[✅❌]\s*/, '');
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 13, color: ok ? '#1D9E75' : '#ff6b6b' }}>
+      {ok ? (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
+          <path d="M5 8.5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
+          <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      )}
+      {clean}
+    </div>
+  );
 }
 
 export default function DashboardPage() {
@@ -57,7 +80,7 @@ export default function DashboardPage() {
   const [automationLogs, setAutomationLogs] = useState([]);
   const [triggerForm, setTriggerForm] = useState({ automation: 'review-request', phone_number: '', customer_name: '' });
   const [triggerMsg, setTriggerMsg] = useState('');
-  const [settingsForm, setSettingsForm] = useState({ business_name: '', phone: '', hours: '', avatar_url: '' });
+  const [settingsForm, setSettingsForm] = useState({ business_name: '', phone: '', hours: '', avatar_url: '', google_review_url: '' });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState('');
 
@@ -222,6 +245,7 @@ export default function DashboardPage() {
             phone: data.business_phone || '',
             hours: data.business_hours || '',
             avatar_url: data.avatar_url || '',
+            google_review_url: data.google_review_url || '',
           });
           // Pre-populate review/reactivation forms with business name
           if (data.business_name) {
@@ -684,7 +708,11 @@ export default function DashboardPage() {
             All systems operational
           </div>
           <div className={styles.topbarUser}>
-            <div className={styles.topbarAvatar} aria-hidden="true">{displayInitials}</div>
+            <div className={styles.topbarAvatar} aria-hidden="true">
+              {settingsForm.avatar_url ? (
+                <img src={settingsForm.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+              ) : displayInitials}
+            </div>
             <span>{displayName}</span>
             <span style={{
               fontSize: 10,
@@ -731,6 +759,14 @@ export default function DashboardPage() {
           </div>
         ))}
         <div className={styles.sidebarFooter}>
+          <form action={logout} style={{ marginBottom: 6 }}>
+            <button type="submit" style={{ display: 'block', width: '100%', background: 'none', border: '1px solid #3a3a3a', borderRadius: 4, color: '#ccc', fontSize: 9, fontFamily: 'var(--font-body)', letterSpacing: '0.04em', padding: '0.4rem', cursor: 'pointer', textAlign: 'center', transition: 'color 150ms ease, border-color 150ms ease' }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#666'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#ccc'; e.currentTarget.style.borderColor = '#3a3a3a'; }}
+            >
+              Sign Out
+            </button>
+          </form>
           <Link href="/" className={styles.sidebarBack}>← Back to Site</Link>
         </div>
       </nav>
@@ -907,7 +943,7 @@ export default function DashboardPage() {
               <div className={styles.panel}>
                 <div className={styles.panelHeader}>
                   <span className={styles.panelTitle}>Alex — Live Controls</span>
-                  {agentUpdateMsg && <span style={{ fontSize: 12, color: agentUpdateMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b' }}>{agentUpdateMsg}</span>}
+                  <Msg text={agentUpdateMsg} />
                 </div>
                 <div className={styles.panelBody}>
                   <ul className={styles.agentList}>
@@ -1068,7 +1104,7 @@ export default function DashboardPage() {
                         <button onClick={saveAppointment} disabled={apptSaving} style={{ background: '#1D9E75', border: 'none', color: '#fff', borderRadius: 6, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
                           {apptSaving ? 'Saving...' : 'Save Appointment'}
                         </button>
-                        {apptMsg && <div style={{ marginTop: 10, color: apptMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b', fontSize: 13 }}>{apptMsg}</div>}
+                        <Msg text={apptMsg} />
                       </div>
                     </>
                   )}
@@ -1251,7 +1287,7 @@ export default function DashboardPage() {
                     </div>
                   ))}
                   <button onClick={triggerReviewRequest} style={{ background: '#F5C400', border: 'none', color: '#000', borderRadius: 6, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%' }}>Send Review Request</button>
-                  {automationMsg && activePage === 'review-request' && <div style={{ marginTop: 12, color: automationMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b' }}>{automationMsg}</div>}
+                  {activePage === 'review-request' && <Msg text={automationMsg} />}
                 </div>
               </div>
               <div className={styles.panel}>
@@ -1299,7 +1335,7 @@ export default function DashboardPage() {
                     </div>
                   ))}
                   <button onClick={triggerReactivation} style={{ background: '#1D9E75', border: 'none', color: '#fff', borderRadius: 6, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%' }}>Send Reactivation</button>
-                  {automationMsg && activePage === 'reactivation' && <div style={{ marginTop: 12, color: automationMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b' }}>{automationMsg}</div>}
+                  {activePage === 'reactivation' && <Msg text={automationMsg} />}
                 </div>
               </div>
               <div className={styles.panel}>
@@ -1355,7 +1391,7 @@ export default function DashboardPage() {
                     </select>
                   </div>
                   <button onClick={triggerLeadNurture} style={{ background: '#7B2FFF', border: 'none', color: '#fff', borderRadius: 6, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%' }}>Send Lead Nurture</button>
-                  {automationMsg && activePage === 'lead-gen' && <div style={{ marginTop: 12, color: automationMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b' }}>{automationMsg}</div>}
+                  {activePage === 'lead-gen' && <Msg text={automationMsg} />}
                 </div>
               </div>
               <div className={styles.panel}>
@@ -1394,7 +1430,6 @@ export default function DashboardPage() {
                     ['Business Name', 'business_name', 'text', 'Your business name'],
                     ['Phone Number', 'phone', 'tel', '(555) 800-1234'],
                     ['Business Hours', 'hours', 'text', 'Mon–Fri 8am–6pm'],
-                    ['Profile Photo URL', 'avatar_url', 'url', 'https://example.com/photo.jpg'],
                   ].map(([label, field, type, placeholder]) => (
                     <div key={field} style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>{label}</label>
@@ -1407,6 +1442,43 @@ export default function DashboardPage() {
                       />
                     </div>
                   ))}
+
+                  {/* Company Logo */}
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>Company Logo URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://example.com/logo.png"
+                      value={settingsForm.avatar_url || ''}
+                      onChange={e => setSettingsForm(f => ({ ...f, avatar_url: e.target.value }))}
+                      style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14, boxSizing: 'border-box' }}
+                    />
+                    {settingsForm.avatar_url && (
+                      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <img
+                          src={settingsForm.avatar_url}
+                          alt="Logo preview"
+                          style={{ height: 48, maxWidth: 120, objectFit: 'contain', borderRadius: 6, border: '1px solid #333', background: '#111', padding: 4 }}
+                          onError={e => { e.target.style.display = 'none'; }}
+                        />
+                        <span style={{ fontSize: 11, color: '#666' }}>Preview — shows in topbar</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Google Review URL */}
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>Google Review URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://g.page/r/your-business/review"
+                      value={settingsForm.google_review_url || ''}
+                      onChange={e => setSettingsForm(f => ({ ...f, google_review_url: e.target.value }))}
+                      style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14, boxSizing: 'border-box' }}
+                    />
+                    <div style={{ fontSize: 11, color: '#555', marginTop: 5 }}>Used in automated review request messages sent to customers.</div>
+                  </div>
+
                   <div style={{ marginBottom: 16 }}>
                     <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>Email</label>
                     <input
@@ -1423,7 +1495,7 @@ export default function DashboardPage() {
                   >
                     {settingsSaving ? 'Saving...' : 'Save Settings'}
                   </button>
-                  {settingsMsg && <div style={{ marginTop: 12, color: settingsMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b' }}>{settingsMsg}</div>}
+                  <Msg text={settingsMsg} />
                 </div>
               </div>
               <div className={styles.panel}>
@@ -1513,7 +1585,7 @@ export default function DashboardPage() {
                       </ul>
                     </div>
                   ))}
-                  {billingMsg && <div style={{ marginTop: 12, color: billingMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b' }}>{billingMsg}</div>}
+                  <Msg text={billingMsg} />
                 </div>
               </div>
 
@@ -1540,7 +1612,7 @@ export default function DashboardPage() {
                   <div style={{ marginTop: 16, padding: 12, background: '#1a1a1a', borderRadius: 8, border: '1px solid #333' }}>
                     <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>PAYMENT METHOD</div>
                     <div style={{ fontSize: 13, color: '#ccc' }}>💳 Add payment method to enable auto-billing</div>
-                    <button style={{ marginTop: 10, background: '#333', border: 'none', color: '#fff', borderRadius: 4, padding: '6px 16px', fontSize: 12, cursor: 'pointer' }}>Add Card via Stripe</button>
+                    <button onClick={() => alert('Stripe billing coming soon!')} style={{ marginTop: 10, background: '#333', border: 'none', color: '#fff', borderRadius: 4, padding: '6px 16px', fontSize: 12, cursor: 'pointer' }}>Add Card via Stripe</button>
                   </div>
                 </div>
               </div>
@@ -1612,7 +1684,7 @@ export default function DashboardPage() {
                     </li>
                   ))}
                 </ul>
-                {triggerMsg && <div style={{ marginTop: 12, color: triggerMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b' }}>{triggerMsg}</div>}
+                <Msg text={triggerMsg} />
               </div>
             </div>
           </section>
@@ -1665,7 +1737,7 @@ export default function DashboardPage() {
                   >
                     {addClientSaving ? 'Adding...' : 'Add Client'}
                   </button>
-                  {addClientMsg && <div style={{ marginTop: 12, color: addClientMsg.startsWith('✅') ? '#1D9E75' : '#ff6b6b' }}>{addClientMsg}</div>}
+                  <Msg text={addClientMsg} />
                 </div>
               </div>
               <div className={styles.panel}>
