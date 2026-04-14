@@ -9,6 +9,7 @@ export async function POST(request) {
     console.log('[retell webhook] full payload:', JSON.stringify(payload, null, 2));
 
     const {
+      event,
       call_id,
       agent_id,
       call_status,
@@ -21,15 +22,16 @@ export async function POST(request) {
       disconnection_reason,
     } = payload;
 
-    console.log('[retell webhook] call_status:', call_status, '| call_id:', call_id);
+    console.log('[retell webhook] event:', event, '| call_status:', call_status, '| call_id:', call_id);
 
     // Normalize phone field — Retell uses caller_phone_number in v2, from_number in some older events
     const phone = caller_phone_number || from_number || null;
 
     const supabase = createClient();
 
-    // Save full call record and forward to GHL when the call has ended
-    if (call_status === 'ended') {
+    // Save full call record when call is complete — Retell v2 sends event==='call_analyzed',
+    // older payloads may use call_status==='ended'
+    if (event === 'call_analyzed' || call_status === 'ended') {
       const { error: upsertError } = await supabase.from('retell_calls').upsert({
         call_id:            call_id || null,
         agent_id:           agent_id || null,
