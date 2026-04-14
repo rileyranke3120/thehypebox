@@ -6,27 +6,67 @@ export async function POST(request) {
   try {
     const payload = await request.json();
 
-    const { call_id, from_number, start_timestamp, disconnection_reason } = payload;
+    const {
+      call_id,
+      agent_id,
+      call_status,
+      caller_phone_number,
+      from_number,
+      start_timestamp,
+      end_timestamp,
+      transcript,
+      call_summary,
+      disconnection_reason,
+    } = payload;
 
+    // Normalize phone field — Retell uses caller_phone_number in v2, from_number in some older events
+    const phone = caller_phone_number || from_number || null;
+
+    const supabase = createClient();
+
+    // Save full call record and forward to GHL when the call has ended
+    if (call_status === 'ended') {
+      await supabase.from('retell_calls').upsert({
+        call_id:            call_id || null,
+        agent_id:           agent_id || null,
+        call_status,
+        caller_phone_number: phone,
+        start_timestamp:    start_timestamp ? new Date(start_timestamp).toISOString() : null,
+        end_timestamp:      end_timestamp   ? new Date(end_timestamp).toISOString()   : null,
+        transcript:         transcript  || null,
+        call_summary:       call_summary || null,
+      }, { onConflict: 'call_id' });
+
+    }
+
+    // Forward full payload to GHL on every event
+    const ghlWebhookUrl = process.env.GHL_RETELL_WEBHOOK_URL;
+    if (ghlWebhookUrl) {
+      await fetch(ghlWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    // Missed-call SMS + missed_calls log
     const missedReasons = ['no_answer', 'voicemail'];
     const isMissed = missedReasons.includes(disconnection_reason);
-
     let textSent = false;
 
-    if (isMissed && from_number) {
+    if (isMissed && phone) {
       await sendSMS(
-        from_number,
+        phone,
         "Hey! Sorry we missed your call at TheHypeBox. We'd love to help — reply here or visit thehypeboxllc.com to chat with Alex!"
       );
       textSent = true;
     }
 
-    const supabase = createClient();
     await supabase.from('missed_calls').insert({
-      call_id: call_id || null,
-      from_number: from_number || null,
-      timestamp: start_timestamp ? new Date(start_timestamp).toISOString() : new Date().toISOString(),
-      text_sent: textSent,
+      call_id:    call_id || null,
+      from_number: phone,
+      timestamp:  start_timestamp ? new Date(start_timestamp).toISOString() : new Date().toISOString(),
+      text_sent:  textSent,
     });
 
     return NextResponse.json({ ok: true, text_sent: textSent });
