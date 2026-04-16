@@ -537,6 +537,252 @@
   background: #0A0A0A;
 }
 
+/* --- Weekly calendar --- */
+.calNav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.calNavBtn {
+  background: transparent;
+  border: 1px solid #2A2A2A;
+  color: #666666;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.calNavBtn:hover {
+  border-color: #444444;
+  color: #aaaaaa;
+}
+
+.calWeekLabel {
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #888888;
+  letter-spacing: 0.04em;
+  min-width: 160px;
+  text-align: center;
+}
+
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border: 1px solid #2A2A2A;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 1rem;
+}
+
+.calDayCol {
+  border-right: 1px solid #1A1A1A;
+  min-height: 280px;
+  cursor: pointer;
+  background: #111111;
+  transition: background 150ms ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.calDayCol:last-child {
+  border-right: none;
+}
+
+.calDayCol:hover {
+  background: #161616;
+}
+
+.calDayColToday {
+  background: rgba(245, 196, 0, 0.03) !important;
+  border-top: 2px solid #F5C400;
+}
+
+.calDayHeader {
+  padding: 0.5rem 0.625rem 0.4rem;
+  border-bottom: 1px solid #1A1A1A;
+  flex-shrink: 0;
+}
+
+.calDayName {
+  font-family: var(--font-heading);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #444444;
+}
+
+.calDayNum {
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #555555;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.calDayNumToday {
+  color: #F5C400;
+}
+
+.calDayBody {
+  flex: 1;
+  padding: 4px 0;
+  overflow: hidden;
+}
+
+.calApptChip {
+  background: rgba(29, 158, 117, 0.12);
+  border-left: 2px solid #1D9E75;
+  padding: 3px 6px;
+  margin: 3px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.calApptChipTime {
+  font-family: var(--font-heading);
+  font-size: 0.55rem;
+  color: #1D9E75;
+  letter-spacing: 0.05em;
+}
+
+.calApptChipName {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: #aaaaaa;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calAddHint {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  color: #2a2a2a;
+  text-align: center;
+  padding: 0.5rem 0.25rem 0;
+  user-select: none;
+}
+
+.calDayCol:hover .calAddHint {
+  color: #3a3a3a;
+}
+
+/* --- Modal overlay --- */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modalBox {
+  background: #141414;
+  border: 1px solid #2A2A2A;
+  border-radius: 8px;
+  padding: 1.5rem;
+  width: 340px;
+  max-width: 90vw;
+}
+
+.modalTitle {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.25rem;
+}
+
+.modalSubtitle {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  color: #555555;
+  margin-bottom: 1.25rem;
+}
+
+.modalField {
+  margin-bottom: 0.875rem;
+}
+
+.modalLabel {
+  display: block;
+  font-family: var(--font-heading);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #555555;
+  margin-bottom: 4px;
+}
+
+.modalInput {
+  width: 100%;
+  background: #1a1a1a;
+  border: 1px solid #2A2A2A;
+  border-radius: 5px;
+  color: #e8e8e8;
+  padding: 7px 10px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 150ms ease;
+}
+
+.modalInput:focus {
+  border-color: #F5C400;
+}
+
+.modalActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  justify-content: flex-end;
+}
+
+.modalSaveBtn {
+  background: #F5C400;
+  color: #000000;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 18px;
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.modalSaveBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modalCancelBtn {
+  background: transparent;
+  color: #666666;
+  border: 1px solid #2A2A2A;
+  border-radius: 5px;
+  padding: 6px 14px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
 /* --- Responsive --- */
 @media (max-width: 1100px) {
   .metricsGrid {
