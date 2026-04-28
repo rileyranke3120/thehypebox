@@ -48,7 +48,9 @@ const DAVE = {
   active: true,
   business_name: 'Ideal Concrete Coatings',
   ghl_location_id: 'wd2kQPROMdPE0FHLYNFR',
-  ghl_api_key: 'pit-c201ff33-45af-4c43-9066-fa23cb7154b0',
+  ghl_api_key: 'pit-b28dc147-0ebc-458f-9bfd-84a3736889b2',
+  ghl_calendar_id: 'pJQsJ7a4w9v3FeZ8uyKH',
+  retell_agent_id: 'agent_e8db2b76cbb022b6cd59d8393f',
 };
 
 const RILEY = {
@@ -77,7 +79,9 @@ async function upsertUser(cfg) {
         active: cfg.active,
         business_name: cfg.business_name,
         ghl_location_id: cfg.ghl_location_id,
-        ...(cfg.ghl_api_key ? { ghl_api_key: cfg.ghl_api_key } : {}),
+        ...(cfg.ghl_api_key      ? { ghl_api_key:      cfg.ghl_api_key }      : {}),
+        ...(cfg.ghl_calendar_id  ? { ghl_calendar_id:  cfg.ghl_calendar_id }  : {}),
+        ...(cfg.retell_agent_id  ? { retell_agent_id:  cfg.retell_agent_id }  : {}),
       },
       { onConflict: 'email' }
     )

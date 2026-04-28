@@ -6,22 +6,47 @@
  * e.g. "this Thursday", "April 24th", "10am", "two o clock".
  * We parse them server-side using chrono-node with today's Eastern date as reference.
  *
+ * Client credentials are resolved by agent_id (from Retell's call payload),
+ * falling back to Dave's env vars so existing calls keep working.
+ *
  * - Parses natural language date/time
  * - Fetches GHL's actual available slots for that day
  * - Snaps the requested time to the nearest available slot (avoids "slot unavailable" errors)
  * - Searches GHL for existing contact by phone, creates if not found
  * - Books the snapped slot on the GHL calendar
- * Returns: { success, appointmentId, confirmation }
+ * Returns: { success, appointmentId, confirmation } — always 200 so Sarah reads the message cleanly
  */
 
 import * as chrono from 'chrono-node';
+import { createClient } from '@/lib/supabase';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_API_VERSION = '2021-07-28';
 
-function ghlHeaders() {
+// Look up a client's GHL credentials by their Retell agent_id
+async function getClientCreds(agentId) {
+  if (!agentId) return null;
+  const supabase = createClient();
+  const { data } = await supabase
+    .from('users')
+    .select('ghl_api_key, ghl_location_id, ghl_calendar_id')
+    .eq('retell_agent_id', agentId)
+    .single();
+  return data || null;
+}
+
+// Prefer client record from Supabase, fall back to Dave's env vars
+function resolveGhlCreds(clientCreds) {
   return {
-    Authorization: `Bearer ${process.env.GHL_DAVE_API_KEY}`,
+    apiKey:     clientCreds?.ghl_api_key     || process.env.GHL_DAVE_API_KEY,
+    locationId: clientCreds?.ghl_location_id || process.env.GHL_DAVE_LOCATION_ID,
+    calendarId: clientCreds?.ghl_calendar_id || process.env.GHL_DAVE_CALENDAR_ID,
+  };
+}
+
+function ghlHeaders(apiKey) {
+  return {
+    Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
     Version: GHL_API_VERSION,
   };
@@ -88,15 +113,14 @@ function formatSlotTime(isoStr) {
 }
 
 // Fetch available slots from GHL for a given date, return array of ISO strings
-async function fetchSlots(dateStr) {
+async function fetchSlots(dateStr, creds) {
   const startMs = easternMidnightMs(dateStr);
   const endMs = startMs + 24 * 3_600_000 - 1;
-  const calendarId = process.env.GHL_DAVE_CALENDAR_ID;
-  const url = `${GHL_API_BASE}/calendars/${calendarId}/free-slots?startDate=${startMs}&endDate=${endMs}&timezone=America%2FNew_York`;
+  const url = `${GHL_API_BASE}/calendars/${creds.calendarId}/free-slots?startDate=${startMs}&endDate=${endMs}&timezone=America%2FNew_York`;
 
   console.log(`[book-appointment] fetching slots for ${dateStr}: ${url}`);
 
-  const res = await fetch(url, { headers: ghlHeaders() });
+  const res = await fetch(url, { headers: ghlHeaders(creds.apiKey) });
   const raw = await res.json();
 
   console.log(`[book-appointment] GHL free-slots status=${res.status} response=${JSON.stringify(raw)}`);
@@ -123,13 +147,12 @@ function snapToNearestSlot(requestedMs, slots) {
   return best;
 }
 
-async function findContactByPhone(phone) {
-  const locationId = process.env.GHL_DAVE_LOCATION_ID;
+async function findContactByPhone(phone, creds) {
   const res = await fetch(`${GHL_API_BASE}/contacts/search`, {
     method: 'POST',
-    headers: ghlHeaders(),
+    headers: ghlHeaders(creds.apiKey),
     body: JSON.stringify({
-      locationId,
+      locationId: creds.locationId,
       pageLimit: 1,
       filters: [{ field: 'phone', operator: 'eq', value: phone }],
     }),
@@ -139,13 +162,12 @@ async function findContactByPhone(phone) {
   return data?.contacts?.[0]?.id ?? null;
 }
 
-async function createContact({ name, phone, email, address }) {
-  const locationId = process.env.GHL_DAVE_LOCATION_ID;
+async function createContact({ name, phone, email, address }, creds) {
   const [firstName, ...rest] = (name || '').trim().split(' ');
   const lastName = rest.join(' ') || '';
 
   const body = {
-    locationId,
+    locationId: creds.locationId,
     firstName,
     lastName,
     phone,
@@ -155,7 +177,7 @@ async function createContact({ name, phone, email, address }) {
 
   const res = await fetch(`${GHL_API_BASE}/contacts/`, {
     method: 'POST',
-    headers: ghlHeaders(),
+    headers: ghlHeaders(creds.apiKey),
     body: JSON.stringify(body),
   });
 
@@ -173,10 +195,10 @@ async function createContact({ name, phone, email, address }) {
   return data.contact.id;
 }
 
-async function bookAppointment({ contactId, startTime }) {
+async function bookAppointment({ contactId, startTime }, creds) {
   const body = {
-    calendarId: process.env.GHL_DAVE_CALENDAR_ID,
-    locationId: process.env.GHL_DAVE_LOCATION_ID,
+    calendarId: creds.calendarId,
+    locationId: creds.locationId,
     contactId,
     startTime,
     toNotify: true,
@@ -186,7 +208,7 @@ async function bookAppointment({ contactId, startTime }) {
 
   const res = await fetch(`${GHL_API_BASE}/calendars/events/appointments`, {
     method: 'POST',
-    headers: ghlHeaders(),
+    headers: ghlHeaders(creds.apiKey),
     body: JSON.stringify(body),
   });
 
@@ -201,7 +223,7 @@ export async function POST(request) {
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return Response.json({ success: false, message: 'Invalid request.' });
   }
 
   // Log full raw body first so we can see exactly what Retell is sending
@@ -211,12 +233,18 @@ export async function POST(request) {
   const args = body.args ?? body;
   const { name, phone, email, address, date: rawDate, time: rawTime } = args;
 
+  // Resolve GHL credentials — look up by agent_id, fall back to Dave's env vars
+  const agentId = body.agent_id ?? null;
+  const clientCreds = await getClientCreds(agentId);
+  const creds = resolveGhlCreds(clientCreds);
+  console.log(`[book-appointment] agent_id=${agentId} using locationId=${creds.locationId} calendarId=${creds.calendarId}`);
+
   if (!name || !phone || !address || !rawDate || !rawTime) {
     console.log(`[book-appointment] missing fields — name=${name} phone=${phone} address=${address} date=${rawDate} time=${rawTime}`);
-    return Response.json(
-      { error: 'name, phone, address, date, and time are required' },
-      { status: 400 }
-    );
+    return Response.json({
+      success: false,
+      message: "I'm missing some information. Could you provide your name, phone number, address, preferred date, and preferred time?",
+    });
   }
 
   console.log(`[book-appointment] raw input — date="${rawDate}" time="${rawTime}"`);
@@ -228,7 +256,10 @@ export async function POST(request) {
     requestedMs = parseTimeMs(rawTime, dateStr);
   } catch (err) {
     console.error('[book-appointment] parse error:', err.message);
-    return Response.json({ error: err.message }, { status: 422 });
+    return Response.json({
+      success: false,
+      message: "I didn't quite catch that date or time. Could you say it again? For example, 'this Thursday at 10am'.",
+    });
   }
 
   console.log(`[book-appointment] parsed date="${dateStr}" requestedMs=${requestedMs} (${new Date(requestedMs).toISOString()})`);
@@ -236,36 +267,39 @@ export async function POST(request) {
   // Fetch GHL's actual slots and snap to the nearest one
   let startTime;
   try {
-    const slots = await fetchSlots(dateStr);
+    const slots = await fetchSlots(dateStr, creds);
     console.log(`[book-appointment] available slots: ${JSON.stringify(slots)}`);
 
     if (slots.length === 0) {
-      return Response.json(
-        { error: `No available slots on ${dateStr}. Please ask the caller to choose a different date.` },
-        { status: 409 }
-      );
+      return Response.json({
+        success: false,
+        message: `It looks like we're all booked up on that day. Could you give me another date that works for you?`,
+      });
     }
 
     startTime = snapToNearestSlot(requestedMs, slots);
     console.log(`[book-appointment] snapped to slot: ${startTime}`);
   } catch (err) {
     console.error('[book-appointment] slot fetch error:', err.message);
-    return Response.json({ error: String(err) }, { status: 502 });
+    return Response.json({
+      success: false,
+      message: "I'm having a little trouble checking the calendar right now. Can I have someone call you back to confirm the time?",
+    });
   }
 
   const normalizedPhone = normalizePhone(phone);
   const confirmedTime = formatSlotTime(startTime);
 
   try {
-    let contactId = await findContactByPhone(normalizedPhone);
+    let contactId = await findContactByPhone(normalizedPhone, creds);
     if (!contactId) {
       console.log(`[book-appointment] creating contact for ${normalizedPhone}`);
-      contactId = await createContact({ name, phone: normalizedPhone, email, address });
+      contactId = await createContact({ name, phone: normalizedPhone, email, address }, creds);
     } else {
       console.log(`[book-appointment] found existing contact ${contactId}`);
     }
 
-    const appointment = await bookAppointment({ contactId, startTime });
+    const appointment = await bookAppointment({ contactId, startTime }, creds);
     const appointmentId = appointment.id ?? appointment.appointmentId ?? appointment._id;
 
     console.log(`[book-appointment] success — appointmentId=${appointmentId} for ${name} on ${dateStr} at ${confirmedTime}`);
@@ -274,11 +308,14 @@ export async function POST(request) {
       success: true,
       appointmentId,
       contactId,
-      confirmation: `Got it! I've booked your appointment for ${dateStr} at ${confirmedTime}. You'll receive a confirmation shortly.`,
+      confirmation: `Perfect! I've got you booked for ${dateStr} at ${confirmedTime}. You'll receive a confirmation shortly. Is there anything else I can help you with?`,
       details: { name, phone: normalizedPhone, date: dateStr, time: confirmedTime },
     });
   } catch (err) {
     console.error('[book-appointment] error:', err);
-    return Response.json({ error: String(err) }, { status: 500 });
+    return Response.json({
+      success: false,
+      message: "I ran into an issue booking that — can I have someone from the team call you back to lock in your appointment?",
+    });
   }
 }

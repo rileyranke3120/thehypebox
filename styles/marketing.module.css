@@ -361,7 +361,7 @@
 }
 
 .agentCardDesc {
-  font-size: 0.8rem;
+  font-size: 0.92rem;
   color: var(--grey-300);
   line-height: 1.7;
 }
@@ -372,7 +372,7 @@
 }
 
 .agentCardFeatures li {
-  font-size: 0.75rem;
+  font-size: 0.87rem;
   color: var(--grey-300);
   padding: 0.3rem 0;
   border-top: 1px solid var(--grey-700);
@@ -436,17 +436,17 @@
 }
 
 .stepDesc {
-  font-size: 0.8rem;
+  font-size: 0.92rem;
   color: var(--grey-300);
 }
 
 /* --- Pricing --- */
 .pricingGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
   margin-top: 3rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 /* Single-plan layout */
@@ -499,6 +499,8 @@
   border: 1px solid var(--grey-700);
   border-radius: var(--radius);
   padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .pricingCardFeatured {
@@ -522,6 +524,12 @@
   border-radius: 0 0 var(--radius) var(--radius);
 }
 
+.pricingCardIcon {
+  color: var(--yellow);
+  margin-bottom: 1.25rem;
+  line-height: 0;
+}
+
 .pricingCardTier {
   font-family: var(--font-heading);
   font-size: 0.9rem;
@@ -529,7 +537,14 @@
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--grey-300);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.pricingCardTagline {
+  font-size: 0.82rem;
+  color: var(--grey-500);
+  margin: 0 0 0.25rem;
+  line-height: 1.5;
 }
 
 .pricingCardPrice {
@@ -557,7 +572,7 @@
 }
 
 .pricingCardFeatures li {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   color: var(--grey-300);
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--grey-700);
@@ -575,6 +590,7 @@
 .pricingCard .btn {
   width: 100%;
   justify-content: center;
+  margin-top: auto;
 }
 
 /* --- Testimonials --- */
@@ -602,7 +618,7 @@
 }
 
 .testimonialQuote {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: var(--grey-300);
   line-height: 1.75;
   flex: 1;
@@ -824,7 +840,7 @@
 }
 
 .solutionBlock p {
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: var(--grey-300);
   line-height: 1.8;
   margin-bottom: 0;
@@ -901,7 +917,7 @@
   }
 
   .pricingGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .testimonialsGrid {
@@ -973,6 +989,10 @@
 
 @media (max-width: 768px) {
   .aboutGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pricingGrid {
     grid-template-columns: 1fr;
   }
 }
