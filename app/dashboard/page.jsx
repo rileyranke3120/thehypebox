@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
 import styles from '@/styles/dashboard.module.css';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { hasFeature, getPlanPrice } from '@/lib/planFeatures';
@@ -25,7 +24,7 @@ function getInitials(name) {
 function Msg({ text }) {
   if (!text) return null;
   const ok = !text.startsWith('❌');
-  const clean = text.replace(/^[✅❌]\s*/, '');
+  const clean = text.replace(/^[\u2705\u274C]\s*/, '');
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 13, color: ok ? '#1D9E75' : '#ff6b6b' }}>
       {ok ? (
@@ -380,9 +379,6 @@ export default function DashboardPage() {
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState(null);
-  const [appointments, setAppointments] = useState([]);
-  const [apptForm, setApptForm] = useState({ title: '', time: '09:00', notes: '' });
-  const [apptSaving, setApptSaving] = useState(false);
   const [apptMsg, setApptMsg] = useState('');
 
   const [billingPlan, setBillingPlan] = useState('starter');
@@ -1219,7 +1215,7 @@ export default function DashboardPage() {
                         <span className={styles.agentItemIcon} style={{ background: '#0D1F35' }} aria-hidden="true">{phoneIcon12}</span>
                         <div className={styles.agentItemInfo}>
                           <div className={styles.agentItemName}>
-                            {call.scrubbed_call_analysis?.custom_analysis_data?.['custom data']?.match(/Caller Name: ([^\n]+)/)?.[1]?.trim() || call.from_number || 'Web Call'}
+                            {call.scrubbed_call_analysis?.custom_analysis_data?.['custom data']?.match(new RegExp('Caller Name: ([^\\n]+)'))?.[1]?.trim() || call.from_number || 'Web Call'}
                           </div>
                           <div className={styles.agentItemSub}>
                             {call.scrubbed_call_analysis?.call_summary?.slice(0, 80) || 'No summary'}...
@@ -1231,33 +1227,8 @@ export default function DashboardPage() {
                           <span>{call.duration_ms ? Math.round(call.duration_ms / 1000) + 's' : 'ongoing'}</span>
                         </div>
                       </li>
-                    </ul>
-                  ) : (
-                    <table className={styles.callsTable}>
-                      <thead>
-                        <tr>
-                          <th>From</th>
-                          <th>Time</th>
-                          <th>Duration</th>
-                          <th>Outcome</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {retellCalls.map((call) => (
-                          <tr key={call.id}>
-                            <td>{call.from}</td>
-                            <td>{call.time}</td>
-                            <td>{call.duration}</td>
-                            <td>
-                              <span className={`${styles.outcomeTag} ${retellOutcomeClass(call.outcome)}`}>
-                                {call.outcome}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                    ))}
+                  </ul>
                 </div>
               </div>
               <div className={styles.panel}>

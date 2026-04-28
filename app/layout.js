@@ -1,6 +1,6 @@
 import { Barlow_Condensed, DM_Sans } from "next/font/google";
 import "./globals.css";
-import Providers from "./providers";
+import { Providers } from "./providers";
 
 const barlowCondensed = Barlow_Condensed({
   weight: ['400', '600', '700', '900'],
