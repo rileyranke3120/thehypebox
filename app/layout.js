@@ -1,5 +1,6 @@
 import { Barlow_Condensed, DM_Sans } from "next/font/google";
 import "./globals.css";
+import Providers from "./providers";
 
 const barlowCondensed = Barlow_Condensed({
   weight: ['400', '600', '700', '900'],
@@ -40,7 +41,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className={`${barlowCondensed.variable} ${dmSans.variable}`}>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
