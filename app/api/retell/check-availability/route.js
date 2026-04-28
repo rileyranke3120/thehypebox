@@ -71,7 +71,11 @@ export async function POST(request) {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { date: rawDate } = body;
+  console.log('[check-availability] raw body:', JSON.stringify(body));
+
+  // Retell wraps tool arguments in body.args; fall back to body itself for direct testing
+  const args = body.args ?? body;
+  const { date: rawDate } = args;
   if (!rawDate) {
     return Response.json({ error: 'date is required' }, { status: 400 });
   }
