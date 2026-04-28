@@ -1,27 +1,28 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
-import { parseDate } from '@/lib/parseDate';
-import { getCalendarFreeSlots } from '@/lib/ghl';
+/**
+ * POST /api/retell/check-availability
+ *
+ * Accepts: { date: string } — raw natural language from the caller,
+ * e.g. "this Thursday", "April 28th", "next Monday", or "2026-04-28".
+ * Parsed server-side using chrono-node with today's Eastern date as reference.
+ * Returns: { slots: ["10:00 AM", "11:30 AM", ...] }
+ */
 
-// Look up GHL credentials by Retell agent_id; falls back to env vars (agency defaults)
-async function resolveCredentials(agentId) {
-  const supabase = createClient();
-  const { data } = await supabase
-    .from('users')
-    .select('ghl_api_key, ghl_location_id')
-    .eq('retell_agent_id', agentId)
-    .maybeSingle();
+import * as chrono from 'chrono-node';
 
+const GHL_API_BASE = 'https://services.leadconnectorhq.com';
+const GHL_API_VERSION = '2021-07-28';
+
+function ghlHeaders() {
   return {
-    apiKey:     data?.ghl_api_key     || process.env.GHL_DAVE_API_KEY,
-    locationId: data?.ghl_location_id || process.env.GHL_DAVE_LOCATION_ID,
-    calendarId: process.env.GHL_DAVE_CALENDAR_ID,
+    Authorization: `Bearer ${process.env.GHL_DAVE_API_KEY}`,
+    'Content-Type': 'application/json',
+    Version: GHL_API_VERSION,
   };
 }
 
-// Format a UTC ISO slot start time into a readable "10:00 AM" style label
-function formatSlotTime(isoString) {
-  const d = new Date(isoString);
+// GHL slots come back as ISO strings like "2026-04-28T09:00:00-04:00"
+function formatSlot(isoStr) {
+  const d = new Date(isoStr);
   return d.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
@@ -30,61 +31,102 @@ function formatSlotTime(isoString) {
   });
 }
 
+// Returns epoch ms for Eastern midnight on dateStr (handles EDT and EST automatically)
+function easternMidnightMs(dateStr) {
+  const noonUtc = new Date(`${dateStr}T12:00:00Z`);
+  const easternHour = parseInt(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: 'numeric',
+      hour12: false,
+    }).format(noonUtc),
+    10
+  );
+  // noon UTC in Eastern = easternHour (8 for EDT, 7 for EST)
+  // offset from UTC = easternHour - 12 (e.g. -4 for EDT, -5 for EST)
+  const offsetHours = easternHour - 12;
+  return new Date(`${dateStr}T00:00:00Z`).getTime() - offsetHours * 3_600_000;
+}
+
+// Parse a raw natural language date string into "YYYY-MM-DD"
+function parseDate(raw) {
+  // Already ISO — pass through
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const ref = new Date(
+    new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) + 'T00:00:00'
+  );
+  const parsed = chrono.parseDate(raw, ref, { forwardDate: true });
+  if (!parsed) throw new Error(`Could not understand date: "${raw}"`);
+  const y = parsed.getFullYear();
+  const m = String(parsed.getMonth() + 1).padStart(2, '0');
+  const d = String(parsed.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export async function POST(request) {
-  console.log('RETELL HIT - check-availability');
+  let body;
   try {
-    const body = await request.json();
-    console.log('[check-availability] FULL BODY:', JSON.stringify(body));
-    console.log('[check-availability] TOP-LEVEL KEYS:', Object.keys(body));
-    console.log('[check-availability] body.arguments:', JSON.stringify(body.arguments));
-    console.log('[check-availability] body.args:', JSON.stringify(body.args));
-    console.log('[check-availability] body.date:', body.date);
-    console.log('[check-availability] body.input:', JSON.stringify(body.input));
-    console.log('[check-availability] body.arguments?.date:', body.arguments?.date);
-    console.log('[check-availability] body.args?.date:', body.args?.date);
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
-    // Real Retell calls send { call, name, args } — curl/legacy tests send { arguments }
-    const args = body.args
-      ?? (typeof body.arguments === 'string' ? JSON.parse(body.arguments) : (body.arguments ?? {}));
+  console.log('[check-availability] raw body:', JSON.stringify(body));
 
-    const rawDate = args.date;
-    const agentId = body.call?.agent_id ?? body.agent_id;
-    const parsedDate = parseDate(rawDate);
-    console.log('RAW DATE RECEIVED:', rawDate);
-    console.log('PARSED DATE:', parsedDate);
+  // Retell wraps tool arguments in body.args; fall back to body itself for direct testing
+  const args = body.args ?? body;
+  const { date: rawDate } = args;
+  if (!rawDate) {
+    return Response.json({ error: 'date is required' }, { status: 400 });
+  }
 
-    if (!rawDate) {
-      return NextResponse.json({ result: "I didn't catch the date. Could you say it again?" });
-    }
-
-    const dateYMD = parsedDate;
-    if (!dateYMD) {
-      return NextResponse.json({
-        result: `I wasn't able to understand "${rawDate}" as a date. Could you try saying it like "April 24th" or "4/24"?`,
-      });
-    }
-
-    const { apiKey, calendarId } = await resolveCredentials(agentId);
-    if (!apiKey || !calendarId) {
-      console.error('[check-availability] Missing GHL_API_KEY or GHL_CALENDAR_ID env vars');
-      return NextResponse.json({ result: 'Our scheduling system is temporarily unavailable. Please call back or visit our website to book.' });
-    }
-
-    const slots = await getCalendarFreeSlots(calendarId, dateYMD, apiKey);
-
-    if (!slots.length) {
-      return NextResponse.json({
-        result: `We don't have any open slots on ${rawDate}. Would you like to check a different day?`,
-      });
-    }
-
-    const timeLabels = slots.slice(0, 6).map(s => formatSlotTime(s.startTime)).join(', ');
-    return NextResponse.json({
-      result: `We have availability on ${rawDate} at the following times: ${timeLabels}. Which works best for you?`,
-    });
-
+  let date;
+  try {
+    date = parseDate(rawDate);
   } catch (err) {
-    console.error('[check-availability]', err);
-    return NextResponse.json({ result: 'Something went wrong checking availability. Please try again.' });
+    return Response.json({ error: err.message }, { status: 422 });
+  }
+
+  console.log(`[check-availability] raw="${rawDate}" parsed="${date}"`);
+
+  const startMs = easternMidnightMs(date);
+  const endMs = startMs + 24 * 3_600_000 - 1;
+
+  const calendarId = process.env.GHL_DAVE_CALENDAR_ID;
+  const url = `${GHL_API_BASE}/calendars/${calendarId}/free-slots?startDate=${startMs}&endDate=${endMs}&timezone=America%2FNew_York`;
+
+  console.log(`[check-availability] date=${date} startMs=${startMs} (${new Date(startMs).toISOString()}) endMs=${endMs} (${new Date(endMs).toISOString()})`);
+  console.log(`[check-availability] calendarId=${calendarId} url=${url}`);
+
+  try {
+    const res = await fetch(url, { headers: ghlHeaders() });
+    const raw = await res.json();
+
+    console.log(`[check-availability] GHL status=${res.status} response=${JSON.stringify(raw)}`);
+
+    if (!res.ok) {
+      return Response.json({ error: 'Failed to fetch availability from GHL', details: raw }, { status: 502 });
+    }
+
+    // GHL returns { "YYYY-MM-DD": { slots: ["2026-04-28T09:00:00-04:00", ...] }, traceId: "..." }
+    const dateKeys = Object.keys(raw).filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k));
+    console.log(`[check-availability] date keys in response: ${JSON.stringify(dateKeys)}`);
+
+    // Prefer the exact requested date; fall back to first date key if GHL returns a different key
+    const dateKey = dateKeys.find((k) => k === date) ?? dateKeys[0];
+    const slots = dateKey ? (raw[dateKey]?.slots ?? []) : [];
+    const formatted = slots.map(formatSlot);
+
+    return Response.json({
+      date,
+      slots: formatted,
+      count: formatted.length,
+      message: formatted.length > 0
+        ? `Available times on ${date}: ${formatted.join(', ')}`
+        : `No available slots on ${date}`,
+    });
+  } catch (err) {
+    console.error('[check-availability] Error:', err);
+    return Response.json({ error: String(err) }, { status: 500 });
   }
 }

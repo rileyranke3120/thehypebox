@@ -1,148 +1,284 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
-import { parseDate, parseTime } from '@/lib/parseDate';
-import { findContactByPhone, createContact, createGhlAppointment } from '@/lib/ghl';
+/**
+ * POST /api/retell/book-appointment
+ *
+ * Accepts: { name, phone, address, date, time, email (optional) }
+ * date and time are raw natural language strings from the caller —
+ * e.g. "this Thursday", "April 24th", "10am", "two o clock".
+ * We parse them server-side using chrono-node with today's Eastern date as reference.
+ *
+ * - Parses natural language date/time
+ * - Fetches GHL's actual available slots for that day
+ * - Snaps the requested time to the nearest available slot (avoids "slot unavailable" errors)
+ * - Searches GHL for existing contact by phone, creates if not found
+ * - Books the snapped slot on the GHL calendar
+ * Returns: { success, appointmentId, confirmation }
+ */
 
-// Look up GHL credentials by Retell agent_id; falls back to env vars (agency defaults)
-async function resolveCredentials(agentId) {
-  const supabase = createClient();
-  const { data } = await supabase
-    .from('users')
-    .select('ghl_api_key, ghl_location_id')
-    .eq('retell_agent_id', agentId)
-    .maybeSingle();
+import * as chrono from 'chrono-node';
 
+const GHL_API_BASE = 'https://services.leadconnectorhq.com';
+const GHL_API_VERSION = '2021-07-28';
+
+function ghlHeaders() {
   return {
-    apiKey:     data?.ghl_api_key     || process.env.GHL_DAVE_API_KEY,
-    locationId: data?.ghl_location_id || process.env.GHL_DAVE_LOCATION_ID,
-    calendarId: process.env.GHL_DAVE_CALENDAR_ID,
+    Authorization: `Bearer ${process.env.GHL_DAVE_API_KEY}`,
+    'Content-Type': 'application/json',
+    Version: GHL_API_VERSION,
   };
 }
 
-// Build ISO start/end strings from YYYY-MM-DD + HH:MM, duration in minutes
-function buildIso(dateYMD, timeHHMM, durationMins = 30) {
-  const [year, month, day] = dateYMD.split('-').map(Number);
-  const [hours, mins] = timeHHMM.split(':').map(Number);
-  const start = new Date(Date.UTC(year, month - 1, day, hours, mins, 0));
-  // Shift from Eastern to UTC (ET is UTC-5 standard / UTC-4 daylight)
-  // GHL accepts local ISO strings — pass through without zone conversion so
-  // GHL interprets the time in the location's configured timezone.
-  const startIso = `${dateYMD}T${timeHHMM}:00`;
-  const end = new Date(start.getTime() + durationMins * 60 * 1000);
-  const endH = String(end.getUTCHours()).padStart(2, '0');
-  const endM = String(end.getUTCMinutes()).padStart(2, '0');
-  const endIso = `${dateYMD}T${endH}:${endM}:00`;
-  return { startIso, endIso };
+// Normalize phone to E.164 format (+1XXXXXXXXXX)
+function normalizePhone(phone) {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  return `+${digits}`;
+}
+
+// Returns today's date as a Date object anchored to Eastern midnight
+function todayEastern() {
+  const nowEastern = new Date().toLocaleDateString('en-CA', {
+    timeZone: 'America/New_York',
+  }); // "YYYY-MM-DD"
+  return new Date(`${nowEastern}T00:00:00`);
+}
+
+// Returns epoch ms for Eastern midnight on dateStr (handles EDT and EST automatically)
+function easternMidnightMs(dateStr) {
+  const noonUtc = new Date(`${dateStr}T12:00:00Z`);
+  const easternHour = parseInt(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: 'numeric',
+      hour12: false,
+    }).format(noonUtc),
+    10
+  );
+  const offsetHours = easternHour - 12; // e.g. -4 for EDT, -5 for EST
+  return new Date(`${dateStr}T00:00:00Z`).getTime() - offsetHours * 3_600_000;
+}
+
+// Parse a raw natural language date string into "YYYY-MM-DD"
+function parseDate(raw) {
+  const ref = todayEastern();
+  const parsed = chrono.parseDate(raw, ref, { forwardDate: true });
+  if (!parsed) throw new Error(`Could not understand date: "${raw}"`);
+  const y = parsed.getFullYear();
+  const m = String(parsed.getMonth() + 1).padStart(2, '0');
+  const d = String(parsed.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// Parse a raw natural language time string and return epoch ms for comparison
+function parseTimeMs(rawTime, dateStr) {
+  const ref = todayEastern();
+  const parsed = chrono.parseDate(`${dateStr} ${rawTime}`, ref, { forwardDate: true });
+  if (!parsed) throw new Error(`Could not understand time: "${rawTime}"`);
+  return parsed.getTime();
+}
+
+// Format a slot ISO string into a human-readable time for the confirmation message
+function formatSlotTime(isoStr) {
+  return new Date(isoStr).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'America/New_York',
+  });
+}
+
+// Fetch available slots from GHL for a given date, return array of ISO strings
+async function fetchSlots(dateStr) {
+  const startMs = easternMidnightMs(dateStr);
+  const endMs = startMs + 24 * 3_600_000 - 1;
+  const calendarId = process.env.GHL_DAVE_CALENDAR_ID;
+  const url = `${GHL_API_BASE}/calendars/${calendarId}/free-slots?startDate=${startMs}&endDate=${endMs}&timezone=America%2FNew_York`;
+
+  console.log(`[book-appointment] fetching slots for ${dateStr}: ${url}`);
+
+  const res = await fetch(url, { headers: ghlHeaders() });
+  const raw = await res.json();
+
+  console.log(`[book-appointment] GHL free-slots status=${res.status} response=${JSON.stringify(raw)}`);
+
+  if (!res.ok) throw new Error(`Failed to fetch slots: ${JSON.stringify(raw)}`);
+
+  const dateKeys = Object.keys(raw).filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k));
+  const dateKey = dateKeys.find((k) => k === dateStr) ?? dateKeys[0];
+  return dateKey ? (raw[dateKey]?.slots ?? []) : [];
+}
+
+// Snap requested time (as epoch ms) to the nearest available GHL slot ISO string
+function snapToNearestSlot(requestedMs, slots) {
+  if (slots.length === 0) return null;
+  let best = slots[0];
+  let bestDiff = Math.abs(new Date(slots[0]).getTime() - requestedMs);
+  for (const slot of slots) {
+    const diff = Math.abs(new Date(slot).getTime() - requestedMs);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = slot;
+    }
+  }
+  return best;
+}
+
+async function findContactByPhone(phone) {
+  const locationId = process.env.GHL_DAVE_LOCATION_ID;
+  const res = await fetch(`${GHL_API_BASE}/contacts/search`, {
+    method: 'POST',
+    headers: ghlHeaders(),
+    body: JSON.stringify({
+      locationId,
+      pageLimit: 1,
+      filters: [{ field: 'phone', operator: 'eq', value: phone }],
+    }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data?.contacts?.[0]?.id ?? null;
+}
+
+async function createContact({ name, phone, email, address }) {
+  const locationId = process.env.GHL_DAVE_LOCATION_ID;
+  const [firstName, ...rest] = (name || '').trim().split(' ');
+  const lastName = rest.join(' ') || '';
+
+  const body = {
+    locationId,
+    firstName,
+    lastName,
+    phone,
+    ...(email ? { email } : {}),
+    ...(address ? { address1: address } : {}),
+  };
+
+  const res = await fetch(`${GHL_API_BASE}/contacts/`, {
+    method: 'POST',
+    headers: ghlHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json();
+
+  // GHL rejects duplicate contacts but returns the existing contactId in meta
+  if (!res.ok) {
+    if (data?.meta?.contactId) {
+      console.log(`[book-appointment] duplicate contact detected, reusing existing id: ${data.meta.contactId}`);
+      return data.meta.contactId;
+    }
+    throw new Error(`Failed to create contact: ${JSON.stringify(data)}`);
+  }
+
+  return data.contact.id;
+}
+
+async function bookAppointment({ contactId, startTime }) {
+  const body = {
+    calendarId: process.env.GHL_DAVE_CALENDAR_ID,
+    locationId: process.env.GHL_DAVE_LOCATION_ID,
+    contactId,
+    startTime,
+    toNotify: true,
+  };
+
+  console.log('[book-appointment] booking payload:', JSON.stringify(body));
+
+  const res = await fetch(`${GHL_API_BASE}/calendars/events/appointments`, {
+    method: 'POST',
+    headers: ghlHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json();
+  console.log(`[book-appointment] GHL status=${res.status} response=${JSON.stringify(data)}`);
+  if (!res.ok) throw new Error(`Failed to book appointment: ${JSON.stringify(data)}`);
+  return data;
 }
 
 export async function POST(request) {
-  console.log('RETELL HIT - book-appointment');
+  let body;
   try {
-    const body = await request.json();
-    console.log('[book-appointment] FULL BODY:', JSON.stringify(body));
-    console.log('[book-appointment] TOP-LEVEL KEYS:', Object.keys(body));
-    console.log('[book-appointment] body.arguments:', JSON.stringify(body.arguments));
-    console.log('[book-appointment] body.args:', JSON.stringify(body.args));
-    console.log('[book-appointment] body.date:', body.date);
-    console.log('[book-appointment] body.input:', JSON.stringify(body.input));
-    console.log('[book-appointment] body.arguments?.date:', body.arguments?.date);
-    console.log('[book-appointment] body.args?.date:', body.args?.date);
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
-    // Real Retell calls send { call, name, args } — curl/legacy tests send { arguments }
-    const args = body.args
-      ?? (typeof body.arguments === 'string' ? JSON.parse(body.arguments) : (body.arguments ?? {}));
+  // Log full raw body first so we can see exactly what Retell is sending
+  console.log('[book-appointment] raw body:', JSON.stringify(body));
 
-    const { date: rawDate, time: rawTime, name: callerName, phone: callerPhone } = args;
-    const agentId  = body.call?.agent_id ?? body.agent_id;
-    const callId   = body.call?.call_id  ?? body.call_id;
+  // Retell wraps tool arguments in body.args; fall back to body itself for direct testing
+  const args = body.args ?? body;
+  const { name, phone, email, address, date: rawDate, time: rawTime } = args;
 
-    const parsedDate = parseDate(rawDate);
-    console.log('RAW DATE RECEIVED:', rawDate);
-    console.log('PARSED DATE:', parsedDate);
-
-    // --- Validate and parse date ---
-    if (!rawDate) {
-      return NextResponse.json({ result: "I didn't catch the date. What day works for you?" });
-    }
-    const dateYMD = parsedDate;
-    if (!dateYMD) {
-      return NextResponse.json({
-        result: `I couldn't understand "${rawDate}" as a date. Could you say it like "April 24th" or "4/24"?`,
-      });
-    }
-
-    // --- Validate and parse time ---
-    if (!rawTime) {
-      return NextResponse.json({ result: "What time would you like the appointment?" });
-    }
-    const timeHHMM = parseTime(rawTime);
-    if (!timeHHMM) {
-      return NextResponse.json({
-        result: `I didn't catch the time. Could you say something like "10am" or "2:30pm"?`,
-      });
-    }
-
-    const { apiKey, locationId, calendarId } = await resolveCredentials(agentId);
-    if (!apiKey || !locationId || !calendarId) {
-      console.error('[book-appointment] Missing GHL credentials or GHL_CALENDAR_ID env var');
-      return NextResponse.json({ result: 'Our booking system is temporarily unavailable. Please call back or visit our website.' });
-    }
-
-    // --- Find or create GHL contact ---
-    let contactId = null;
-    const phone = callerPhone || body.call?.caller_phone_number || null;
-
-    if (phone) {
-      contactId = await findContactByPhone(locationId, phone, apiKey);
-      if (!contactId) {
-        contactId = await createContact(locationId, { name: callerName, phone }, apiKey);
-      }
-    }
-
-    // --- Build appointment times ---
-    const { startIso, endIso } = buildIso(dateYMD, timeHHMM);
-
-    // --- Book via GHL ---
-    await createGhlAppointment(
-      {
-        calendarId,
-        locationId,
-        contactId,
-        startIso,
-        endIso,
-        title: callerName ? `Appointment — ${callerName}` : 'Phone Booking',
-      },
-      apiKey
+  if (!name || !phone || !address || !rawDate || !rawTime) {
+    console.log(`[book-appointment] missing fields — name=${name} phone=${phone} address=${address} date=${rawDate} time=${rawTime}`);
+    return Response.json(
+      { error: 'name, phone, address, date, and time are required' },
+      { status: 400 }
     );
+  }
 
-    // --- Mirror to Supabase appointments table ---
-    try {
-      const supabase = createClient();
-      await supabase.from('appointments').insert({
-        date:  dateYMD,
-        time:  timeHHMM,
-        title: callerName ? `Appointment — ${callerName}` : 'Phone Booking',
-        notes: `Booked via AI call${callId ? ` (${callId})` : ''}`,
-      });
-    } catch (dbErr) {
-      // Non-fatal — GHL is the source of truth for bookings
-      console.warn('[book-appointment] Supabase mirror failed:', dbErr.message);
+  console.log(`[book-appointment] raw input — date="${rawDate}" time="${rawTime}"`);
+
+  // Parse natural language date and requested time
+  let dateStr, requestedMs;
+  try {
+    dateStr = parseDate(rawDate);
+    requestedMs = parseTimeMs(rawTime, dateStr);
+  } catch (err) {
+    console.error('[book-appointment] parse error:', err.message);
+    return Response.json({ error: err.message }, { status: 422 });
+  }
+
+  console.log(`[book-appointment] parsed date="${dateStr}" requestedMs=${requestedMs} (${new Date(requestedMs).toISOString()})`);
+
+  // Fetch GHL's actual slots and snap to the nearest one
+  let startTime;
+  try {
+    const slots = await fetchSlots(dateStr);
+    console.log(`[book-appointment] available slots: ${JSON.stringify(slots)}`);
+
+    if (slots.length === 0) {
+      return Response.json(
+        { error: `No available slots on ${dateStr}. Please ask the caller to choose a different date.` },
+        { status: 409 }
+      );
     }
 
-    // Format a friendly confirmation time
-    const [h, m] = timeHHMM.split(':').map(Number);
-    const period = h >= 12 ? 'PM' : 'AM';
-    const displayH = h > 12 ? h - 12 : h === 0 ? 12 : h;
-    const displayTime = `${displayH}:${String(m).padStart(2, '0')} ${period}`;
-
-    return NextResponse.json({
-      result: `You're all set! I've booked your appointment for ${rawDate} at ${displayTime}. You'll receive a confirmation shortly. Is there anything else I can help you with?`,
-    });
-
+    startTime = snapToNearestSlot(requestedMs, slots);
+    console.log(`[book-appointment] snapped to slot: ${startTime}`);
   } catch (err) {
-    console.error('[book-appointment]', err);
-    return NextResponse.json({
-      result: 'I ran into a problem booking that appointment. Please call back or visit our website and we can get you scheduled.',
+    console.error('[book-appointment] slot fetch error:', err.message);
+    return Response.json({ error: String(err) }, { status: 502 });
+  }
+
+  const normalizedPhone = normalizePhone(phone);
+  const confirmedTime = formatSlotTime(startTime);
+
+  try {
+    let contactId = await findContactByPhone(normalizedPhone);
+    if (!contactId) {
+      console.log(`[book-appointment] creating contact for ${normalizedPhone}`);
+      contactId = await createContact({ name, phone: normalizedPhone, email, address });
+    } else {
+      console.log(`[book-appointment] found existing contact ${contactId}`);
+    }
+
+    const appointment = await bookAppointment({ contactId, startTime });
+    const appointmentId = appointment.id ?? appointment.appointmentId ?? appointment._id;
+
+    console.log(`[book-appointment] success — appointmentId=${appointmentId} for ${name} on ${dateStr} at ${confirmedTime}`);
+
+    return Response.json({
+      success: true,
+      appointmentId,
+      contactId,
+      confirmation: `Got it! I've booked your appointment for ${dateStr} at ${confirmedTime}. You'll receive a confirmation shortly.`,
+      details: { name, phone: normalizedPhone, date: dateStr, time: confirmedTime },
     });
+  } catch (err) {
+    console.error('[book-appointment] error:', err);
+    return Response.json({ error: String(err) }, { status: 500 });
   }
 }
