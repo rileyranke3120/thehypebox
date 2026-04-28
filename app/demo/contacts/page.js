@@ -23,7 +23,7 @@ function Avatar({ name = '?' }) {
   );
 }
 
-// Peak Home Services — Columbus, OH — fake contacts
+// ProCoat Columbus — Columbus, OH — fake contacts
 const DEMO_CONTACTS = [
   { id: 'c1',  name: 'James Patterson',   phone: '(614) 555-0291', email: 'james.p@gmail.com',        source: 'Website',   dateAdded: '2026-03-15' },
   { id: 'c2',  name: 'Sandra Hughes',      phone: '(614) 555-0174', email: 'sandra.h@outlook.com',     source: 'Referral',  dateAdded: '2026-03-20' },
@@ -64,7 +64,7 @@ export default function DemoContactsPage() {
     <div style={{ minHeight: '100vh', background: S.bg, fontFamily: S.body, color: S.text }}>
       {/* Demo banner */}
       <div style={{ background: '#F5C400', color: '#000', textAlign: 'center', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', padding: '5px 0' }}>
-        DEMO MODE — Peak Home Services, Columbus OH — No real data
+        DEMO MODE — ProCoat Columbus, Columbus OH — No real data
       </div>
 
       <div style={{ background: S.surface, borderBottom: `1px solid ${S.border}`, padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', gap: 14 }}>

@@ -10,28 +10,28 @@ function getInitials(name) {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
-// ─── FAKE DATA — Peak Home Services, Columbus OH ────────────────────────────
+// ─── FAKE DATA — ProCoat Columbus, Columbus OH ───────────────────────────────
 
 const DEMO_USER = {
-  name: 'Kyle Henderson',
-  email: 'kyle@peakhomeservices.com',
+  name: 'Jason Reed',
+  email: 'jason@procoatcolumbus.com',
   role: 'client',
   plan: 'growth',
-  business_name: 'Peak Home Services',
-  business_phone: '(614) 555-0182',
-  business_hours: 'Mon–Sat 7am–7pm',
+  business_name: 'ProCoat Columbus',
+  business_phone: '(614) 555-0312',
+  business_hours: 'Mon–Fri 8am–5pm',
 };
 
 const DEMO_OVERVIEW = {
   isSuperAdmin: false,
   stats: {
-    totalContacts: 247,
-    leadsActive: 18,
-    pipelineValue: 42800,
-    completedJobs: 94,
-    callsThisMonth: 31,
-    apptThisMonth: 14,
-    reviewsThisMonth: 9,
+    totalContacts: 183,
+    leadsActive: 14,
+    pipelineValue: 36800,
+    completedJobs: 67,
+    callsThisMonth: 24,
+    apptThisMonth: 11,
+    reviewsThisMonth: 7,
   },
   recentActivity: [
     { automation_type: 'review-request', status: 'success', created_at: new Date(Date.now() - 3 * 3600000).toISOString() },
@@ -43,17 +43,17 @@ const DEMO_OVERVIEW = {
 };
 
 const DEMO_CALLS = [
-  { call_id: 'r1', from_number: '(614) 555-0291', start_timestamp: Date.now() - 2 * 3600000, duration_ms: 145000, scrubbed_call_analysis: { call_summary: 'Caller requested a quote for furnace replacement. Booked an inspection for April 14th at 10am.', call_successful: true, user_sentiment: 'Positive' } },
-  { call_id: 'r2', from_number: '(614) 555-0174', start_timestamp: Date.now() - 5 * 3600000, duration_ms: 212000, scrubbed_call_analysis: { call_summary: 'Customer asked about water heater installation. Scheduled appointment for April 15 at 2pm.', call_successful: true, user_sentiment: 'Positive' } },
-  { call_id: 'r3', from_number: '(614) 555-0347', start_timestamp: Date.now() - 24 * 3600000, duration_ms: 78000, scrubbed_call_analysis: { call_summary: 'Caller asked about AC tune-up pricing. Provided pricing info and offered to schedule.', call_successful: true, user_sentiment: 'Neutral' } },
-  { call_id: 'r4', from_number: '(614) 555-0428', start_timestamp: Date.now() - 26 * 3600000, duration_ms: 186000, scrubbed_call_analysis: { call_summary: 'Emergency pipe leak inquiry. Dispatched a technician same day. Customer was very relieved.', call_successful: true, user_sentiment: 'Positive' } },
-  { call_id: 'r5', from_number: '(614) 555-0519', start_timestamp: Date.now() - 48 * 3600000, duration_ms: 94000, scrubbed_call_analysis: { call_summary: 'Asked about duct cleaning service. Booked appointment for April 18th at 10:30am.', call_successful: true, user_sentiment: 'Positive' } },
-  { call_id: 'r6', from_number: '(614) 555-0663', start_timestamp: Date.now() - 50 * 3600000, duration_ms: 132000, scrubbed_call_analysis: { call_summary: 'Caller wanted info on HVAC maintenance plans. Signed up for annual plan.', call_successful: true, user_sentiment: 'Positive' } },
-  { call_id: 'r7', from_number: '(614) 555-0781', start_timestamp: Date.now() - 72 * 3600000, duration_ms: 58000, scrubbed_call_analysis: { call_summary: 'Quick inquiry about operating hours. Provided info.', call_successful: true, user_sentiment: 'Neutral' } },
+  { call_id: 'r1', from_number: '(614) 555-0291', start_timestamp: Date.now() - 2 * 3600000, duration_ms: 138000, scrubbed_call_analysis: { call_summary: 'Caller requested a garage floor epoxy quote. Booked an estimate for April 14th at 10am.', call_successful: true, user_sentiment: 'Positive' } },
+  { call_id: 'r2', from_number: '(614) 555-0174', start_timestamp: Date.now() - 5 * 3600000, duration_ms: 204000, scrubbed_call_analysis: { call_summary: 'Customer asked about polyaspartic driveway coating. Scheduled estimate for April 15 at 2pm.', call_successful: true, user_sentiment: 'Positive' } },
+  { call_id: 'r3', from_number: '(614) 555-0347', start_timestamp: Date.now() - 24 * 3600000, duration_ms: 81000, scrubbed_call_analysis: { call_summary: 'Caller asked about patio concrete coating options and pricing. Provided info, offered to schedule.', call_successful: true, user_sentiment: 'Neutral' } },
+  { call_id: 'r4', from_number: '(614) 555-0428', start_timestamp: Date.now() - 26 * 3600000, duration_ms: 175000, scrubbed_call_analysis: { call_summary: 'Inquiry about commercial warehouse floor coating. Discussed metallic epoxy options. Booked site visit.', call_successful: true, user_sentiment: 'Positive' } },
+  { call_id: 'r5', from_number: '(614) 555-0519', start_timestamp: Date.now() - 48 * 3600000, duration_ms: 97000, scrubbed_call_analysis: { call_summary: 'Asked about basement floor coating for new build. Booked estimate for April 18th at 10:30am.', call_successful: true, user_sentiment: 'Positive' } },
+  { call_id: 'r6', from_number: '(614) 555-0663', start_timestamp: Date.now() - 50 * 3600000, duration_ms: 126000, scrubbed_call_analysis: { call_summary: 'Caller wanted info on pool deck resurfacing. Interested in non-slip coating. Sending quote.', call_successful: true, user_sentiment: 'Positive' } },
+  { call_id: 'r7', from_number: '(614) 555-0781', start_timestamp: Date.now() - 72 * 3600000, duration_ms: 61000, scrubbed_call_analysis: { call_summary: 'Quick inquiry about turnaround time for a 2-car garage. Provided timeline info.', call_successful: true, user_sentiment: 'Neutral' } },
 ];
 
 const DEMO_AGENT = {
-  agent_name: 'Peak Home Services AI Agent',
+  agent_name: 'ProCoat Columbus AI Agent',
   voice_id: 'eleven_labs_rachel',
   language: 'en-US',
   is_published: true,
@@ -86,16 +86,16 @@ const DEMO_LEAD_NURTURES = [
 ];
 
 const DEMO_APPOINTMENTS = [
-  { id: 'a1', date: '2026-04-14', time: '10:00', title: 'Furnace Replacement Inspection — James P.', notes: 'Customer requested free estimate' },
-  { id: 'a2', date: '2026-04-14', time: '14:00', title: 'AC Tune-Up — Sandra H.', notes: '' },
-  { id: 'a3', date: '2026-04-15', time: '09:00', title: 'Water Heater Install — Tom L.', notes: 'Replace 50-gallon tank' },
-  { id: 'a4', date: '2026-04-15', time: '14:00', title: 'Pipe Leak Repair — Diane F.', notes: 'Bathroom sink, second floor' },
-  { id: 'a5', date: '2026-04-16', time: '11:00', title: 'HVAC Maintenance — Rob K.', notes: 'Annual maintenance plan visit' },
-  { id: 'a6', date: '2026-04-18', time: '10:30', title: 'Duct Cleaning — Chris V.', notes: '3-bedroom home' },
-  { id: 'a7', date: '2026-04-18', time: '15:00', title: 'Furnace Tune-Up — Mary W.', notes: '' },
-  { id: 'a8', date: '2026-04-22', time: '09:00', title: 'New Install Quote — Greg S.', notes: 'Full HVAC system replacement' },
-  { id: 'a9', date: '2026-04-08', time: '10:00', title: 'AC Service — Paula B.', notes: 'Completed' },
-  { id: 'a10', date: '2026-04-10', time: '14:00', title: 'Water Heater — Dave R.', notes: 'Completed, replaced anode rod' },
+  { id: 'a1', date: '2026-04-14', time: '10:00', title: 'Garage Floor Epoxy Estimate — James P.', notes: '2-car garage, customer wants full flake system' },
+  { id: 'a2', date: '2026-04-14', time: '14:00', title: 'Driveway Coating Estimate — Sandra H.', notes: 'Polyaspartic, approx 600 sq ft' },
+  { id: 'a3', date: '2026-04-15', time: '09:00', title: 'Garage Floor Install — Tom L.', notes: '3-car garage, metallic epoxy — deposit paid' },
+  { id: 'a4', date: '2026-04-15', time: '14:00', title: 'Patio Coating Estimate — Diane F.', notes: 'Stamped overlay, ~400 sq ft' },
+  { id: 'a5', date: '2026-04-16', time: '11:00', title: 'Basement Floor Coating — Rob K.', notes: 'Single coat polyaspartic, 800 sq ft' },
+  { id: 'a6', date: '2026-04-18', time: '10:30', title: 'Pool Deck Resurface — Chris V.', notes: 'Non-slip texture, coping repair needed' },
+  { id: 'a7', date: '2026-04-18', time: '15:00', title: 'Commercial Floor Estimate — Mary W.', notes: 'Auto shop, ~2,000 sq ft, needs chemical-resistant coating' },
+  { id: 'a8', date: '2026-04-22', time: '09:00', title: 'Garage Floor Install — Greg S.', notes: 'Full flake epoxy, 3-car — deposit paid' },
+  { id: 'a9', date: '2026-04-08', time: '10:00', title: 'Driveway Sealing — Paula B.', notes: 'Completed' },
+  { id: 'a10', date: '2026-04-10', time: '14:00', title: 'Garage Epoxy Install — Dave R.', notes: 'Completed, 2-car metallic finish' },
 ];
 
 const DEMO_AUTOMATION_LOGS = [
@@ -464,7 +464,7 @@ export default function DemoPage() {
     <div className={styles.dashboardLayout}>
       {/* DEMO BANNER */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, background: '#F5C400', color: '#000', textAlign: 'center', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', padding: '5px 0', pointerEvents: 'none' }}>
-        DEMO MODE — Peak Home Services, Columbus OH — No real data or actions
+        DEMO MODE — ProCoat Columbus, Columbus OH — No real data or actions
       </div>
 
       {/* TOP BAR */}
@@ -529,7 +529,7 @@ export default function DemoPage() {
           <section>
             <div className={styles.pageHeader}>
               <h1>Command Center</h1>
-              <p>Peak Home Services — Columbus, OH</p>
+              <p>ProCoat Columbus — Columbus, OH</p>
             </div>
             <div className={styles.metricsGrid}>
               <div className={styles.metricCard}><div className={styles.metricCardLabel}>Total Contacts</div><div className={styles.metricCardValue} style={{ color: '#378ADD' }}>{overviewData.stats.totalContacts}</div><div className={styles.metricCardDelta}>In your CRM</div></div>
@@ -595,7 +595,7 @@ export default function DemoPage() {
                         <td>{new Date(call.start_timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</td>
                         <td>{Math.round(call.duration_ms / 1000)}s</td>
                         <td><span style={{ color: '#1D9E75', fontSize: 12 }}>● Answered</span></td>
-                        <td style={{ color: '#888', fontSize: 12 }}>Peak AI Agent</td>
+                        <td style={{ color: '#888', fontSize: 12 }}>ProCoat AI Agent</td>
                       </tr>
                     ))}
                   </tbody>
@@ -609,7 +609,7 @@ export default function DemoPage() {
         {activePage === 'phone' && (
           <section>
             <div className={styles.pageHeader}>
-              <h1>Phone Agent — Peak AI</h1>
+              <h1>Phone Agent — ProCoat AI</h1>
               <p>Handles every inbound call — 24/7</p>
             </div>
 
@@ -618,10 +618,10 @@ export default function DemoPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
                   <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#0D1F35', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🤖</div>
                   <div>
-                    <div style={{ fontSize: 20, fontWeight: 700 }}>Peak Home Services AI Agent</div>
-                    <div style={{ color: '#aaa', fontSize: 13 }}>agent_peak_home_services_demo</div>
+                    <div style={{ fontSize: 20, fontWeight: 700 }}>ProCoat Columbus AI Agent</div>
+                    <div style={{ color: '#aaa', fontSize: 13 }}>agent_procoat_columbus_demo</div>
                     <div style={{ marginTop: 6, display: 'flex', gap: 16 }}>
-                      <span style={{ color: '#378ADD', fontSize: 13 }}>📞 (614) 555-0100</span>
+                      <span style={{ color: '#378ADD', fontSize: 13 }}>📞 (614) 555-0199</span>
                       <span style={{ color: '#1D9E75', fontSize: 13 }}>● Live & Answering</span>
                     </div>
                   </div>
@@ -668,7 +668,7 @@ export default function DemoPage() {
                     <li className={styles.agentItem}>
                       <div className={styles.agentItemInfo}>
                         <div className={styles.agentItemName}>Agent Active</div>
-                        <div className={styles.agentItemSub}>Toggle Peak AI on or off</div>
+                        <div className={styles.agentItemSub}>Toggle ProCoat AI on or off</div>
                       </div>
                       <Toggle checked={agentDetails?.is_published ?? true} onChange={updateAgentSetting} label="Toggle Agent Active" />
                     </li>
@@ -772,7 +772,7 @@ export default function DemoPage() {
                       </ul>
                       <div style={{ borderTop: '1px solid #222', paddingTop: 16 }}>
                         <div style={{ fontSize: 12, color: '#888', marginBottom: 12, fontWeight: 600 }}>ADD APPOINTMENT</div>
-                        {[['Title', 'title', 'text', 'e.g. HVAC inspection'], ['Notes', 'notes', 'text', 'Optional notes']].map(([label, field, type, placeholder]) => (
+                        {[['Title', 'title', 'text', 'e.g. Garage floor estimate'], ['Notes', 'notes', 'text', 'Optional notes']].map(([label, field, type, placeholder]) => (
                           <div key={field} style={{ marginBottom: 10 }}>
                             <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>{label}</label>
                             <input type={type} placeholder={placeholder} value={apptForm[field]} onChange={e => setApptForm(f => ({ ...f, [field]: e.target.value }))} style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14, boxSizing: 'border-box' }} />
@@ -841,7 +841,7 @@ export default function DemoPage() {
                   </ul>
                   <div style={{ marginTop: 16, padding: 12, background: '#1a1a1a', borderRadius: 8, border: '1px solid #333' }}>
                     <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>DEFAULT MESSAGE</div>
-                    <div style={{ fontSize: 13, color: '#ccc', lineHeight: 1.5 }}>"Hey! Sorry we missed your call at Peak Home Services. We&apos;d love to help — reply here or book online at peakhomeservices.com!"</div>
+                    <div style={{ fontSize: 13, color: '#ccc', lineHeight: 1.5 }}>"Hey! Sorry we missed your call at ProCoat Columbus. We&apos;d love to help — reply here or book online at procoatcolumbus.com!"</div>
                   </div>
                 </div>
               </div>
@@ -866,7 +866,7 @@ export default function DemoPage() {
               <div className={styles.panel}>
                 <div className={styles.panelHeader}><span className={styles.panelTitle}>Send Review Request</span></div>
                 <div className={styles.panelBody}>
-                  {[['Customer Name', 'customer_name', 'text', 'Marcus W.'], ['Phone Number', 'phone_number', 'tel', '(614) 555-0183'], ['Business Name', 'business_name', 'text', 'Peak Home Services']].map(([label, field, type, placeholder]) => (
+                  {[['Customer Name', 'customer_name', 'text', 'Marcus W.'], ['Phone Number', 'phone_number', 'tel', '(614) 555-0183'], ['Business Name', 'business_name', 'text', 'ProCoat Columbus']].map(([label, field, type, placeholder]) => (
                     <div key={field} style={{ marginBottom: 12 }}>
                       <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>{label}</label>
                       <input type={type} placeholder={placeholder} value={reviewForm[field]} onChange={e => setReviewForm(f => ({ ...f, [field]: e.target.value }))} style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14, boxSizing: 'border-box' }} />
@@ -913,7 +913,7 @@ export default function DemoPage() {
               <div className={styles.panel}>
                 <div className={styles.panelHeader}><span className={styles.panelTitle}>Send Reactivation</span></div>
                 <div className={styles.panelBody}>
-                  {[['Customer Name', 'customer_name', 'text', 'Janet S.'], ['Phone Number', 'phone_number', 'tel', '(614) 555-0471'], ['Business Name', 'business_name', 'text', 'Peak Home Services'], ['Offer', 'offer', 'text', '10% off your next visit']].map(([label, field, type, placeholder]) => (
+                  {[['Customer Name', 'customer_name', 'text', 'Janet S.'], ['Phone Number', 'phone_number', 'tel', '(614) 555-0471'], ['Business Name', 'business_name', 'text', 'ProCoat Columbus'], ['Offer', 'offer', 'text', '$150 off your next coating project']].map(([label, field, type, placeholder]) => (
                     <div key={field} style={{ marginBottom: 12 }}>
                       <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>{label}</label>
                       <input type={type} placeholder={placeholder} value={reactivationForm[field]} onChange={e => setReactivationForm(f => ({ ...f, [field]: e.target.value }))} style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14, boxSizing: 'border-box' }} />
@@ -960,7 +960,7 @@ export default function DemoPage() {
               <div className={styles.panel}>
                 <div className={styles.panelHeader}><span className={styles.panelTitle}>Send Lead Nurture</span></div>
                 <div className={styles.panelBody}>
-                  {[['Customer Name', 'customer_name', 'text', 'Tyler H.'], ['Phone Number', 'phone_number', 'tel', '(614) 555-0742'], ['Business Name', 'business_name', 'text', 'Peak Home Services']].map(([label, field, type, placeholder]) => (
+                  {[['Customer Name', 'customer_name', 'text', 'Tyler H.'], ['Phone Number', 'phone_number', 'tel', '(614) 555-0742'], ['Business Name', 'business_name', 'text', 'ProCoat Columbus']].map(([label, field, type, placeholder]) => (
                     <div key={field} style={{ marginBottom: 12 }}>
                       <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>{label}</label>
                       <input type={type} placeholder={placeholder} value={leadForm[field]} onChange={e => setLeadForm(f => ({ ...f, [field]: e.target.value }))} style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14, boxSizing: 'border-box' }} />
@@ -1010,7 +1010,7 @@ export default function DemoPage() {
                 <div className={styles.panelHeader}><span className={styles.panelTitle}>Business Profile</span></div>
                 <div className={styles.panelBody}>
                   {[
-                    ['Business Name', 'business_name', 'text', 'Peak Home Services'],
+                    ['Business Name', 'business_name', 'text', 'ProCoat Columbus'],
                     ['Phone Number', 'phone', 'tel', '(614) 555-0182'],
                     ['Business Hours', 'hours', 'text', 'Mon–Sat 7am–7pm'],
                   ].map(([label, field, type, placeholder]) => (

@@ -53,14 +53,43 @@ export async function POST(request) {
       }
     }
 
-    // Forward full payload to GHL on every event
+    // Forward payload to GHL on every event
     const ghlWebhookUrl = process.env.GHL_RETELL_WEBHOOK_URL;
-    if (ghlWebhookUrl) {
-      await fetch(ghlWebhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+    if (!ghlWebhookUrl) {
+      console.error('[retell webhook] GHL_RETELL_WEBHOOK_URL is not set — skipping GHL forward');
+    } else {
+      const ghlBody = {
+        // Top-level phone lets GHL match/create a contact on inbound webhook trigger
+        phone,
+        event: payload.event,
+        call: {
+          call_id,
+          agent_id,
+          call_status,
+          caller_phone_number: phone,
+          from_number: phone,
+          to_number: payload.call?.to_number,
+          start_timestamp,
+          end_timestamp,
+          transcript,
+          call_summary,
+          disconnection_reason,
+          direction: payload.call?.direction,
+        }
+      };
+      console.log('[retell webhook] sending to GHL url:', ghlWebhookUrl);
+      console.log('[retell webhook] GHL body:', JSON.stringify(ghlBody));
+      try {
+        const ghlRes = await fetch(ghlWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ghlBody),
+        });
+        const ghlText = await ghlRes.text();
+        console.log('[retell webhook] GHL status:', ghlRes.status, '| body:', ghlText);
+      } catch (ghlErr) {
+        console.error('[retell webhook] GHL fetch error:', ghlErr.message);
+      }
     }
 
     // Missed-call SMS + missed_calls log

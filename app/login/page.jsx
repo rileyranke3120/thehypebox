@@ -40,6 +40,10 @@ export default function LoginPage() {
             <Link href="/#services">See how it works →</Link>
           </p>
 
+          <p className={styles.loginBoxFooter}>
+            <Link href="/">← Back to site</Link>
+          </p>
+
         </div>
       </main>
 

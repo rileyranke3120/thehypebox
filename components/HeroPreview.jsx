@@ -48,24 +48,21 @@ export default function HeroPreview() {
     <section className={`${styles.hero} section`} aria-labelledby="hero-headline">
       <div className={`container ${styles.heroInner}`}>
         <div className={styles.heroCopy}>
-          <div className={styles.heroEyebrow}>
-            <span className="tag">Real AI, Real People, Real Results</span>
-          </div>
           <h1 id="hero-headline" className={styles.heroHeadline}>
-            AI Automation<br />
-            for <em>Local Business</em>
+            Run Your Entire Business<br />
+            From <em>One System</em>
           </h1>
           <p className={styles.heroSub}>
-            We build and run AI systems that answer your calls, engage
-            your website visitors, follow up with leads, and keep
-            customers coming back — so you can focus on the work.
+            CRM, communication, automation, and AI — all in one place.
+            No more missed calls. No more lost leads. Just a smarter
+            way to operate.
           </p>
           <div className={styles.heroActions}>
-            <a href="#booking" className="btn btn-primary">Book a Free Call</a>
-            <a href="#how" className="btn btn-ghost">See How It Works</a>
+            <a href="#booking" className="btn btn-primary">Get Early Access</a>
+            <a href="#booking" className="btn btn-ghost">Book a Demo</a>
           </div>
           <div className={styles.heroDemo}>
-            <Link href="/dashboard" className="btn btn-ghost">View Dashboard Demo →</Link>
+            <Link href="/demo" className="btn btn-ghost">View Dashboard Demo →</Link>
             <p className={styles.heroDemoNote}>See exactly what your clients will see</p>
           </div>
         </div>

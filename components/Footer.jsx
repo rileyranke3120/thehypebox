@@ -35,6 +35,10 @@ export default function Footer() {
           </div>
         </div>
 
+        <div className={styles.footerMicro}>
+          No contracts. No complicated setup. Just a smarter way to run your business.
+        </div>
+
         <div className={styles.footerBottom}>
           <span className={styles.footerCopy}>&copy; 2026 TheHypeBox LLC. All rights reserved.</span>
           <div className={styles.footerLegal}>

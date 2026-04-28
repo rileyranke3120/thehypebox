@@ -2,50 +2,51 @@ import styles from '@/styles/marketing.module.css';
 
 const PLANS = [
   {
-    tier: 'Starter',
-    price: '297',
-    period: 'per month',
-    description: 'Everything you need to stop missing leads.',
+    name: 'Launch Box',
+    emoji: '🟢',
+    tagline: 'Start strong with the essentials',
+    price: '397',
+    period: '/mo',
     features: [
-      'AI Phone Receptionist (24/7)',
-      'Missed Call Text Back',
-      'Review Request Automation',
-      'Appointment Scheduling Agent',
-      'Client Dashboard',
-      'US-Based Support',
+      'CRM + contact management',
+      'Website + hosting',
+      'Unified inbox (text, email, social)',
+      'Basic automation (instant responses)',
+      'Appointment scheduling',
     ],
-    cta: 'Get Started',
+    cta: 'Start Here',
     featured: false,
   },
   {
-    tier: 'Growth',
-    price: '497',
-    period: 'per month',
+    name: 'Velocity Box',
+    emoji: '🔵',
+    tagline: 'Automate and grow faster',
+    price: '697',
+    period: '/mo',
     badge: 'Most Popular',
-    description: 'Automated follow-up that brings customers back.',
     features: [
-      'Everything in Starter',
-      'Lead Reactivation Campaigns',
-      'Lead Generation & Nurturing',
-      'Website Chatbot',
-      'Priority Support',
+      'Everything in Launch Box',
+      'Advanced automation workflows',
+      'Lead capture funnels',
+      'AI-assisted responses',
+      'Review & reputation tools',
     ],
-    cta: 'Get Started',
+    cta: 'Upgrade Your System',
     featured: true,
   },
   {
-    tier: 'Pro',
-    price: '797',
-    period: 'per month',
-    description: 'Full-stack automation with a website included.',
+    name: 'Founders Box',
+    emoji: '🟡',
+    tagline: 'Run your business like an empire',
+    callPrice: true,
     features: [
-      'Everything in Growth',
-      'CRM & Contact Management',
-      'AI Accounting Agent',
-      'Custom Website Build',
-      'Dedicated Account Manager',
+      'Everything in Velocity Box',
+      'Full AI lead handling',
+      'Advanced pipeline tracking',
+      'Team access + workflows',
+      'Deep analytics & reporting',
     ],
-    cta: 'Get Started',
+    cta: 'Go All In',
     featured: false,
   },
 ];
@@ -56,28 +57,35 @@ export default function PricingSection() {
       <div className="container">
         <div className={styles.sectionHeaderCenter}>
           <span className="tag">Pricing</span>
-          <h2 id="pricing-heading">Simple, Flat-Rate Plans</h2>
-          <p>No contracts. No hidden fees. Cancel anytime. One-time setup fee applies.</p>
+          <h2 id="pricing-heading">Choose Your Level</h2>
         </div>
 
         <div className={styles.pricingGrid}>
           {PLANS.map((plan) => (
             <div
-              key={plan.tier}
+              key={plan.name}
               className={`${styles.pricingCard}${plan.featured ? ' ' + styles.pricingCardFeatured : ''}`}
             >
               {plan.badge && (
                 <div className={styles.pricingCardBadge}>{plan.badge}</div>
               )}
-              <div className={styles.pricingCardTier}>{plan.tier}</div>
-              <div className={styles.pricingCardPrice}>
-                <sup>$</sup>{plan.price}
+              <div className={styles.pricingCardTier}>
+                {plan.name} <span style={{ fontSize: '1rem', letterSpacing: 0 }}>{plan.emoji}</span>
               </div>
-              <div className={styles.pricingCardPeriod}>{plan.period}</div>
-              <p style={{ fontSize: '0.78rem', color: 'var(--grey-300)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                {plan.description}
+              <p style={{ fontSize: '0.78rem', color: 'var(--grey-300)', margin: '0.5rem 0 0', lineHeight: 1.5 }}>
+                {plan.tagline}
               </p>
-              <ul className={styles.pricingCardFeatures}>
+              <div className={styles.pricingCardPrice}>
+                {plan.callPrice ? (
+                  <span style={{ fontSize: '2rem' }}>Book a Call</span>
+                ) : (
+                  <><sup>$</sup>{plan.price}</>
+                )}
+              </div>
+              {!plan.callPrice && (
+                <div className={styles.pricingCardPeriod}>{plan.period}</div>
+              )}
+              <ul className={styles.pricingCardFeatures} style={{ marginTop: plan.callPrice ? '1.5rem' : undefined }}>
                 {plan.features.map((f) => (
                   <li key={f}>{f}</li>
                 ))}
@@ -90,7 +98,7 @@ export default function PricingSection() {
         </div>
 
         <p style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--grey-500)', marginTop: '2rem', letterSpacing: '0.05em' }}>
-          All plans include a one-time setup fee · Custom enterprise pricing available · Book a call to discuss your needs
+          No contracts · No hidden fees · Cancel anytime
         </p>
       </div>
     </section>

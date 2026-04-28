@@ -9,41 +9,42 @@ import Footer from '@/components/Footer';
 import styles from '@/styles/marketing.module.css';
 
 export default function Home() {
-  const agents = [
+  const features = [
     {
       icon: (
         <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '12px', background: '#0D1F35', display: 'block' }}>
-          <path d="M32 18 Q32 18 32 18" stroke="none"/>
-          <path d="M24 24 Q32 16 40 24" stroke="#378ADD" strokeWidth="2" strokeLinecap="round" fill="none"/>
-          <path d="M20 20 Q32 10 44 20" stroke="#378ADD" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.55"/>
-          <path d="M22 34 C21 37 22 41 26 43 C26 43 28 44 30 43 L33 40 C33.8 39.2 33.8 38 33 37.2 L31.5 35.7 C31 35.2 31 34.4 31.5 33.9 L34.9 30.5 C35.4 30 36.2 30 36.7 30.5 L38.2 32 C39 32.8 40.2 32.8 41 32 L44 29 C44.8 28.2 44.8 27 44 26.2 C42 24.2 38 23 35 24 C32 25 23 31 22 34 Z" stroke="#378ADD" strokeWidth="1.8" fill="none" strokeLinejoin="round"/>
+          <rect x="14" y="16" width="36" height="32" rx="3" stroke="#378ADD" strokeWidth="2" fill="none"/>
+          <line x1="14" y1="24" x2="50" y2="24" stroke="#378ADD" strokeWidth="1.5" opacity="0.5"/>
+          <circle cx="22" cy="33" r="4" stroke="#378ADD" strokeWidth="1.5" fill="none"/>
+          <line x1="28" y1="31" x2="42" y2="31" stroke="#378ADD" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/>
+          <line x1="28" y1="35" x2="38" y2="35" stroke="#378ADD" strokeWidth="1.5" strokeLinecap="round" opacity="0.4"/>
         </svg>
       ),
-      title: 'AI Receptionist',
-      description: 'A 24/7 AI that answers every call, handles your FAQs, captures leads, and takes messages — trained on your business.',
+      title: 'CRM',
+      description: 'Manage all your contacts, leads, and clients in one place.',
       features: [
-        'Never miss a call again',
-        'Custom scripts for your business',
-        'After-hours message capture',
-        'Call summaries to your inbox',
+        'Full contact & lead management',
+        'Deal pipeline tracking',
+        'Notes, tags & history',
+        'Activity timeline',
       ],
     },
     {
       icon: (
         <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '12px', background: '#0D2018', display: 'block' }}>
-          <path d="M14 20 C14 17.8 15.8 16 18 16 L46 16 C48.2 16 50 17.8 50 20 L50 38 C50 40.2 48.2 42 46 42 L26 42 L18 50 L18 42 C15.8 42 14 40.2 14 38 Z" stroke="#1D9E75" strokeWidth="2" fill="none" strokeLinejoin="round"/>
-          <circle cx="25" cy="29" r="2.2" fill="#1D9E75"/>
-          <circle cx="32" cy="29" r="2.2" fill="#1D9E75"/>
-          <circle cx="39" cy="29" r="2.2" fill="#1D9E75"/>
+          <path d="M14 20 C14 17.8 15.8 16 18 16 L46 16 C48.2 16 50 17.8 50 20 L50 35 C50 37.2 48.2 39 46 39 L30 39 L22 46 L22 39 C15.8 39 14 37.2 14 35 Z" stroke="#1D9E75" strokeWidth="2" fill="none" strokeLinejoin="round"/>
+          <circle cx="26" cy="27.5" r="2" fill="#1D9E75"/>
+          <circle cx="32" cy="27.5" r="2" fill="#1D9E75"/>
+          <circle cx="38" cy="27.5" r="2" fill="#1D9E75"/>
         </svg>
       ),
-      title: 'Website Chatbot',
-      description: 'An AI chat widget on your website that engages visitors, answers questions, and books appointments while you work.',
+      title: 'Communication',
+      description: 'Text, email, calls, and social messages—all in one unified inbox.',
       features: [
-        'Live on your site in 24 hours',
-        'Appointment booking built in',
-        'Lead capture & qualification',
-        'Trained on your services & prices',
+        'Unified inbox for all channels',
+        'Two-way SMS & email',
+        'Social DM integration',
+        'Call tracking & recording',
       ],
     },
     {
@@ -52,11 +53,11 @@ export default function Home() {
           <path d="M36 12 L22 34 L31 34 L28 52 L42 30 L33 30 Z" fill="#F5C400"/>
         </svg>
       ),
-      title: 'Lead Follow-Up',
-      description: 'Automated SMS and email sequences that follow up with new leads and bring old customers back — on autopilot.',
+      title: 'Automation',
+      description: 'Instant responses, follow-ups, and reminders working 24/7.',
       features: [
-        'Instant follow-up on new leads',
-        'Re-engagement for past customers',
+        'Instant lead response',
+        'Follow-up sequences',
         'Appointment reminders',
         'Review request automation',
       ],
@@ -64,24 +65,40 @@ export default function Home() {
     {
       icon: (
         <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '12px', background: '#160D2A', display: 'block' }}>
-          <rect x="12" y="14" width="40" height="36" rx="4" stroke="#7B2FFF" strokeWidth="2"/>
-          <rect x="18" y="20" width="28" height="6" rx="2" stroke="#7B2FFF" strokeWidth="1.5"/>
-          <circle cx="21" cy="23" r="1.2" fill="#7B2FFF"/>
-          <circle cx="25" cy="23" r="1.2" fill="#7B2FFF"/>
-          <circle cx="29" cy="23" r="1.2" fill="#7B2FFF"/>
-          <line x1="12" y1="30" x2="52" y2="30" stroke="#7B2FFF" strokeWidth="1.5"/>
-          <line x1="18" y1="36" x2="36" y2="36" stroke="#7B2FFF" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/>
-          <line x1="18" y1="41" x2="30" y2="41" stroke="#7B2FFF" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/>
-          <path d="M40 36 L40 44 L42.5 41.5 L44.5 45 L45.5 44.5 L43.5 41 L47 41 Z" fill="#7B2FFF"/>
+          <circle cx="32" cy="28" r="10" stroke="#7B2FFF" strokeWidth="2" fill="none"/>
+          <path d="M26 28 C26 24.7 28.7 22 32 22 C35.3 22 38 24.7 38 28" stroke="#7B2FFF" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+          <circle cx="32" cy="28" r="3" fill="#7B2FFF" opacity="0.6"/>
+          <path d="M22 42 C22 38 26.5 36 32 36 C37.5 36 42 38 42 42" stroke="#7B2FFF" strokeWidth="2" fill="none" strokeLinecap="round"/>
         </svg>
       ),
-      title: 'Website Build',
-      description: 'We build and launch a fast, professional website for your business — ready to convert visitors into paying customers.',
+      title: 'AI Integration',
+      description: 'Smart replies and lead handling without lifting a finger.',
       features: [
-        'Mobile-first design',
-        'SEO-ready from day one',
-        'Chatbot integrated at launch',
-        'Included in your setup fee',
+        'AI-powered responses',
+        '24/7 lead qualification',
+        'Trained on your business',
+        'Hands-free follow-up',
+      ],
+    },
+    {
+      icon: (
+        <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '12px', background: '#0D1A12', display: 'block' }}>
+          <rect x="14" y="14" width="36" height="36" rx="3" stroke="#1D9E75" strokeWidth="2" fill="none"/>
+          <line x1="14" y1="24" x2="50" y2="24" stroke="#1D9E75" strokeWidth="1.5" opacity="0.5"/>
+          <line x1="25" y1="14" x2="25" y2="20" stroke="#1D9E75" strokeWidth="2" strokeLinecap="round"/>
+          <line x1="39" y1="14" x2="39" y2="20" stroke="#1D9E75" strokeWidth="2" strokeLinecap="round"/>
+          <rect x="20" y="29" width="8" height="7" rx="1" fill="#1D9E75" opacity="0.5"/>
+          <rect x="32" y="29" width="8" height="7" rx="1" fill="#1D9E75" opacity="0.8"/>
+          <rect x="20" y="39" width="8" height="5" rx="1" fill="#1D9E75" opacity="0.3"/>
+        </svg>
+      ),
+      title: 'Scheduling',
+      description: 'Let clients book appointments without the back-and-forth.',
+      features: [
+        'Self-serve booking page',
+        'Calendar sync',
+        'Automated confirmations',
+        'Rescheduling & reminders',
       ],
     },
   ];
@@ -94,17 +111,44 @@ export default function Home() {
         <HeroPreview />
         <StatsBar />
 
-        {/* SERVICES */}
-        <section id="services" className="section" aria-labelledby="services-heading">
+        {/* PROBLEM → SOLUTION */}
+        <section id="problem" className="section" aria-labelledby="solution-heading">
           <div className="container">
-            <div className={styles.sectionHeader}>
-              <span className="tag">What We Build</span>
-              <h2 id="services-heading">Four Services.<br />One Flat Price.</h2>
-              <p>Everything a local business needs to stop missing leads and start running on autopilot.</p>
+            <div className={styles.problemSolution}>
+              <div className={styles.problems}>
+                <span className="tag">The Problem</span>
+                <ul className={styles.problemList}>
+                  <li>Missed calls = lost money</li>
+                  <li>Messages scattered across platforms</li>
+                  <li>Slow follow-ups costing you clients</li>
+                  <li>Too many tools, not enough control</li>
+                </ul>
+              </div>
+              <div className={styles.solutionBlock}>
+                <span className="tag">The Solution</span>
+                <h2 id="solution-heading">Everything.<br />In One Place.</h2>
+                <p>The Hype Box brings your entire business into one system—so you never miss a lead, message, or opportunity again. From first contact to final payment, everything runs smoother, faster, and smarter.</p>
+                <ul className={styles.solutionList}>
+                  <li>One inbox for every message</li>
+                  <li>Every lead captured and followed up</li>
+                  <li>Instant responses, around the clock</li>
+                  <li>Full visibility from one dashboard</li>
+                </ul>
+              </div>
             </div>
-            <div className={styles.agentsGrid}>
-              {agents.map((agent, i) => (
-                <AgentCard key={i} {...agent} />
+          </div>
+        </section>
+
+        {/* CORE FEATURES */}
+        <section id="services" className="section" aria-labelledby="features-heading">
+          <div className="container">
+            <div className={styles.sectionHeaderCenter}>
+              <span className="tag">Tools</span>
+              <h2 id="features-heading">Powerful Tools. One System.</h2>
+            </div>
+            <div className={styles.featuresGrid}>
+              {features.map((feature, i) => (
+                <AgentCard key={i} {...feature} />
               ))}
             </div>
           </div>
@@ -114,31 +158,45 @@ export default function Home() {
         <section id="how" className="section" aria-labelledby="how-heading">
           <div className="container">
             <div className={styles.sectionHeaderCenter}>
-              <span className="tag">Setup</span>
-              <h2 id="how-heading">Live in 15 Minutes</h2>
-              <p>No technical setup. No lengthy onboarding. Just three steps.</p>
+              <span className="tag">How It Works</span>
+              <h2 id="how-heading">Simple. Fast. Powerful.</h2>
             </div>
             <div className={styles.howSteps}>
               <div className={styles.step}>
                 <div className={styles.stepNum} aria-hidden="true">01</div>
                 <h3 className={styles.stepTitle}>Connect Your Business</h3>
-                <p className={styles.stepDesc}>Link your calendar, phone number, and billing tools. We support the most common platforms out of the box.</p>
+                <p className={styles.stepDesc}>We set up your system and bring everything into one place.</p>
               </div>
               <div className={styles.step}>
                 <div className={styles.stepNum} aria-hidden="true">02</div>
-                <h3 className={styles.stepTitle}>Train Your Agents</h3>
-                <p className={styles.stepDesc}>Tell the agents about your business — hours, services, pricing, and common questions. Takes under 10 minutes.</p>
+                <h3 className={styles.stepTitle}>Automations Go Live</h3>
+                <p className={styles.stepDesc}>Your business starts responding, booking, and following up instantly.</p>
               </div>
               <div className={styles.step}>
                 <div className={styles.stepNum} aria-hidden="true">03</div>
-                <h3 className={styles.stepTitle}>Go Live</h3>
-                <p className={styles.stepDesc}>Flip the switch and your agents are on the job. Monitor everything from your dashboard in real time.</p>
+                <h3 className={styles.stepTitle}>Grow Without the Chaos</h3>
+                <p className={styles.stepDesc}>Capture more leads, close more deals, and stay in control.</p>
               </div>
             </div>
           </div>
         </section>
 
         <PricingSection />
+
+        {/* FINAL CTA */}
+        <section className={styles.ctaBand} aria-labelledby="cta-heading">
+          <div className="container">
+            <h2 id="cta-heading">Stop Missing Opportunities</h2>
+            <p style={{ color: 'var(--grey-300)', marginTop: '1rem', maxWidth: '480px', marginLeft: 'auto', marginRight: 'auto', fontSize: '0.95rem' }}>
+              Your next customer is already reaching out. Make sure you&apos;re ready to respond.
+            </p>
+            <div className={styles.ctaBandActions}>
+              <a href="#booking" className="btn btn-primary">Get Early Access</a>
+              <a href="#booking" className="btn btn-ghost">Book a Demo</a>
+            </div>
+          </div>
+        </section>
+
         <BookingSection />
       </main>
       <Footer />

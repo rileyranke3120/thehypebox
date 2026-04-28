@@ -779,6 +779,105 @@
   margin-bottom: 1rem;
 }
 
+/* --- Problem → Solution --- */
+.problemSolution {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5rem;
+  align-items: center;
+}
+
+.problems {
+  /* left column */
+}
+
+.problemList {
+  list-style: none;
+  margin-top: 2rem;
+}
+
+.problemList li {
+  font-size: 0.95rem;
+  color: var(--grey-300);
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--grey-700);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.problemList li::before {
+  content: '✗';
+  color: #FF5F57;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.solutionBlock .tag {
+  display: inline-block;
+  margin-bottom: 1.25rem;
+}
+
+.solutionBlock h2 {
+  margin-bottom: 1.25rem;
+}
+
+.solutionBlock p {
+  font-size: 0.9rem;
+  color: var(--grey-300);
+  line-height: 1.8;
+  margin-bottom: 0;
+}
+
+.solutionList {
+  list-style: none;
+  margin-top: 2rem;
+}
+
+.solutionList li {
+  font-size: 0.95rem;
+  color: var(--grey-300);
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--grey-700);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.solutionList li::before {
+  content: '✓';
+  color: var(--yellow);
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* --- Features grid (5 items) --- */
+.featuresGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1.25rem;
+  margin-top: 3rem;
+}
+
+/* --- Footer micro text --- */
+.footerMicro {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--grey-500);
+  letter-spacing: 0.05em;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--grey-700);
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 1200px) {
+  .featuresGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 /* --- Responsive --- */
 @media (max-width: 900px) {
   .heroInner {
@@ -817,6 +916,15 @@
   .footerBottom {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .problemSolution {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .featuresGrid {
+    grid-template-columns: 1fr;
   }
 
   .navLinks {

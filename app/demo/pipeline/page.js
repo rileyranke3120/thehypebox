@@ -31,26 +31,26 @@ function StatusBadge({ status = 'open' }) {
   return <span style={{ padding: '2px 9px', borderRadius: 3, background: c.bg, border: `1px solid ${c.border}`, color: c.color, fontSize: '0.68rem', fontFamily: S.heading, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{s}</span>;
 }
 
-// Peak Home Services — Columbus, OH — fake pipeline opportunities
+// ProCoat Columbus — Columbus, OH — fake pipeline opportunities
 const DEMO_OPPORTUNITIES = [
-  { id: 'o1',  name: 'Furnace Replacement',        contact: { name: 'James Patterson' }, status: 'open', monetaryValue: 4200, stage: { name: 'Quoted' },      closeDate: '2026-04-20' },
-  { id: 'o2',  name: 'HVAC System Install',         contact: { name: 'Greg Simmons' },    status: 'open', monetaryValue: 8500, stage: { name: 'Quoted' },      closeDate: '2026-04-25' },
-  { id: 'o3',  name: 'Water Heater Replacement',    contact: { name: 'Tom Lancaster' },   status: 'open', monetaryValue: 1800, stage: { name: 'Scheduled' },   closeDate: '2026-04-15' },
-  { id: 'o4',  name: 'Emergency Pipe Repair',       contact: { name: 'Diane Foster' },    status: 'open', monetaryValue: 650,  stage: { name: 'Scheduled' },   closeDate: '2026-04-14' },
-  { id: 'o5',  name: 'AC Unit Replacement',         contact: { name: 'Nathan Briggs' },   status: 'open', monetaryValue: 5600, stage: { name: 'New Lead' },    closeDate: '2026-05-01' },
-  { id: 'o6',  name: 'Duct Cleaning + Seal',        contact: { name: 'Chris Vargas' },    status: 'open', monetaryValue: 780,  stage: { name: 'Scheduled' },   closeDate: '2026-04-18' },
-  { id: 'o7',  name: 'Annual Maintenance Plan',     contact: { name: 'Rob Kim' },         status: 'open', monetaryValue: 320,  stage: { name: 'Quoted' },      closeDate: '2026-04-16' },
-  { id: 'o8',  name: 'Bathroom Plumbing Upgrade',   contact: { name: 'Stacy Mullins' },   status: 'open', monetaryValue: 2100, stage: { name: 'New Lead' },    closeDate: '2026-05-05' },
-  { id: 'o9',  name: 'Mini-Split Installation',     contact: { name: 'Carla Espinoza' },  status: 'open', monetaryValue: 3400, stage: { name: 'New Lead' },    closeDate: '2026-05-10' },
-  { id: 'o10', name: 'Furnace Tune-Up',             contact: { name: 'Mary Watkins' },    status: 'open', monetaryValue: 175,  stage: { name: 'Scheduled' },   closeDate: '2026-04-18' },
-  { id: 'o11', name: 'Full HVAC System',            contact: { name: 'Derek Owens' },     status: 'open', monetaryValue: 9800, stage: { name: 'Quoted' },      closeDate: '2026-04-30' },
-  { id: 'o12', name: 'Tankless Water Heater',       contact: { name: 'Frank Deluca' },    status: 'open', monetaryValue: 2900, stage: { name: 'New Lead' },    closeDate: '2026-05-08' },
-  { id: 'o13', name: 'AC Tune-Up',                  contact: { name: 'Sandra Hughes' },   status: 'won',  monetaryValue: 149,  stage: { name: 'Completed' },   closeDate: '2026-04-14' },
-  { id: 'o14', name: 'Water Heater Install',        contact: { name: 'Dave Reynolds' },   status: 'won',  monetaryValue: 1750, stage: { name: 'Completed' },   closeDate: '2026-04-10' },
-  { id: 'o15', name: 'Pipe Leak Fix',               contact: { name: 'Paula Bowen' },     status: 'won',  monetaryValue: 420,  stage: { name: 'Completed' },   closeDate: '2026-04-08' },
-  { id: 'o16', name: 'HVAC Inspection',             contact: { name: 'Lisa Chen' },       status: 'won',  monetaryValue: 99,   stage: { name: 'Completed' },   closeDate: '2026-04-05' },
-  { id: 'o17', name: 'Drain Cleaning',              contact: { name: 'Larry Baxter' },    status: 'lost', monetaryValue: 250,  stage: { name: 'Lost' },        closeDate: '2026-03-20' },
-  { id: 'o18', name: 'AC Install Quote',            contact: { name: 'Bret Sommers' },    status: 'lost', monetaryValue: 4500, stage: { name: 'Lost' },        closeDate: '2026-03-15' },
+  { id: 'o1',  name: 'Garage Floor Epoxy — 2-Car',     contact: { name: 'James Patterson' }, status: 'open', monetaryValue: 2400, stage: { name: 'Quoted' },      closeDate: '2026-04-20' },
+  { id: 'o2',  name: 'Commercial Floor Coating',        contact: { name: 'Greg Simmons' },    status: 'open', monetaryValue: 8800, stage: { name: 'Quoted' },      closeDate: '2026-04-25' },
+  { id: 'o3',  name: 'Garage Epoxy — 3-Car Metallic',  contact: { name: 'Tom Lancaster' },   status: 'open', monetaryValue: 3600, stage: { name: 'Scheduled' },   closeDate: '2026-04-15' },
+  { id: 'o4',  name: 'Patio Concrete Coating',         contact: { name: 'Diane Foster' },    status: 'open', monetaryValue: 1400, stage: { name: 'Scheduled' },   closeDate: '2026-04-14' },
+  { id: 'o5',  name: 'Driveway Polyaspartic Coating',  contact: { name: 'Nathan Briggs' },   status: 'open', monetaryValue: 1900, stage: { name: 'New Lead' },    closeDate: '2026-05-01' },
+  { id: 'o6',  name: 'Pool Deck Resurfacing',          contact: { name: 'Chris Vargas' },    status: 'open', monetaryValue: 2800, stage: { name: 'Scheduled' },   closeDate: '2026-04-18' },
+  { id: 'o7',  name: 'Basement Floor Polyaspartic',    contact: { name: 'Rob Kim' },         status: 'open', monetaryValue: 1600, stage: { name: 'Quoted' },      closeDate: '2026-04-16' },
+  { id: 'o8',  name: 'Garage Floor — Full Flake',      contact: { name: 'Stacy Mullins' },   status: 'open', monetaryValue: 2100, stage: { name: 'New Lead' },    closeDate: '2026-05-05' },
+  { id: 'o9',  name: 'Warehouse Epoxy Floor',          contact: { name: 'Carla Espinoza' },  status: 'open', monetaryValue: 6400, stage: { name: 'New Lead' },    closeDate: '2026-05-10' },
+  { id: 'o10', name: 'Driveway Sealer + Crack Fill',   contact: { name: 'Mary Watkins' },    status: 'open', monetaryValue: 850,  stage: { name: 'Scheduled' },   closeDate: '2026-04-18' },
+  { id: 'o11', name: 'Restaurant Kitchen Floor',       contact: { name: 'Derek Owens' },     status: 'open', monetaryValue: 5200, stage: { name: 'Quoted' },      closeDate: '2026-04-30' },
+  { id: 'o12', name: 'Garage Floor Epoxy — 1-Car',     contact: { name: 'Frank Deluca' },    status: 'open', monetaryValue: 1300, stage: { name: 'New Lead' },    closeDate: '2026-05-08' },
+  { id: 'o13', name: 'Patio Epoxy Coat',               contact: { name: 'Sandra Hughes' },   status: 'won',  monetaryValue: 1100, stage: { name: 'Completed' },   closeDate: '2026-04-14' },
+  { id: 'o14', name: 'Garage Floor — Metallic Epoxy',  contact: { name: 'Dave Reynolds' },   status: 'won',  monetaryValue: 2900, stage: { name: 'Completed' },   closeDate: '2026-04-10' },
+  { id: 'o15', name: 'Basement Floor Coating',         contact: { name: 'Paula Bowen' },     status: 'won',  monetaryValue: 1450, stage: { name: 'Completed' },   closeDate: '2026-04-08' },
+  { id: 'o16', name: 'Driveway Polyaspartic',          contact: { name: 'Lisa Chen' },       status: 'won',  monetaryValue: 1750, stage: { name: 'Completed' },   closeDate: '2026-04-05' },
+  { id: 'o17', name: 'Garage Floor Quote',             contact: { name: 'Larry Baxter' },    status: 'lost', monetaryValue: 2200, stage: { name: 'Lost' },        closeDate: '2026-03-20' },
+  { id: 'o18', name: 'Commercial Epoxy Floor',         contact: { name: 'Bret Sommers' },    status: 'lost', monetaryValue: 7500, stage: { name: 'Lost' },        closeDate: '2026-03-15' },
 ];
 
 export default function DemoPipelinePage() {
@@ -77,7 +77,7 @@ export default function DemoPipelinePage() {
     <div style={{ minHeight: '100vh', background: S.bg, fontFamily: S.body, color: S.text }}>
       {/* Demo banner */}
       <div style={{ background: '#F5C400', color: '#000', textAlign: 'center', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', padding: '5px 0' }}>
-        DEMO MODE — Peak Home Services, Columbus OH — No real data
+        DEMO MODE — ProCoat Columbus, Columbus OH — No real data
       </div>
 
       <div style={{ background: S.surface, borderBottom: `1px solid ${S.border}`, padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', gap: 14 }}>
