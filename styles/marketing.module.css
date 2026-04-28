@@ -939,3 +939,40 @@
     display: flex;
   }
 }
+
+/* About section */
+.aboutGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.aboutBlock {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 2rem;
+}
+
+.aboutBlock h3 {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--yellow);
+  margin-bottom: 1rem;
+}
+
+.aboutBlock p {
+  color: var(--grey-300);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+@media (max-width: 768px) {
+  .aboutGrid {
+    grid-template-columns: 1fr;
+  }
+}

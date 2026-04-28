@@ -5,6 +5,7 @@ import StatsBar from '@/components/StatsBar';
 import AgentCard from '@/components/AgentCard';
 import PricingSection from '@/components/PricingSection';
 import BookingSection from '@/components/BookingSection';
+import ContactSection from '@/components/ContactSection';
 import Footer from '@/components/Footer';
 import styles from '@/styles/marketing.module.css';
 
@@ -197,6 +198,31 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ABOUT / MISSION */}
+        <section id="about" className="section" style={{ background: '#0a0a0a' }}>
+          <div className="container">
+            <div className={styles.sectionHeaderCenter}>
+              <span className="tag">Who We Are</span>
+              <h2>Real AI. Real People. Real Results.</h2>
+            </div>
+            <div className={styles.aboutGrid}>
+              <div className={styles.aboutBlock}>
+                <h3>Our Mission</h3>
+                <p>TheHypeBox exists to level the playing field for local businesses. We build and run AI automation systems that give small business owners the same tools used by Fortune 500 companies — at a price that actually makes sense.</p>
+              </div>
+              <div className={styles.aboutBlock}>
+                <h3>Who We Help</h3>
+                <p>We work with local service businesses — plumbers, HVAC, electricians, roofers, salons, auto shops, restaurants, and more. If you're running a business and losing leads because you can't answer every call, we fix that.</p>
+              </div>
+              <div className={styles.aboutBlock}>
+                <h3>How We're Different</h3>
+                <p>We don't just hand you software and walk away. We build your system, configure your AI, and stay with you. US-based support. No long-term contracts. Cancel anytime.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <ContactSection />
         <BookingSection />
       </main>
       <Footer />
