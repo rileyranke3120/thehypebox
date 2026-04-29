@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import styles from '@/styles/marketing.module.css';
 
 export default function Footer() {
@@ -6,8 +7,8 @@ export default function Footer() {
     <footer className={styles.footer} role="contentinfo">
       <div className="container">
         <div className={styles.footerTop}>
-          <Link href="/" className={styles.footerLogo} aria-label="TheHypeBox — Home">
-            The<span>Hype</span>Box
+          <Link href="/" aria-label="TheHypeBox — Home">
+            <Image src="/logo.png" alt="The Hype Box" height={48} width={240} style={{ height: '48px', width: 'auto', display: 'block', mixBlendMode: 'screen' }} />
           </Link>
 
           <nav aria-label="Footer" className={styles.footerLinks}>

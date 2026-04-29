@@ -1,4 +1,5 @@
 import Script from 'next/script';
+import Image from 'next/image';
 import Nav from '@/components/Nav';
 import HeroPreview from '@/components/HeroPreview';
 import StatsBar from '@/components/StatsBar';
@@ -124,6 +125,15 @@ export default function Home() {
                   <li>Slow follow-ups costing you clients</li>
                   <li>Too many tools, not enough control</li>
                 </ul>
+              </div>
+              <div className={styles.mascotColumn}>
+                <Image
+                  src="/mascot.png"
+                  alt="The Hype Box mascot"
+                  width={180}
+                  height={220}
+                  style={{ width: '180px', height: 'auto', transform: 'scaleX(-1)', display: 'block' }}
+                />
               </div>
               <div className={styles.solutionBlock}>
                 <span className="tag">The Solution</span>

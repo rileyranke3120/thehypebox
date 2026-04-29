@@ -73,7 +73,7 @@ export default function HeroPreview() {
           aria-hidden="true"
           style={{ background: 'transparent', border: 'none', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
         >
-          <Image src="/logo.svg" alt="TheHypeBox Logo" height={80} width={80} style={{ height: '80px', marginBottom: '1rem', display: 'block', width: 'auto' }} />
+          <Image src="/logo.png" alt="TheHypeBox Logo" height={180} width={720} style={{ height: '180px', marginBottom: '1.5rem', display: 'block', width: 'auto', maxWidth: '100%', mixBlendMode: 'screen' }} priority />
 
           <style>{`
             .hbp-preview{font-family:'DM Sans',sans-serif;background:#111;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;width:100%;max-width:520px;box-shadow:0 24px 64px rgba(0,0,0,0.6);user-select:none;}

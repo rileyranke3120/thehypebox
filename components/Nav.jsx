@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import styles from '@/styles/marketing.module.css';
 
 const NAV_LINKS = [
@@ -33,8 +34,8 @@ export default function Nav() {
     <>
       <header className={`${styles.nav}${scrolled ? ' ' + styles.navScrolled : ''}`} role="banner">
         <div className={`container ${styles.navInner}`}>
-          <Link href="/" className={styles.navLogo} aria-label="TheHypeBox — Home">
-            The<span>Hype</span>Box
+          <Link href="/" aria-label="TheHypeBox — Home">
+            <Image src="/logo.png" alt="The Hype Box" height={44} width={220} style={{ height: '44px', width: 'auto', display: 'block', mixBlendMode: 'screen' }} priority />
           </Link>
 
           <nav aria-label="Primary">

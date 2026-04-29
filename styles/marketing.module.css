@@ -582,9 +582,12 @@
 }
 
 .pricingCardFeatures li::before {
-  content: '✓';
-  color: var(--yellow);
-  font-weight: 700;
+  content: '';
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background: url('/box-icon.png') no-repeat center / contain;
+  flex-shrink: 0;
 }
 
 .pricingCard .btn {
@@ -798,9 +801,16 @@
 /* --- Problem → Solution --- */
 .problemSolution {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5rem;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 3rem;
   align-items: center;
+}
+
+.mascotColumn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .problems {
@@ -862,10 +872,11 @@
 }
 
 .solutionList li::before {
-  content: '✓';
-  color: var(--yellow);
-  font-weight: 700;
-  font-size: 1rem;
+  content: '';
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  background: url('/box-icon.png') no-repeat center / contain;
   flex-shrink: 0;
 }
 
@@ -937,6 +948,10 @@
   .problemSolution {
     grid-template-columns: 1fr;
     gap: 2.5rem;
+  }
+
+  .mascotColumn {
+    display: none;
   }
 
   .featuresGrid {
