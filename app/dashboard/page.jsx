@@ -987,7 +987,9 @@ export default function DashboardPage() {
       {/* TOP BAR */}
       <header className={styles.topbar} role="banner">
         <div className={styles.topbarBrand}>
-          <Link href="/" className={styles.topbarLogo} aria-label="TheHypeBox — Back to site">THE<span>HYPE</span>BOX</Link>
+          <Link href="/" aria-label="TheHypeBox — Back to site">
+            <img src="/logo.png" alt="TheHypeBox" style={{ height: '36px', width: 'auto', display: 'block', mixBlendMode: 'screen' }} />
+          </Link>
           <span className={styles.topbarCc}>Command Center</span>
         </div>
         <div className={styles.topbarRight}>

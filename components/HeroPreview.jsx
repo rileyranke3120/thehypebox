@@ -62,8 +62,11 @@ export default function HeroPreview() {
             <a href="#booking" className="btn btn-ghost">Book a Demo</a>
           </div>
           <div className={styles.heroDemo}>
-            <Link href="/demo" className="btn btn-ghost">View Dashboard Demo →</Link>
-            <p className={styles.heroDemoNote}>See exactly what your clients will see</p>
+            <p className={styles.heroDemoBanner}>Try It Free for 14 Days — No Credit Card Required</p>
+            <Link href="/demo" className="btn btn-primary" style={{ fontSize: '1.1rem', padding: '1rem 2rem', fontWeight: 900 }}>
+              View Live Demo →
+            </Link>
+            <p className={styles.heroDemoNote}>Free trial available on all plans · Cancel anytime</p>
           </div>
         </div>
 

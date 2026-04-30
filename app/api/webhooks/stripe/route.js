@@ -1,44 +1,123 @@
 import { NextResponse } from 'next/server';
+import stripe from '@/lib/stripe';
 import { createClient } from '@/lib/supabase';
-import { sendSMS } from '@/lib/twilio';
 
-// NOTE: For production, install the `stripe` npm package and verify
-// the webhook signature using stripe.webhooks.constructEvent() with
-// STRIPE_WEBHOOK_SECRET to prevent spoofed requests.
+// Next.js must NOT parse the body — Stripe needs the raw bytes to verify signature
+export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
+  const sig = request.headers.get('stripe-signature');
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    console.error('[stripe webhook] STRIPE_WEBHOOK_SECRET is not set');
+    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+  }
+
+  const rawBody = await request.text();
+
+  let event;
   try {
-    const event = await request.json();
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+  } catch (err) {
+    console.error('[stripe webhook] Signature verification failed:', err.message);
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+  }
 
-    if (event.type !== 'checkout.session.completed') {
-      return NextResponse.json({ ok: true, skipped: true });
+  const supabase = createClient();
+
+  try {
+    switch (event.type) {
+
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated': {
+        const sub = event.data.object;
+        const customer = await stripe.customers.retrieve(sub.customer);
+        if (customer.deleted || !customer.email) break;
+
+        await supabase
+          .from('users')
+          .update({
+            plan_status: sub.status,
+            stripe_subscription_id: sub.id,
+            stripe_customer_id: sub.customer,
+            trial_ends_at: sub.trial_end
+              ? new Date(sub.trial_end * 1000).toISOString()
+              : null,
+          })
+          .eq('email', customer.email.toLowerCase());
+
+        console.log(`[stripe webhook] subscription ${sub.status} for ${customer.email}`);
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const sub = event.data.object;
+        const customer = await stripe.customers.retrieve(sub.customer);
+        if (customer.deleted || !customer.email) break;
+
+        await supabase
+          .from('users')
+          .update({ plan_status: 'canceled' })
+          .eq('email', customer.email.toLowerCase());
+
+        console.log(`[stripe webhook] subscription canceled for ${customer.email}`);
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object;
+        if (invoice.amount_paid === 0) break;
+
+        const customer = await stripe.customers.retrieve(invoice.customer);
+        if (customer.deleted || !customer.email) break;
+
+        await supabase
+          .from('users')
+          .update({ plan_status: 'active' })
+          .eq('email', customer.email.toLowerCase());
+
+        console.log(`[stripe webhook] payment succeeded for ${customer.email}`);
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object;
+        const customer = await stripe.customers.retrieve(invoice.customer);
+        if (customer.deleted || !customer.email) break;
+
+        await supabase
+          .from('users')
+          .update({ plan_status: 'past_due' })
+          .eq('email', customer.email.toLowerCase());
+
+        console.log(`[stripe webhook] payment failed for ${customer.email}`);
+        break;
+      }
+
+      case 'setup_intent.succeeded': {
+        const si = event.data.object;
+        if (!si.customer) break;
+
+        const customer = await stripe.customers.retrieve(si.customer);
+        if (customer.deleted || !customer.email) break;
+
+        await supabase
+          .from('users')
+          .update({ plan_status: 'trialing' })
+          .eq('email', customer.email.toLowerCase());
+
+        console.log(`[stripe webhook] setup confirmed, trial live for ${customer.email}`);
+        break;
+      }
+
+      default:
+        break;
     }
 
-    const session = event.data?.object;
-    const email = session?.customer_details?.email || session?.customer_email || null;
-    const name = session?.customer_details?.name || null;
-    const phone = session?.customer_details?.phone || null;
-
-    if (!email) {
-      return NextResponse.json({ ok: false, error: 'No customer email in session' }, { status: 400 });
-    }
-
-    const supabase = createClient();
-    await supabase.from('users').upsert(
-      { email, name, plan: 'starter', created_at: new Date().toISOString() },
-      { onConflict: 'email' }
-    );
-
-    if (phone) {
-      await sendSMS(
-        phone,
-        "Welcome to TheHypeBox! Your account is ready. Log in at thehypeboxllc.com/login — Alex is already set up and answering your calls!"
-      );
-    }
-
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    console.error('[stripe webhook]', error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, type: event.type });
+  } catch (err) {
+    console.error('[stripe webhook] handler error:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

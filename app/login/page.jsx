@@ -11,7 +11,7 @@ export default function LoginPage() {
       <aside className={styles.loginBrand} aria-hidden="true">
         <div className={styles.loginBrandInner}>
           <div className={styles.loginBrandLogo}>
-            <Image src="/logo.svg" alt="TheHypeBox" height={56} width={56} style={{ display: 'block', height: '56px', width: 'auto' }} />
+            <Image src="/logo.png" alt="TheHypeBox" height={56} width={280} style={{ display: 'block', height: '56px', width: 'auto', mixBlendMode: 'screen' }} />
           </div>
           <p className={styles.loginBrandTagline}>Real AI, Real People,<br />Real Results</p>
           <ul className={styles.loginBrandFeatures}>

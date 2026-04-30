@@ -34,9 +34,9 @@ const FoundersIcon = () => (
 
 const PLANS = [
   {
-    name: 'Launch Box',
+    slug: 'launch',
+    name: 'The Launch Box',
     Icon: LaunchIcon,
-    iconColor: '#FFD000',
     tagline: 'Start strong with the essentials',
     price: '97',
     period: '/mo',
@@ -47,58 +47,62 @@ const PLANS = [
       'Basic automation (instant responses)',
       'Appointment scheduling',
     ],
-    cta: 'Start Here',
+    cta: 'Start Free Trial',
+    href: '/checkout?plan=launch',
     featured: false,
   },
   {
-    name: 'Rocket Box',
+    slug: 'rocket',
+    name: 'The Rocket Box',
     Icon: RocketIcon,
-    iconColor: '#378ADD',
     tagline: 'Grow faster with more firepower',
     price: '297',
     period: '/mo',
     features: [
-      'Everything in Launch Box',
+      'Everything in The Launch Box',
       'Advanced automation workflows',
       'Lead capture funnels',
       'AI-assisted responses',
       'Review & reputation tools',
     ],
-    cta: 'Start Growing',
+    cta: 'Start Free Trial',
+    href: '/checkout?plan=rocket',
     featured: false,
   },
   {
-    name: 'Velocity Box',
+    slug: 'velocity',
+    name: 'The Velocity Box',
     Icon: VelocityIcon,
-    iconColor: '#1D9E75',
     tagline: 'Full automation, full speed ahead',
     price: '497',
     period: '/mo',
     badge: 'Most Popular',
     features: [
-      'Everything in Rocket Box',
+      'Everything in The Rocket Box',
       'AI phone receptionist',
       'Full pipeline tracking',
       'Team access + workflows',
       'Priority support',
     ],
-    cta: 'Go Full Speed',
+    cta: 'Start Free Trial',
+    href: '/checkout?plan=velocity',
     featured: true,
   },
   {
+    slug: 'founders',
     name: 'Founders Box',
     Icon: FoundersIcon,
-    iconColor: '#7B2FFF',
     tagline: 'Go all in. Run your business like an empire.',
     callPrice: true,
     features: [
-      'Everything in Velocity Box',
+      'Everything in The Velocity Box',
       'Custom AI agent build-out',
       'Deep analytics & reporting',
       'Dedicated account manager',
       'White-glove onboarding',
     ],
-    cta: 'Go All In',
+    cta: 'Book a Call',
+    href: '/demo',
     featured: false,
   },
 ];
@@ -110,6 +114,9 @@ export default function PricingSection() {
         <div className={styles.sectionHeaderCenter}>
           <span className="tag">Pricing</span>
           <h2 id="pricing-heading">Choose Your Level</h2>
+          <p className={styles.freeTrialBadge}>
+            <strong>Free 14-Day Trial on All Plans</strong> — No credit card required
+          </p>
         </div>
 
         <div className={styles.pricingGrid}>
@@ -130,7 +137,7 @@ export default function PricingSection() {
                 <p className={styles.pricingCardTagline}>{plan.tagline}</p>
                 <div className={styles.pricingCardPrice}>
                   {plan.callPrice ? (
-                    <span style={{ fontSize: '1.75rem' }}>Reach Out</span>
+                    <span style={{ fontSize: '1.75rem' }}>Book a Call</span>
                   ) : (
                     <><sup>$</sup>{plan.price}</>
                   )}
@@ -143,15 +150,21 @@ export default function PricingSection() {
                     <li key={f}>{f}</li>
                   ))}
                 </ul>
-                <a href="#booking" className={`btn ${plan.featured ? 'btn-primary' : 'btn-ghost'}`}>
+                <a href={plan.href} className={`btn ${plan.featured ? 'btn-primary' : 'btn-ghost'}`}>
                   {plan.cta}
                 </a>
+                {!plan.callPrice && (
+                  <p className={styles.pricingCardTrialNote}>14-day free trial · No credit card needed</p>
+                )}
+                {plan.callPrice && (
+                  <p className={styles.pricingCardTrialNote}>Includes free trial period</p>
+                )}
               </div>
             );
           })}
         </div>
 
-        <p style={{ textAlign: 'center', fontSize: '0.82rem', color: 'var(--grey-500)', marginTop: '2rem', letterSpacing: '0.05em' }}>
+        <p style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--grey-500)', marginTop: '2rem', letterSpacing: '0.05em' }}>
           No contracts · No hidden fees · Cancel anytime
         </p>
       </div>

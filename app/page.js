@@ -171,22 +171,23 @@ export default function Home() {
             <div className={styles.sectionHeaderCenter}>
               <span className="tag">How It Works</span>
               <h2 id="how-heading">Simple. Fast. Powerful.</h2>
+              <p style={{ marginTop: '0.75rem', fontSize: '1rem', color: 'var(--yellow)', fontWeight: 700 }}>Start your free 14-day trial — up and running in under an hour.</p>
             </div>
             <div className={styles.howSteps}>
               <div className={styles.step}>
                 <div className={styles.stepNum} aria-hidden="true">01</div>
-                <h3 className={styles.stepTitle}>Connect Your Business</h3>
-                <p className={styles.stepDesc}>We set up your system and bring everything into one place.</p>
+                <h3 className={styles.stepTitle}>Start Your Free Trial</h3>
+                <p className={styles.stepDesc}>No credit card needed. We set up your system and bring everything into one place — same day.</p>
               </div>
               <div className={styles.step}>
                 <div className={styles.stepNum} aria-hidden="true">02</div>
                 <h3 className={styles.stepTitle}>Automations Go Live</h3>
-                <p className={styles.stepDesc}>Your business starts responding, booking, and following up instantly.</p>
+                <p className={styles.stepDesc}>Your business starts responding, booking, and following up instantly — 24/7, even while you&apos;re on the job.</p>
               </div>
               <div className={styles.step}>
                 <div className={styles.stepNum} aria-hidden="true">03</div>
                 <h3 className={styles.stepTitle}>Grow Without the Chaos</h3>
-                <p className={styles.stepDesc}>Capture more leads, close more deals, and stay in control.</p>
+                <p className={styles.stepDesc}>Capture more leads, close more deals, and stay in control. Keep it if it works — cancel anytime if it doesn&apos;t.</p>
               </div>
             </div>
           </div>
@@ -198,13 +199,14 @@ export default function Home() {
         <section className={styles.ctaBand} aria-labelledby="cta-heading">
           <div className="container">
             <h2 id="cta-heading">Stop Missing Opportunities</h2>
-            <p style={{ color: 'var(--grey-300)', marginTop: '1rem', maxWidth: '480px', marginLeft: 'auto', marginRight: 'auto', fontSize: '0.95rem' }}>
-              Your next customer is already reaching out. Make sure you&apos;re ready to respond.
+            <p style={{ color: 'var(--grey-300)', marginTop: '1rem', maxWidth: '480px', marginLeft: 'auto', marginRight: 'auto', fontSize: '1rem' }}>
+              Your next customer is already reaching out. Start your free 14-day trial and make sure you&apos;re ready to respond.
             </p>
             <div className={styles.ctaBandActions}>
-              <a href="#booking" className="btn btn-primary">Get Early Access</a>
-              <a href="#booking" className="btn btn-ghost">Book a Demo</a>
+              <a href="#contact" className="btn btn-primary">Start Free Trial</a>
+              <a href="/demo" className="btn btn-ghost">View Live Demo</a>
             </div>
+            <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--grey-500)' }}>No credit card required · Cancel anytime</p>
           </div>
         </section>
 

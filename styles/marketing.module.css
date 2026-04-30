@@ -213,7 +213,7 @@
 }
 
 .heroSub {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   max-width: 480px;
   margin-bottom: 2.5rem;
   color: var(--grey-300);
@@ -229,11 +229,26 @@
   margin-top: 1.25rem;
 }
 
+.heroDemoBanner {
+  display: inline-block;
+  background: rgba(255, 208, 0, 0.1);
+  border: 1px solid rgba(255, 208, 0, 0.3);
+  color: var(--yellow);
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+}
+
 .heroDemoNote {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: var(--grey-500);
   margin-top: 0.5rem;
-  line-height: 1;
+  line-height: 1.4;
 }
 
 /* Hero terminal widget */
@@ -382,9 +397,12 @@
 }
 
 .agentCardFeatures li::before {
-  content: '→';
-  color: var(--yellow);
-  font-size: 0.7rem;
+  content: '';
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  background: url('/box-icon.png') no-repeat center / contain;
+  flex-shrink: 0;
 }
 
 /* --- How it works --- */
@@ -789,6 +807,19 @@
   text-align: center;
 }
 
+.freeTrialBadge {
+  margin-top: 0.75rem;
+  font-size: 1rem;
+  color: var(--yellow);
+}
+
+.pricingCardTrialNote {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--grey-500);
+  margin-top: 0.6rem;
+}
+
 .sectionHeader .tag {
   margin-bottom: 1rem;
   display: inline-block;
@@ -1002,12 +1033,25 @@
   line-height: 1.7;
 }
 
+.contactGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: start;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
 @media (max-width: 768px) {
   .aboutGrid {
     grid-template-columns: 1fr;
   }
 
   .pricingGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .contactGrid {
     grid-template-columns: 1fr;
   }
 }

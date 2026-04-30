@@ -9,7 +9,8 @@ const NAV_LINKS = [
   { href: '#services', label: 'Services' },
   { href: '#how', label: 'How It Works' },
   { href: '#pricing', label: 'Pricing' },
-  { href: '#booking', label: 'Book a Call' },
+  { href: '/demo', label: 'Demo' },
+  { href: '#contact', label: 'Contact Us' },
 ];
 
 export default function Nav() {
@@ -48,7 +49,7 @@ export default function Nav() {
 
           <div className={styles.navCta}>
             <Link href="/login" className="btn btn-ghost">Log In</Link>
-            <a href="#booking" className="btn btn-primary">Book Free Call</a>
+            <a href="#contact" className="btn btn-primary">Start Free Trial</a>
           </div>
 
           {/* Hamburger — mobile only */}
@@ -81,8 +82,8 @@ export default function Nav() {
           </ul>
         </nav>
         <div className={styles.mobileDrawerCta}>
-          <a href="#booking" className="btn btn-primary" onClick={close} style={{ width: '100%', justifyContent: 'center' }}>
-            Book Free Call
+          <a href="#contact" className="btn btn-primary" onClick={close} style={{ width: '100%', justifyContent: 'center' }}>
+            Start Free Trial
           </a>
           <Link href="/login" className="btn btn-ghost" onClick={close} style={{ width: '100%', justifyContent: 'center' }}>
             Log In
