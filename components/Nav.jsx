@@ -49,7 +49,6 @@ export default function Nav() {
 
           <div className={styles.navCta}>
             <Link href="/login" className="btn btn-ghost">Log In</Link>
-            <a href="#contact" className="btn btn-primary">Start Free Trial</a>
           </div>
 
           {/* Hamburger — mobile only */}
@@ -82,9 +81,6 @@ export default function Nav() {
           </ul>
         </nav>
         <div className={styles.mobileDrawerCta}>
-          <a href="#contact" className="btn btn-primary" onClick={close} style={{ width: '100%', justifyContent: 'center' }}>
-            Start Free Trial
-          </a>
           <Link href="/login" className="btn btn-ghost" onClick={close} style={{ width: '100%', justifyContent: 'center' }}>
             Log In
           </Link>

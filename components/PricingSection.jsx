@@ -1,4 +1,5 @@
 import styles from '@/styles/marketing.module.css';
+import TrialButton from './TrialButton';
 
 const LaunchIcon = () => (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
@@ -150,9 +151,13 @@ export default function PricingSection() {
                     <li key={f}>{f}</li>
                   ))}
                 </ul>
-                <a href={plan.href} className={`btn ${plan.featured ? 'btn-primary' : 'btn-ghost'}`}>
-                  {plan.cta}
-                </a>
+                {plan.callPrice ? (
+                  <a href={plan.href} className="btn btn-ghost">{plan.cta}</a>
+                ) : (
+                  <TrialButton plan={plan.slug} className={`btn ${plan.featured ? 'btn-primary' : 'btn-ghost'}`}>
+                    {plan.cta}
+                  </TrialButton>
+                )}
                 {!plan.callPrice && (
                   <p className={styles.pricingCardTrialNote}>14-day free trial · No credit card needed</p>
                 )}

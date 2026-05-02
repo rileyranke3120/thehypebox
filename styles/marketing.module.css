@@ -174,7 +174,7 @@
   min-height: 100vh;
   display: flex;
   align-items: center;
-  padding: 8rem 0 5rem;
+  padding: 5rem 0 5rem;
   position: relative;
   overflow: hidden;
 }
@@ -231,6 +231,7 @@
 
 .heroDemoBanner {
   display: inline-block;
+  margin-top: 1.25rem;
   background: rgba(255, 208, 0, 0.1);
   border: 1px solid rgba(255, 208, 0, 0.3);
   color: var(--yellow);

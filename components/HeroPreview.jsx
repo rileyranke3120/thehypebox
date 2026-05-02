@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import styles from '@/styles/marketing.module.css';
+import TrialButton from './TrialButton';
 
 export default function HeroPreview() {
   const callsRef = useRef(null);
@@ -49,23 +50,22 @@ export default function HeroPreview() {
       <div className={`container ${styles.heroInner}`}>
         <div className={styles.heroCopy}>
           <h1 id="hero-headline" className={styles.heroHeadline}>
-            Run Your Entire Business<br />
-            From <em>One System</em>
+            AI-Powered Tools.<br />
+            <em>One System.</em>
           </h1>
           <p className={styles.heroSub}>
             CRM, communication, automation, and AI — all in one place.
             No more missed calls. No more lost leads. Just a smarter
-            way to operate.
+            way to run your business.
           </p>
-          <div className={styles.heroActions}>
-            <a href="#booking" className="btn btn-primary">Get Early Access</a>
-            <a href="#booking" className="btn btn-ghost">Book a Demo</a>
-          </div>
           <div className={styles.heroDemo}>
+            <div className={styles.heroActions}>
+              <TrialButton style={{ fontSize: '1.1rem', padding: '1rem 2rem', fontWeight: 900 }}>Start Free Trial</TrialButton>
+              <Link href="/demo" className="btn btn-ghost" style={{ fontSize: '1.1rem', padding: '1rem 2rem', fontWeight: 900 }}>
+                View Live Demo →
+              </Link>
+            </div>
             <p className={styles.heroDemoBanner}>Try It Free for 14 Days — No Credit Card Required</p>
-            <Link href="/demo" className="btn btn-primary" style={{ fontSize: '1.1rem', padding: '1rem 2rem', fontWeight: 900 }}>
-              View Live Demo →
-            </Link>
             <p className={styles.heroDemoNote}>Free trial available on all plans · Cancel anytime</p>
           </div>
         </div>
@@ -74,9 +74,9 @@ export default function HeroPreview() {
           className={styles.heroVisual}
           role="presentation"
           aria-hidden="true"
-          style={{ background: 'transparent', border: 'none', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+          style={{ background: 'transparent', border: 'none', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: '0' }}
         >
-          <Image src="/logo.png" alt="TheHypeBox Logo" height={260} width={1040} style={{ height: '260px', marginBottom: '1.5rem', display: 'block', width: 'auto', maxWidth: '100%', mixBlendMode: 'screen' }} priority />
+          <Image src="/logo.png" alt="TheHypeBox Logo" height={300} width={1200} style={{ height: '300px', marginBottom: '1rem', marginTop: '-1rem', display: 'block', width: 'auto', maxWidth: '100%', mixBlendMode: 'screen' }} priority />
 
           <style>{`
             .hbp-preview{font-family:'DM Sans',sans-serif;background:#111;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;width:100%;max-width:520px;box-shadow:0 24px 64px rgba(0,0,0,0.6);user-select:none;}

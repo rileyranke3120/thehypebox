@@ -1,6 +1,7 @@
 import Script from 'next/script';
 import Image from 'next/image';
 import Nav from '@/components/Nav';
+import TrialButton from '@/components/TrialButton';
 import HeroPreview from '@/components/HeroPreview';
 import StatsBar from '@/components/StatsBar';
 import AgentCard from '@/components/AgentCard';
@@ -202,7 +203,7 @@ export default function Home() {
               Your next customer is already reaching out. Start your free 14-day trial and make sure you&apos;re ready to respond.
             </p>
             <div className={styles.ctaBandActions}>
-              <a href="#contact" className="btn btn-primary">Start Free Trial</a>
+              <TrialButton>Start Free Trial</TrialButton>
               <a href="/demo" className="btn btn-ghost">View Live Demo</a>
             </div>
             <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--grey-500)' }}>No credit card required · Cancel anytime</p>
