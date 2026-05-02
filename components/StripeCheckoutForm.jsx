@@ -89,6 +89,7 @@ function CardForm({ plan, email, name, subscriptionId, onError }) {
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('Processing…');
+  const [cardReady, setCardReady] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -148,7 +149,7 @@ function CardForm({ plan, email, name, subscriptionId, onError }) {
       <div>
         <label style={fieldLabel}>Card Number</label>
         <div style={fieldBox}>
-          <CardNumberElement options={{ ...CARD_STYLE, showIcon: true }} />
+          <CardNumberElement options={{ ...CARD_STYLE, showIcon: true }} onReady={() => setCardReady(true)} />
         </div>
       </div>
 
@@ -169,11 +170,11 @@ function CardForm({ plan, email, name, subscriptionId, onError }) {
 
       <button
         type="submit"
-        disabled={!stripe || loading}
+        disabled={!stripe || loading || !cardReady}
         className="btn btn-primary"
         style={{ width: '100%', justifyContent: 'center', opacity: loading ? 0.7 : 1, fontSize: '1rem', padding: '1rem' }}
       >
-        {loading ? loadingMsg : 'Start My Free Trial →'}
+        {loading ? loadingMsg : cardReady ? 'Start My Free Trial →' : 'Loading…'}
       </button>
 
       <p style={{ textAlign: 'center', fontSize: '0.82rem', color: '#666', lineHeight: 1.5 }}>
