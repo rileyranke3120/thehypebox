@@ -91,30 +91,46 @@ function CardForm({ plan, email, name, clientSecret, onError }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!stripe || !elements) return;
+    if (!stripe || !elements) {
+      onError('Payment not ready — please refresh and try again.');
+      return;
+    }
 
     setLoading(true);
     onError('');
 
-    const cardNumberElement = elements.getElement(CardNumberElement);
-    const { error } = await stripe.confirmCardSetup(clientSecret, {
-      payment_method: {
-        card: cardNumberElement,
-        billing_details: { name, email },
-      },
-    });
+    try {
+      const cardNumberElement = elements.getElement(CardNumberElement);
+      if (!cardNumberElement) {
+        onError('Card fields not ready — please refresh and try again.');
+        setLoading(false);
+        return;
+      }
 
-    if (error) {
-      onError(error.message || 'Card setup failed. Please try again.');
+      const { error, setupIntent } = await stripe.confirmCardSetup(clientSecret, {
+        payment_method: {
+          card: cardNumberElement,
+          billing_details: { name, email },
+        },
+      });
+
+      if (error) {
+        onError(error.message || 'Card setup failed. Please try again.');
+        setLoading(false);
+      } else if (setupIntent) {
+        fetch('/api/checkout/finalize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, name, plan }),
+        }).catch(() => {});
+        window.location.href = `${window.location.origin}/trial-confirmed?plan=${plan}`;
+      } else {
+        onError('Unexpected response from Stripe. Please try again.');
+        setLoading(false);
+      }
+    } catch (err) {
+      onError(err.message || 'Something went wrong. Please try again.');
       setLoading(false);
-    } else {
-      // Fire finalize in background — don't block redirect on email sending
-      fetch('/api/checkout/finalize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, plan }),
-      }).catch(() => {});
-      window.location.href = `${window.location.origin}/trial-confirmed?plan=${plan}`;
     }
   }
 
