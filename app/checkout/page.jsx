@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -44,7 +45,7 @@ const PLANS = {
   },
 };
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const searchParams = useSearchParams();
   const plan = searchParams.get('plan');
   const planData = PLANS[plan];
@@ -95,10 +96,10 @@ export default function CheckoutPage() {
             <span style={{ color: '#666', fontSize: '0.95rem' }}>{planData.period} after trial</span>
           </div>
 
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {planData.features.map((f) => (
-              <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.95rem', color: '#ccc' }}>
-                <span style={{ color: '#FFD000', fontWeight: 700, flexShrink: 0 }}>✓</span>
+              <li key={f} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1rem', color: '#ccc' }}>
+                <img src="/box-icon.png" alt="" style={{ width: '26px', height: '26px', objectFit: 'contain', flexShrink: 0 }} />
                 {f}
               </li>
             ))}
@@ -136,5 +137,13 @@ export default function CheckoutPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0a0a0a' }} />}>
+      <CheckoutContent />
+    </Suspense>
   );
 }

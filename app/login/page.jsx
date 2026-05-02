@@ -15,10 +15,10 @@ export default function LoginPage() {
           </div>
           <p className={styles.loginBrandTagline}>Real AI, Real People,<br />Real Results</p>
           <ul className={styles.loginBrandFeatures}>
-            <li><span className={styles.loginBrandCheck}>✓</span> AI Receptionist</li>
-            <li><span className={styles.loginBrandCheck}>✓</span> Website Chatbot</li>
-            <li><span className={styles.loginBrandCheck}>✓</span> Lead Follow-Up Automation</li>
-            <li><span className={styles.loginBrandCheck}>✓</span> Professional Website</li>
+            <li><img src="/box-icon.png" alt="" className={styles.loginBrandBox} /> AI Receptionist</li>
+            <li><img src="/box-icon.png" alt="" className={styles.loginBrandBox} /> Website Chatbot</li>
+            <li><img src="/box-icon.png" alt="" className={styles.loginBrandBox} /> Lead Follow-Up Automation</li>
+            <li><img src="/box-icon.png" alt="" className={styles.loginBrandBox} /> Professional Website</li>
           </ul>
         </div>
       </aside>

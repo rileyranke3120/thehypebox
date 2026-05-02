@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -10,7 +11,7 @@ const PLAN_LABELS = {
   velocity: 'The Velocity Box',
 };
 
-export default function TrialConfirmedPage() {
+function TrialConfirmedContent() {
   const searchParams = useSearchParams();
   const plan = searchParams.get('plan');
   const planLabel = PLAN_LABELS[plan] || 'Your Plan';
@@ -49,9 +50,9 @@ export default function TrialConfirmedPage() {
           What Happens Next
         </h3>
         {[
-          "Check your email for a confirmation",
-          "We'll reach out within 24 hours to onboard you",
-          "Your system goes live — same day",
+          "Check your email — your login credentials are in your inbox",
+          "Log in to your dashboard and explore your system",
+          "We'll reach out within 24 hours to finish your setup",
           "No charge for 14 days. Cancel anytime.",
         ].map((step) => (
           <div key={step} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', textAlign: 'left' }}>
@@ -67,5 +68,13 @@ export default function TrialConfirmedPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function TrialConfirmedPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0a0a0a' }} />}>
+      <TrialConfirmedContent />
+    </Suspense>
   );
 }

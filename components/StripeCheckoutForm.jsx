@@ -52,15 +52,16 @@ const inputStyle = {
   boxSizing: 'border-box',
 };
 
-// Inner form — rendered inside <Elements>, so useStripe/useElements work here
-function CardForm({ plan, onError }) {
+// Inner form — must live inside <Elements>
+function CardForm({ plan, email, name, onError }) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!stripe || !elements) return;
+    if (!stripe || !elements || !ready) return;
 
     setLoading(true);
     onError('');
@@ -69,32 +70,38 @@ function CardForm({ plan, onError }) {
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/trial-confirmed?plan=${plan}`,
+        payment_method_data: {
+          billing_details: { name, email },
+        },
       },
+      redirect: 'if_required',
     });
 
-    // Only reaches here on error — Stripe redirects on success
     if (error) {
       onError(error.message || 'Card setup failed. Please try again.');
+      setLoading(false);
+    } else {
+      // Create account and send welcome email
+      await fetch('/api/checkout/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name, plan }),
+      });
+      window.location.href = `${window.location.origin}/trial-confirmed?plan=${plan}`;
     }
-    setLoading(false);
   }
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <PaymentElement
-        options={{
-          layout: 'tabs',
-          fields: { billingDetails: { address: 'never' } },
-        }}
-      />
+      <PaymentElement onReady={() => setReady(true)} />
 
       <button
         type="submit"
-        disabled={!stripe || loading}
+        disabled={!stripe || !ready || loading}
         className="btn btn-primary"
-        style={{ width: '100%', justifyContent: 'center', opacity: loading ? 0.7 : 1, fontSize: '1rem', padding: '1rem' }}
+        style={{ width: '100%', justifyContent: 'center', opacity: (!ready || loading) ? 0.7 : 1, fontSize: '1rem', padding: '1rem' }}
       >
-        {loading ? 'Processing…' : 'Start My Free Trial →'}
+        {loading ? 'Processing…' : ready ? 'Start My Free Trial →' : 'Loading…'}
       </button>
 
       <p style={{ textAlign: 'center', fontSize: '0.82rem', color: '#666', lineHeight: 1.5 }}>
@@ -106,7 +113,7 @@ function CardForm({ plan, onError }) {
 }
 
 export default function StripeCheckoutForm({ plan, planLabel, price }) {
-  const [step, setStep] = useState('info');   // 'info' | 'payment'
+  const [step, setStep] = useState('info');
   const [info, setInfo] = useState({ name: '', email: '' });
   const [clientSecret, setClientSecret] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -143,7 +150,7 @@ export default function StripeCheckoutForm({ plan, planLabel, price }) {
     setLoading(false);
   }
 
-  // Step 1: collect name + email
+  // Step 1: name + email
   if (step === 'info') {
     return (
       <form onSubmit={handleInfoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -195,7 +202,7 @@ export default function StripeCheckoutForm({ plan, planLabel, price }) {
     );
   }
 
-  // Step 2: Stripe PaymentElement
+  // Step 2: payment
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px', padding: '14px', background: '#0a0a0a', border: '1px solid #222', borderRadius: '4px' }}>
@@ -217,7 +224,12 @@ export default function StripeCheckoutForm({ plan, planLabel, price }) {
         stripe={stripePromise}
         options={{ clientSecret, appearance: STRIPE_APPEARANCE }}
       >
-        <CardForm plan={plan} onError={setError} />
+        <CardForm
+          plan={plan}
+          email={info.email}
+          name={info.name}
+          onError={setError}
+        />
       </Elements>
     </div>
   );

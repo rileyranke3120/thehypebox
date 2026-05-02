@@ -5,7 +5,6 @@ import HeroPreview from '@/components/HeroPreview';
 import StatsBar from '@/components/StatsBar';
 import AgentCard from '@/components/AgentCard';
 import PricingSection from '@/components/PricingSection';
-import BookingSection from '@/components/BookingSection';
 import ContactSection from '@/components/ContactSection';
 import Footer from '@/components/Footer';
 import styles from '@/styles/marketing.module.css';
@@ -235,7 +234,6 @@ export default function Home() {
         </section>
 
         <ContactSection />
-        <BookingSection />
       </main>
       <Footer />
     </>

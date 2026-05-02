@@ -74,7 +74,7 @@ export default function ContactSection() {
               <div>
                 <p style={{ fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey-500)', marginBottom: '4px' }}>Email</p>
                 <a href="mailto:riley@thehypeboxllc.com" style={{ display: 'block', fontSize: '1rem', color: 'var(--yellow)', marginBottom: '4px' }}>riley@thehypeboxllc.com</a>
-                <a href="mailto:barry@thehypeboxllc.com" style={{ display: 'block', fontSize: '1rem', color: 'var(--yellow)' }}>barry@thehypeboxllc.com</a>
+                <a href="mailto:denny@thehypeboxllc.com" style={{ display: 'block', fontSize: '1rem', color: 'var(--yellow)' }}>denny@thehypeboxllc.com</a>
               </div>
             </div>
 
@@ -82,7 +82,7 @@ export default function ContactSection() {
             <div style={{ marginTop: '2.5rem' }}>
               <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.1rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--yellow)', marginBottom: '1.25rem' }}>The Team</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {['Riley — Developer & Co-Founder', 'Barry — Strategy & Co-Founder'].map((name) => (
+                {['Riley — Developer & Co-Founder', 'Denny — Strategy & Co-Founder', 'Barry — Project Manager'].map((name) => (
                   <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: '#111', border: '1px solid #222', borderRadius: '8px' }}>
                     <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#1a1500', border: '1px solid var(--yellow)', flexShrink: 0 }} />
                     <div>
