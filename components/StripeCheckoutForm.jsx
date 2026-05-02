@@ -84,7 +84,7 @@ const fieldLabel = {
 };
 
 // Inner form — must live inside <Elements>
-function CardForm({ plan, email, name, clientSecret, onError }) {
+function CardForm({ plan, email, name, subscriptionId, onError }) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -107,27 +107,34 @@ function CardForm({ plan, email, name, clientSecret, onError }) {
         return;
       }
 
-      const { error, setupIntent } = await stripe.confirmCardSetup(clientSecret, {
-        payment_method: {
-          card: cardNumberElement,
-          billing_details: { name, email },
-        },
+      // Step 1: create a PaymentMethod from the card — simple, no 3DS, no hanging
+      const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: cardNumberElement,
+        billing_details: { name, email },
       });
 
-      if (error) {
-        onError(error.message || 'Card setup failed. Please try again.');
+      if (pmError) {
+        onError(pmError.message || 'Invalid card details. Please try again.');
         setLoading(false);
-      } else if (setupIntent) {
-        fetch('/api/checkout/finalize', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name, plan }),
-        }).catch(() => {});
-        window.location.href = `${window.location.origin}/trial-confirmed?plan=${plan}`;
-      } else {
-        onError('Unexpected response from Stripe. Please try again.');
-        setLoading(false);
+        return;
       }
+
+      // Step 2: confirm server-side and create account
+      const res = await fetch('/api/checkout/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentMethodId: paymentMethod.id, subscriptionId, email, name, plan }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        onError(data.error || 'Something went wrong. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      window.location.href = `${window.location.origin}/trial-confirmed?plan=${plan}`;
     } catch (err) {
       onError(err.message || 'Something went wrong. Please try again.');
       setLoading(false);
@@ -179,6 +186,7 @@ export default function StripeCheckoutForm({ plan, planLabel, price }) {
   const [step, setStep] = useState('info');
   const [info, setInfo] = useState({ name: '', email: '' });
   const [clientSecret, setClientSecret] = useState(null);
+  const [subscriptionId, setSubscriptionId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -206,6 +214,7 @@ export default function StripeCheckoutForm({ plan, planLabel, price }) {
       }
 
       setClientSecret(data.clientSecret);
+      setSubscriptionId(data.subscriptionId);
       setStep('payment');
     } catch {
       setError('Network error — please try again.');
@@ -291,7 +300,7 @@ export default function StripeCheckoutForm({ plan, planLabel, price }) {
           plan={plan}
           email={info.email}
           name={info.name}
-          clientSecret={clientSecret}
+          subscriptionId={subscriptionId}
           onError={setError}
         />
       </Elements>
