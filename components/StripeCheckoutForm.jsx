@@ -53,38 +53,45 @@ function PayForm({ plan, email, name, clientSecret, onBack, onError, error }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!stripe || !elements) return;
+    if (!stripe || !elements) {
+      onError('Payment not ready — please refresh the page and try again.');
+      return;
+    }
     setLoading(true);
     onError('');
 
-    const { error: submitErr } = await elements.submit();
-    if (submitErr) {
-      onError(submitErr.message);
-      setLoading(false);
-      return;
-    }
+    try {
+      const { error: submitErr } = await elements.submit();
+      if (submitErr) {
+        onError(submitErr.message);
+        setLoading(false);
+        return;
+      }
 
-    const { error: confirmErr } = await stripe.confirmSetup({
-      elements,
-      clientSecret,
-      confirmParams: {
-        return_url: `${window.location.origin}/trial-confirmed?plan=${plan}`,
-        payment_method_data: { billing_details: { name, email } },
-      },
-      redirect: 'if_required',
-    });
-
-    if (confirmErr) {
-      onError(confirmErr.message || 'Card setup failed. Please try again.');
-      setLoading(false);
-    } else {
-      // No redirect needed — finalize and go
+      // Fire account creation before redirect
       fetch('/api/checkout/finalize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, name, plan }),
       }).catch(() => {});
-      window.location.href = `${window.location.origin}/trial-confirmed?plan=${plan}`;
+
+      // redirect: 'always' is bulletproof — Stripe handles everything and returns to return_url
+      const { error: confirmErr } = await stripe.confirmSetup({
+        elements,
+        clientSecret,
+        confirmParams: {
+          return_url: `${window.location.origin}/trial-confirmed?plan=${plan}`,
+          payment_method_data: { billing_details: { name, email } },
+        },
+      });
+
+      if (confirmErr) {
+        onError(confirmErr.message || 'Card setup failed. Please try again.');
+        setLoading(false);
+      }
+    } catch (err) {
+      onError(err?.message || 'Something went wrong — please refresh and try again.');
+      setLoading(false);
     }
   }
 
@@ -175,7 +182,7 @@ export default function StripeCheckoutForm({ plan }) {
   }
 
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret, appearance: APPEARANCE }}>
+    <Elements stripe={stripePromise} options={{ clientSecret, appearance: APPEARANCE, loader: 'always' }}>
       <PayForm
         plan={plan}
         email={info.email}
