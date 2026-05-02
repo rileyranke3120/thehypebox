@@ -116,14 +116,12 @@ function CardForm({ plan, email, name, subscriptionId, onError }) {
       }
 
       setLoadingMsg('Validating card…');
-      const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: cardNumberElement,
-        billing_details: { name, email },
+      const { token, error: tokenError } = await stripe.createToken(cardNumberElement, {
+        name,
       });
 
-      if (pmError) {
-        onError(pmError.message || 'Invalid card details. Please try again.');
+      if (tokenError) {
+        onError(tokenError.message || 'Invalid card details. Please try again.');
         setLoading(false);
         return;
       }
@@ -132,7 +130,7 @@ function CardForm({ plan, email, name, subscriptionId, onError }) {
       const res = await fetch('/api/checkout/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentMethodId: paymentMethod.id, subscriptionId, email, name, plan }),
+        body: JSON.stringify({ token: token.id, subscriptionId, email, name, plan }),
       });
       const data = await res.json();
 
@@ -303,7 +301,7 @@ export default function StripeCheckoutForm({ plan, planLabel, price }) {
 
       <Elements
         stripe={stripePromise}
-        options={{ clientSecret, appearance: STRIPE_APPEARANCE }}
+        options={{ appearance: STRIPE_APPEARANCE }}
       >
         <CardForm
           plan={plan}

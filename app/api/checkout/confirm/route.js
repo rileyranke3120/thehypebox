@@ -22,11 +22,17 @@ function generatePassword() {
 
 export async function POST(request) {
   try {
-    const { paymentMethodId, subscriptionId, email, name, plan } = await request.json();
+    const { token, subscriptionId, email, name, plan } = await request.json();
 
-    if (!paymentMethodId || !subscriptionId || !email || !plan) {
+    if (!token || !subscriptionId || !email || !plan) {
       return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
     }
+
+    // Create a PaymentMethod from the token
+    const paymentMethod = await stripe.paymentMethods.create({
+      type: 'card',
+      card: { token },
+    });
 
     // Attach payment method to the subscription's setup intent
     const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
@@ -36,13 +42,13 @@ export async function POST(request) {
     const setupIntent = subscription.pending_setup_intent;
     if (setupIntent) {
       await stripe.setupIntents.confirm(setupIntent.id, {
-        payment_method: paymentMethodId,
+        payment_method: paymentMethod.id,
       });
     }
 
     // Attach as default payment method on customer
     await stripe.customers.update(subscription.customer.id || subscription.customer, {
-      invoice_settings: { default_payment_method: paymentMethodId },
+      invoice_settings: { default_payment_method: paymentMethod.id },
     });
 
     const supabase = createClient();
