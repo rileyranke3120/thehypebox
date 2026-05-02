@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import {
   Elements,
@@ -90,6 +90,12 @@ function CardForm({ plan, email, name, subscriptionId, onError }) {
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('Processing…');
   const [cardReady, setCardReady] = useState(false);
+
+  // Enable submit after 2s — onReady is unreliable across Stripe versions
+  useEffect(() => {
+    const t = setTimeout(() => setCardReady(true), 2000);
+    return () => clearTimeout(t);
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
