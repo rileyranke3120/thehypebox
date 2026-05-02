@@ -3,9 +3,9 @@ import stripe from '@/lib/stripe';
 import { createClient } from '@/lib/supabase';
 
 const PLAN_CONFIG = {
-  launch:   { internal: 'starter', priceEnv: 'STRIPE_PRICE_LAUNCH',   label: 'The Launch Box'   },
-  rocket:   { internal: 'growth',  priceEnv: 'STRIPE_PRICE_ROCKET',   label: 'The Rocket Box'   },
-  velocity: { internal: 'pro',     priceEnv: 'STRIPE_PRICE_VELOCITY', label: 'The Velocity Box' },
+  launch:   { internal: 'starter', priceEnv: 'STRIPE_PRICE_LAUNCH' },
+  rocket:   { internal: 'growth',  priceEnv: 'STRIPE_PRICE_ROCKET' },
+  velocity: { internal: 'pro',     priceEnv: 'STRIPE_PRICE_VELOCITY' },
 };
 
 export async function POST(request) {
@@ -21,21 +21,29 @@ export async function POST(request) {
 
     const config = PLAN_CONFIG[plan];
     const priceId = process.env[config.priceEnv];
-
     if (!priceId) {
       return NextResponse.json({ error: 'This plan is not yet available.' }, { status: 503 });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://thehypeboxllc.com';
-
-    // Create Stripe customer
     const customer = await stripe.customers.create({
       email: email.toLowerCase().trim(),
       name: name.trim(),
-      metadata: { plan, internal_plan: config.internal, source: 'thehypeboxllc.com' },
+      metadata: { plan, source: 'thehypeboxllc.com' },
     });
 
-    // Save to Supabase immediately
+    const subscription = await stripe.subscriptions.create({
+      customer: customer.id,
+      items: [{ price: priceId }],
+      trial_period_days: 14,
+      payment_behavior: 'default_incomplete',
+      expand: ['pending_setup_intent'],
+    });
+
+    const setupIntent = subscription.pending_setup_intent;
+    if (!setupIntent?.client_secret) {
+      throw new Error('No setup intent returned — check that price is recurring.');
+    }
+
     const supabase = createClient();
     await supabase.from('users').upsert(
       {
@@ -44,23 +52,15 @@ export async function POST(request) {
         plan: config.internal,
         plan_status: 'pending',
         stripe_customer_id: customer.id,
+        stripe_subscription_id: subscription.id,
       },
       { onConflict: 'email' }
     );
 
-    // Create Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      customer: customer.id,
-      line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: { trial_period_days: 14 },
-      success_url: `${appUrl}/trial-confirmed?plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/#pricing`,
-      customer_update: { address: 'auto' },
-      metadata: { plan, name: name.trim() },
+    return NextResponse.json({
+      clientSecret: setupIntent.client_secret,
+      subscriptionId: subscription.id,
     });
-
-    return NextResponse.json({ url: session.url });
   } catch (err) {
     console.error('[checkout]', err);
     return NextResponse.json({ error: err.message || 'Something went wrong.' }, { status: 500 });
