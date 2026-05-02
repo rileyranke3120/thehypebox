@@ -88,6 +88,7 @@ function CardForm({ plan, email, name, subscriptionId, onError }) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState('Processing…');
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -107,7 +108,7 @@ function CardForm({ plan, email, name, subscriptionId, onError }) {
         return;
       }
 
-      // Step 1: create a PaymentMethod from the card — simple, no 3DS, no hanging
+      setLoadingMsg('Validating card…');
       const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
         type: 'card',
         card: cardNumberElement,
@@ -120,7 +121,7 @@ function CardForm({ plan, email, name, subscriptionId, onError }) {
         return;
       }
 
-      // Step 2: confirm server-side and create account
+      setLoadingMsg('Setting up your trial…');
       const res = await fetch('/api/checkout/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -134,6 +135,7 @@ function CardForm({ plan, email, name, subscriptionId, onError }) {
         return;
       }
 
+      setLoadingMsg('Done! Redirecting…');
       window.location.href = `${window.location.origin}/trial-confirmed?plan=${plan}`;
     } catch (err) {
       onError(err.message || 'Something went wrong. Please try again.');
@@ -171,7 +173,7 @@ function CardForm({ plan, email, name, subscriptionId, onError }) {
         className="btn btn-primary"
         style={{ width: '100%', justifyContent: 'center', opacity: loading ? 0.7 : 1, fontSize: '1rem', padding: '1rem' }}
       >
-        {loading ? 'Processing…' : 'Start My Free Trial →'}
+        {loading ? loadingMsg : 'Start My Free Trial →'}
       </button>
 
       <p style={{ textAlign: 'center', fontSize: '0.82rem', color: '#666', lineHeight: 1.5 }}>
