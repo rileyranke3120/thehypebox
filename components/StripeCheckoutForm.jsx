@@ -269,7 +269,7 @@ export default function StripeCheckoutForm({ plan, planLabel, price }) {
 
       <Elements
         stripe={stripePromise}
-        options={{ clientSecret, appearance: STRIPE_APPEARANCE }}
+        options={{ appearance: STRIPE_APPEARANCE }}
       >
         <CardForm
           plan={plan}
