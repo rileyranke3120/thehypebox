@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import {
   Elements,
-  PaymentElement,
+  CardNumberElement,
+  CardExpiryElement,
+  CardCvcElement,
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js';
@@ -52,29 +54,54 @@ const inputStyle = {
   boxSizing: 'border-box',
 };
 
+const CARD_STYLE = {
+  style: {
+    base: {
+      color: '#ffffff',
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '16px',
+      '::placeholder': { color: '#555' },
+      iconColor: '#FFD000',
+    },
+    invalid: { color: '#ff6b6b' },
+  },
+};
+
+const fieldBox = {
+  padding: '14px 18px',
+  background: '#111',
+  border: '1px solid #2a2a2a',
+  borderRadius: '4px',
+};
+
+const fieldLabel = {
+  display: 'block',
+  fontSize: '0.75rem',
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: '#999',
+  marginBottom: '6px',
+};
+
 // Inner form — must live inside <Elements>
-function CardForm({ plan, email, name, onError }) {
+function CardForm({ plan, email, name, clientSecret, onError }) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
-  const [ready, setReady] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!stripe || !elements || !ready) return;
+    if (!stripe || !elements) return;
 
     setLoading(true);
     onError('');
 
-    const { error } = await stripe.confirmSetup({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/trial-confirmed?plan=${plan}`,
-        payment_method_data: {
-          billing_details: { name, email },
-        },
+    const cardNumberElement = elements.getElement(CardNumberElement);
+    const { error } = await stripe.confirmCardSetup(clientSecret, {
+      payment_method: {
+        card: cardNumberElement,
+        billing_details: { name, email },
       },
-      redirect: 'if_required',
     });
 
     if (error) {
@@ -92,16 +119,36 @@ function CardForm({ plan, email, name, onError }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <PaymentElement onReady={() => setReady(true)} />
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div>
+        <label style={fieldLabel}>Card Number</label>
+        <div style={fieldBox}>
+          <CardNumberElement options={{ ...CARD_STYLE, showIcon: true }} />
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div>
+          <label style={fieldLabel}>Expiration</label>
+          <div style={fieldBox}>
+            <CardExpiryElement options={CARD_STYLE} />
+          </div>
+        </div>
+        <div>
+          <label style={fieldLabel}>CVC</label>
+          <div style={fieldBox}>
+            <CardCvcElement options={CARD_STYLE} />
+          </div>
+        </div>
+      </div>
 
       <button
         type="submit"
-        disabled={!stripe || !ready || loading}
+        disabled={!stripe || loading}
         className="btn btn-primary"
-        style={{ width: '100%', justifyContent: 'center', opacity: (!ready || loading) ? 0.7 : 1, fontSize: '1rem', padding: '1rem' }}
+        style={{ width: '100%', justifyContent: 'center', opacity: loading ? 0.7 : 1, fontSize: '1rem', padding: '1rem' }}
       >
-        {loading ? 'Processing…' : ready ? 'Start My Free Trial →' : 'Loading…'}
+        {loading ? 'Processing…' : 'Start My Free Trial →'}
       </button>
 
       <p style={{ textAlign: 'center', fontSize: '0.82rem', color: '#666', lineHeight: 1.5 }}>
@@ -228,6 +275,7 @@ export default function StripeCheckoutForm({ plan, planLabel, price }) {
           plan={plan}
           email={info.email}
           name={info.name}
+          clientSecret={clientSecret}
           onError={setError}
         />
       </Elements>
