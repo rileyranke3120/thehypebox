@@ -108,12 +108,12 @@ function CardForm({ plan, email, name, clientSecret, onError }) {
       onError(error.message || 'Card setup failed. Please try again.');
       setLoading(false);
     } else {
-      // Create account and send welcome email
-      await fetch('/api/checkout/finalize', {
+      // Fire finalize in background — don't block redirect on email sending
+      fetch('/api/checkout/finalize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, name, plan }),
-      });
+      }).catch(() => {});
       window.location.href = `${window.location.origin}/trial-confirmed?plan=${plan}`;
     }
   }

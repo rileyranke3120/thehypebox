@@ -61,7 +61,7 @@ export async function POST(request) {
     const planLabel = PLAN_LABELS[plan] || plan;
     const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL}/login`;
 
-    await getMailer().sendMail({
+    try { await getMailer().sendMail({
       from: '"TheHypeBox" <riley@thehypeboxllc.com>',
       to: email,
       subject: `Welcome to TheHypeBox — Your login details inside`,
@@ -114,7 +114,9 @@ export async function POST(request) {
         </body>
         </html>
       `,
-    });
+    }); } catch (emailErr) {
+      console.error('[checkout/finalize] email failed:', emailErr.message);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
