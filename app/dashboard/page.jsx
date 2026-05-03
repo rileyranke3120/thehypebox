@@ -10,10 +10,15 @@ import { logout } from '@/app/actions/auth';
 
 // Read-only anon client — used only for reads (profile, automation logs, missed calls)
 // All writes go through authenticated API routes
-const supabase = createSupabaseClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+let _supabase = null;
+function getSupabase() {
+  if (!_supabase) _supabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+  return _supabase;
+}
+const supabase = { from: (...a) => getSupabase().from(...a) };
 
 
 function getInitials(name) {
