@@ -88,6 +88,9 @@ function PayForm({ plan, email, name, clientSecret, onBack, onError, error }) {
       if (confirmErr) {
         onError(confirmErr.message || 'Card setup failed. Please try again.');
         setLoading(false);
+      } else {
+        // Stripe should have redirected — force it as a fallback
+        window.location.href = `${window.location.origin}/trial-confirmed?plan=${plan}`;
       }
     } catch (err) {
       onError(err?.message || 'Something went wrong — please refresh and try again.');

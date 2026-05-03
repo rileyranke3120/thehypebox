@@ -73,7 +73,7 @@ function TrialConfirmedContent() {
 
 export default function TrialConfirmedPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0a0a0a' }} />}>
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFD000', fontSize: '1rem', letterSpacing: '0.1em' }}>Loading…</div>}>
       <TrialConfirmedContent />
     </Suspense>
   );
