@@ -152,7 +152,7 @@ function CheckoutForm({ plan }) {
 
 export default function StripeCheckoutForm({ plan }) {
   return (
-    <Elements stripe={stripePromise} options={{ mode: 'setup', currency: 'usd', appearance: APPEARANCE }}>
+    <Elements stripe={stripePromise} options={{ mode: 'setup', currency: 'usd', payment_method_types: ['card'], appearance: APPEARANCE }}>
       <CheckoutForm plan={plan} />
     </Elements>
   );
