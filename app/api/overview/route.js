@@ -3,10 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { getContacts, getOpportunities, getAppointments, getReviews } from '@/lib/ghl';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
 
 export async function GET() {
   const session = await auth();
@@ -29,6 +31,7 @@ export async function GET() {
 
 // Super admin: internal view — clients, MRR, plan breakdown, automation logs (Supabase)
 async function getSuperAdminOverview() {
+  const supabase = getSupabase();
   const { data: clients = [] } = await supabase
     .from('users')
     .select('id, business_name, plan, active, created_at')
@@ -83,6 +86,7 @@ async function getSuperAdminOverview() {
 
 // Client view: real data from GoHighLevel
 async function getClientOverview(user) {
+  const supabase = getSupabase();
   const locationId = user.ghl_location_id;
   if (!locationId) throw new Error('No GHL location configured for this account.');
   const apiKey = user.ghl_api_key || (user.role === 'super_admin' ? process.env.GHL_API_KEY : null);
