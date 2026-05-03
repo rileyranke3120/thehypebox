@@ -50,6 +50,7 @@ function PayForm({ plan, email, name, clientSecret, onBack, onError, error }) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -108,17 +109,17 @@ function PayForm({ plan, email, name, clientSecret, onBack, onError, error }) {
         </button>
       </div>
 
-      <PaymentElement options={{ layout: 'tabs' }} />
+      <PaymentElement options={{ layout: 'tabs' }} onReady={() => setReady(true)} />
 
       {error && <p style={{ color: '#ff6b6b', fontSize: '0.9rem', margin: 0 }}>⚠ {error}</p>}
 
       <button
         type="submit"
-        disabled={!stripe || loading}
+        disabled={!stripe || !ready || loading}
         className="btn btn-primary"
-        style={{ width: '100%', justifyContent: 'center', opacity: loading ? 0.7 : 1, fontSize: '1rem', padding: '1rem' }}
+        style={{ width: '100%', justifyContent: 'center', opacity: (!ready || loading) ? 0.7 : 1, fontSize: '1rem', padding: '1rem' }}
       >
-        {loading ? 'Processing…' : 'Start My Free Trial →'}
+        {loading ? 'Processing…' : !ready ? 'Loading…' : 'Start My Free Trial →'}
       </button>
 
       <p style={{ textAlign: 'center', fontSize: '0.82rem', color: '#666', lineHeight: 1.5 }}>
