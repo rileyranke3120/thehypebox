@@ -68,20 +68,6 @@ function PayForm({ plan, email, name, clientSecret, onBack, onError, error }) {
     onError('');
 
     try {
-      // Race elements.submit() against a 12s timeout so it never hangs forever
-      const submitResult = await Promise.race([
-        elements.submit(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Card form took too long — please wait a moment and try again.')), 12000)
-        ),
-      ]);
-      const { error: submitErr } = submitResult;
-      if (submitErr) {
-        onError(submitErr.message);
-        setLoading(false);
-        return;
-      }
-
       // Fire account creation before redirect
       fetch('/api/checkout/finalize', {
         method: 'POST',
