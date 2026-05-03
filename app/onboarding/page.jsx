@@ -6,10 +6,15 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+let _supabase = null;
+function getSupabase() {
+  if (!_supabase) _supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+  return _supabase;
+}
+const supabase = { from: (...a) => getSupabase().from(...a) };
 
 const INDUSTRIES = [
   'Auto Shop', 'Plumbing', 'HVAC', 'Electrical', 'Landscaping',
