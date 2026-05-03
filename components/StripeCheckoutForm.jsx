@@ -52,6 +52,12 @@ function PayForm({ plan, email, name, clientSecret, onBack, onError, error }) {
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
 
+  // Fallback: if onReady never fires within 6s, unblock the button anyway
+  useState(() => {
+    const t = setTimeout(() => setReady(true), 6000);
+    return () => clearTimeout(t);
+  });
+
   async function handleSubmit(e) {
     e.preventDefault();
     if (!stripe || !elements) {
@@ -186,7 +192,7 @@ export default function StripeCheckoutForm({ plan }) {
   }
 
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret, appearance: APPEARANCE, loader: 'always' }}>
+    <Elements stripe={stripePromise} options={{ clientSecret, appearance: APPEARANCE }}>
       <PayForm
         plan={plan}
         email={info.email}
