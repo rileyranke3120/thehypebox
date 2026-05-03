@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
@@ -52,11 +52,11 @@ function PayForm({ plan, email, name, clientSecret, onBack, onError, error }) {
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
 
-  // Fallback: if onReady never fires within 6s, unblock the button anyway
-  useState(() => {
-    const t = setTimeout(() => setReady(true), 6000);
+  useEffect(() => {
+    // Fallback: if onReady never fires within 5s, unblock button anyway
+    const t = setTimeout(() => setReady(true), 5000);
     return () => clearTimeout(t);
-  });
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -68,7 +68,14 @@ function PayForm({ plan, email, name, clientSecret, onBack, onError, error }) {
     onError('');
 
     try {
-      const { error: submitErr } = await elements.submit();
+      // Race elements.submit() against a 12s timeout so it never hangs forever
+      const submitResult = await Promise.race([
+        elements.submit(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Card form took too long — please wait a moment and try again.')), 12000)
+        ),
+      ]);
+      const { error: submitErr } = submitResult;
       if (submitErr) {
         onError(submitErr.message);
         setLoading(false);
@@ -82,7 +89,6 @@ function PayForm({ plan, email, name, clientSecret, onBack, onError, error }) {
         body: JSON.stringify({ email, name, plan }),
       }).catch(() => {});
 
-      // redirect: 'always' is bulletproof — Stripe handles everything and returns to return_url
       const { error: confirmErr } = await stripe.confirmSetup({
         elements,
         clientSecret,
@@ -96,11 +102,10 @@ function PayForm({ plan, email, name, clientSecret, onBack, onError, error }) {
         onError(confirmErr.message || 'Card setup failed. Please try again.');
         setLoading(false);
       } else {
-        // Stripe should have redirected — force it as a fallback
         window.location.href = `${window.location.origin}/trial-confirmed?plan=${plan}`;
       }
     } catch (err) {
-      onError(err?.message || 'Something went wrong — please refresh and try again.');
+      onError(err?.message || 'Something went wrong — please try again.');
       setLoading(false);
     }
   }
@@ -115,7 +120,7 @@ function PayForm({ plan, email, name, clientSecret, onBack, onError, error }) {
         </button>
       </div>
 
-      <PaymentElement options={{ layout: 'tabs' }} onReady={() => setReady(true)} />
+      <PaymentElement options={{ layout: 'tabs' }} onReady={() => setReady(true)} onLoadError={() => onError('Card form failed to load — please refresh.')} />
 
       {error && <p style={{ color: '#ff6b6b', fontSize: '0.9rem', margin: 0 }}>⚠ {error}</p>}
 
