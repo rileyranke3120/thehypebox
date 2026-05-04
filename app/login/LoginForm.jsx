@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import Link from 'next/link';
 import { login } from '@/app/actions/auth';
 import styles from '@/styles/login.module.css';
 
@@ -26,7 +27,7 @@ export default function LoginForm() {
       <div className={styles.formGroup}>
         <label className={styles.formLabel} htmlFor="password">
           Password
-          <a href="#" className={styles.formLabelLink}>Forgot password?</a>
+          <Link href="/forgot-password" className={styles.formLabelLink}>Forgot password?</Link>
         </label>
         <input
           id="password"

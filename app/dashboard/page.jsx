@@ -913,7 +913,7 @@ export default function DashboardPage() {
           )
         },
         {
-          page: 'billing', label: 'Billing', requiredFeature: 'billing', icon: (
+          page: 'billing', href: '/dashboard/billing', label: 'Billing', requiredFeature: 'billing', icon: (
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#1A1A1A', display: 'block' }}>
               <rect x="8" y="5" width="16" height="22" rx="2" stroke="#888780" strokeWidth="1.5"/>
               <line x1="12" y1="12" x2="20" y2="12" stroke="#888780" strokeWidth="1.5" strokeLinecap="round"/>

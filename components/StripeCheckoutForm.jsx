@@ -143,8 +143,12 @@ function CheckoutForm({ plan }) {
         {loading ? 'Processing…' : !ready ? 'Loading…' : 'Start My Free Trial →'}
       </button>
 
-      <p style={{ textAlign: 'center', fontSize: '0.82rem', color: '#666', lineHeight: 1.5 }}>
-        Free for 14 days · No charge until trial ends
+      <p style={{ fontSize: '0.75rem', color: '#555', lineHeight: 1.6, margin: 0, textAlign: 'center' }}>
+        By clicking &ldquo;Start My Free Trial&rdquo;, you agree to our{' '}
+        <a href="/terms" style={{ color: '#888', textDecoration: 'underline' }}>Terms of Service</a>{' '}
+        and{' '}
+        <a href="/privacy" style={{ color: '#888', textDecoration: 'underline' }}>Privacy Policy</a>.
+        Your card will not be charged during the 14-day trial. Cancel anytime before the trial ends to avoid charges.
       </p>
     </form>
   );

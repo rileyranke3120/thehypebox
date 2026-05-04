@@ -3,6 +3,9 @@ import bcrypt from 'bcryptjs';
 import stripe from '@/lib/stripe';
 import { createClient } from '@/lib/supabase';
 import { getMailer } from '@/lib/mailer';
+import { sendEmail } from '@/lib/send-email';
+import { paymentSuccessEmail, paymentFailedEmail, subscriptionCanceledEmail, highLevelAccessEmail } from '@/lib/email-templates';
+import { createSubAccount } from '@/lib/highlevel';
 
 const PLAN_LABELS = {
   launch: 'The Launch Box', rocket: 'The Rocket Box', velocity: 'The Velocity Box',
@@ -130,6 +133,24 @@ export async function POST(request) {
           .update({ plan_status: 'canceled' })
           .eq('email', customer.email.toLowerCase());
 
+        // Send cancellation email
+        try {
+          const { data: user } = await supabase
+            .from('users')
+            .select('plan')
+            .eq('email', customer.email.toLowerCase())
+            .single();
+
+          const tpl = subscriptionCanceledEmail({
+            name: customer.name || customer.email,
+            plan: user?.plan,
+            accessEndDate: new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+          });
+          await sendEmail({ to: customer.email, ...tpl });
+        } catch (emailErr) {
+          console.error('[stripe webhook] cancellation email failed:', emailErr.message);
+        }
+
         console.log(`[stripe webhook] subscription canceled for ${customer.email}`);
         break;
       }
@@ -146,6 +167,27 @@ export async function POST(request) {
           .update({ plan_status: 'active' })
           .eq('email', customer.email.toLowerCase());
 
+        // Send payment confirmation email
+        try {
+          const { data: user } = await supabase
+            .from('users')
+            .select('plan, stripe_subscription_id')
+            .eq('email', customer.email.toLowerCase())
+            .single();
+
+          const sub = await stripe.subscriptions.retrieve(invoice.subscription);
+          const tpl = paymentSuccessEmail({
+            name: customer.name || customer.email,
+            plan: user?.plan,
+            amountCents: invoice.amount_paid,
+            nextBillingDate: new Date(sub.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+            invoiceUrl: invoice.hosted_invoice_url,
+          });
+          await sendEmail({ to: customer.email, ...tpl });
+        } catch (emailErr) {
+          console.error('[stripe webhook] payment success email failed:', emailErr.message);
+        }
+
         console.log(`[stripe webhook] payment succeeded for ${customer.email}`);
         break;
       }
@@ -160,6 +202,29 @@ export async function POST(request) {
           .update({ plan_status: 'past_due' })
           .eq('email', customer.email.toLowerCase());
 
+        // Send payment failed email with portal link for updating card
+        try {
+          const { data: user } = await supabase
+            .from('users')
+            .select('plan, stripe_customer_id')
+            .eq('email', customer.email.toLowerCase())
+            .single();
+
+          const portalSession = await stripe.billingPortal.sessions.create({
+            customer: invoice.customer,
+            return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing`,
+          });
+          const tpl = paymentFailedEmail({
+            name: customer.name || customer.email,
+            plan: user?.plan,
+            amountCents: invoice.amount_due,
+            updateUrl: portalSession.url,
+          });
+          await sendEmail({ to: customer.email, ...tpl });
+        } catch (emailErr) {
+          console.error('[stripe webhook] payment failed email failed:', emailErr.message);
+        }
+
         console.log(`[stripe webhook] payment failed for ${customer.email}`);
         break;
       }
@@ -171,10 +236,68 @@ export async function POST(request) {
         const customer = await stripe.customers.retrieve(si.customer);
         if (customer.deleted || !customer.email) break;
 
+        const { data: user } = await supabase
+          .from('users')
+          .select('plan, name, ghl_location_id')
+          .eq('email', customer.email.toLowerCase())
+          .single();
+
+        // Only update status — don't reset trial_ends_at (set by subscription.created)
         await supabase
           .from('users')
           .update({ plan_status: 'trialing' })
           .eq('email', customer.email.toLowerCase());
+
+        // Create HighLevel sub-account if not already provisioned
+        if (!user?.ghl_location_id) {
+          try {
+            const hlAccount = await createSubAccount({
+              name: user?.name || customer.name || '',
+              email: customer.email,
+              phone: customer.phone || '',
+              plan: user?.plan || 'launch',
+            });
+
+            await supabase
+              .from('users')
+              .update({
+                ghl_location_id: hlAccount.locationId,
+                ghl_user_id: hlAccount.userId,
+              })
+              .eq('email', customer.email.toLowerCase());
+
+            // Send HL access email to customer
+            try {
+              const tpl = highLevelAccessEmail({
+                name: user?.name || customer.name || customer.email,
+                plan: user?.plan,
+                locationId: hlAccount.locationId,
+                hlEmail: customer.email,
+                hlPassword: hlAccount.password,
+                dashboardUrl: hlAccount.dashboardUrl,
+              });
+              await sendEmail({ to: customer.email, ...tpl });
+            } catch (emailErr) {
+              console.error('[stripe webhook] HL access email failed:', emailErr.message);
+            }
+
+            console.log(`[stripe webhook] HL account created: ${hlAccount.locationId} for ${customer.email}`);
+          } catch (hlErr) {
+            console.error(`[stripe webhook] HL provisioning failed for ${customer.email}:`, hlErr.message);
+
+            // Notify admin so they can provision manually
+            try {
+              await sendEmail({
+                to: 'riley@thehypeboxllc.com',
+                subject: `ACTION REQUIRED: HL provisioning failed for ${customer.email}`,
+                html: `<p>HighLevel sub-account creation failed for <strong>${customer.email}</strong>.</p>
+                       <p><strong>Plan:</strong> ${user?.plan}</p>
+                       <p><strong>Error:</strong> ${hlErr.message}</p>
+                       <p>Use the admin panel to provision manually: ${process.env.NEXT_PUBLIC_APP_URL}/dashboard/admin/highlevel</p>`,
+              });
+            } catch (_) {}
+          }
+        }
 
         console.log(`[stripe webhook] setup confirmed, trial live for ${customer.email}`);
         break;

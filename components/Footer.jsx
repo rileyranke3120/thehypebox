@@ -15,7 +15,8 @@ export default function Footer() {
             <a href="#services">Services</a>
             <a href="#pricing">Pricing</a>
             <a href="#booking">Book a Call</a>
-            <a href="mailto:riley@thehypebox.com">Contact</a>
+            <Link href="/faq">FAQ</Link>
+            <Link href="/contact">Contact</Link>
           </nav>
 
           <div className={styles.footerSocial}>
@@ -45,6 +46,7 @@ export default function Footer() {
           <div className={styles.footerLegal}>
             <Link href="/privacy">Privacy Policy</Link>
             <Link href="/terms">Terms of Service</Link>
+            <Link href="/refund-policy">Refund Policy</Link>
           </div>
         </div>
       </div>
