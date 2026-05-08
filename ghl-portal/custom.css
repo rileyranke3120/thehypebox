@@ -1,0 +1,412 @@
+/* ============================================================
+   TheHypeBox — GHL Client Portal Custom CSS
+   Paste this into GHL > Portals > Settings > Custom CSS
+   ============================================================ */
+
+/* ---------- GLOBAL ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  font-family: 'Inter', 'DM Sans', sans-serif !important;
+}
+
+/* ---------- LOGIN PAGE LAYOUT ---------- */
+/* Left panel — form side */
+.login-page-width,
+.login-page-width.text-gray-900 {
+  color: #ffffff !important;
+  background-color: transparent !important;
+}
+
+/* Full-height left panel background */
+.centered.h-full.w-full {
+  background-color: #000000 !important;
+}
+
+/* ---------- LOGIN HEADING ---------- */
+.login-page-width h1,
+.login-page-width h2,
+.login-page-width h3,
+.login-page-width h4 {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  margin-bottom: 1.5rem !important;
+}
+
+/* ---------- INPUT FIELDS (Naive UI) ---------- */
+.n-input {
+  --n-color: #111111 !important;
+  --n-color-focus: #111111 !important;
+  --n-color-disabled: #0d0d0d !important;
+  --n-border: 1px solid #2a2a2a !important;
+  --n-border-hover: 1px solid #FFD000 !important;
+  --n-border-focus: 1px solid #FFD000 !important;
+  --n-border-pressed: 1px solid #FFD000 !important;
+  --n-box-shadow-focus: 0 0 0 3px rgba(255, 208, 0, 0.15) !important;
+  --n-text-color: #ffffff !important;
+  --n-placeholder-color: #555555 !important;
+  --n-icon-color: #666666 !important;
+  --n-icon-color-hover: #FFD000 !important;
+  border-radius: 6px !important;
+}
+
+.n-input .n-input__input-el,
+.n-input .n-input__textarea-el {
+  color: #ffffff !important;
+  background-color: transparent !important;
+  caret-color: #FFD000 !important;
+}
+
+.n-input .n-input__placeholder {
+  color: #555555 !important;
+}
+
+.n-input .n-input__border {
+  border-color: #2a2a2a !important;
+  border-radius: 6px !important;
+}
+
+.n-input .n-input__state-border {
+  border-radius: 6px !important;
+}
+
+/* Autofill override */
+.n-input input:-webkit-autofill,
+.n-input input:-webkit-autofill:hover,
+.n-input input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #111111 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* ---------- LABELS & HELPER TEXT ---------- */
+label,
+.n-form-item-label,
+.n-form-item-label__text {
+  color: #999999 !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+/* ---------- DIVIDER "OR, SIGN IN WITH YOUR EMAIL" ---------- */
+.n-divider,
+.n-divider .n-divider__title {
+  color: #444444 !important;
+  border-color: #2a2a2a !important;
+  font-size: 0.7rem !important;
+  letter-spacing: 0.1em !important;
+}
+
+/* ---------- PRIMARY / LOGIN BUTTON ---------- */
+button.n-button--primary-type,
+.n-button--primary-type {
+  background-color: #FFD000 !important;
+  color: #000000 !important;
+  border: none !important;
+  border-radius: 6px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  transition: opacity 0.15s ease !important;
+}
+
+button.n-button--primary-type:hover,
+.n-button--primary-type:hover {
+  opacity: 0.88 !important;
+}
+
+/* ---------- SECONDARY / SIGN UP BUTTON ---------- */
+button.n-button--default-type,
+.n-button--default-type {
+  background-color: transparent !important;
+  border: 1px solid #2a2a2a !important;
+  color: #ffffff !important;
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  transition: border-color 0.15s ease !important;
+}
+
+button.n-button--default-type:hover,
+.n-button--default-type:hover {
+  border-color: #FFD000 !important;
+  color: #FFD000 !important;
+}
+
+/* ---------- GOOGLE BUTTON ---------- */
+[class*="google"],
+button[class*="social"],
+.social-login-btn {
+  background-color: #1a1a1a !important;
+  border: 1px solid #2a2a2a !important;
+  color: #ffffff !important;
+  border-radius: 6px !important;
+}
+
+[class*="google"]:hover {
+  border-color: #444444 !important;
+}
+
+/* ---------- FORGOT PASSWORD LINK ---------- */
+#forgot-password-auth-button,
+a[href*="forgot"],
+[class*="forgot"] {
+  color: #FFD000 !important;
+  font-size: 0.8rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+}
+
+#forgot-password-auth-button:hover,
+a[href*="forgot"]:hover {
+  color: #ffffff !important;
+}
+
+/* ---------- "New to..." SIGN UP TEXT ---------- */
+.login-page-width p,
+.login-page-width span {
+  color: #666666 !important;
+}
+
+.login-page-width a {
+  color: #FFD000 !important;
+  text-decoration: none !important;
+  font-weight: 600 !important;
+}
+
+.login-page-width a:hover {
+  color: #ffffff !important;
+}
+
+/* ---------- FORM ITEM FEEDBACK (errors) ---------- */
+.n-form-item-feedback,
+.n-form-item-feedback--error {
+  color: #ff6b6b !important;
+  font-size: 0.8rem !important;
+}
+
+/* ---------- RIGHT PANEL ---------- */
+.lg\:grid-cols-2 > div:last-child {
+  background-color: #000000 !important;
+}
+
+/* ---------- SCROLLBAR ---------- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #000000; }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #FFD000; }
+
+/* ============================================================
+   INTERIOR PORTAL — post-login
+   ============================================================ */
+
+/* ---------- APP SHELL ---------- */
+#app,
+.app-wrapper,
+.portal-wrapper,
+.client-portal-wrapper,
+[class*="portal-layout"],
+[class*="app-layout"] {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* ---------- TOP NAVIGATION BAR ---------- */
+header,
+.portal-header,
+.top-bar,
+.top-nav,
+nav,
+[class*="header-bar"],
+[class*="top-header"] {
+  background-color: #0d0d0d !important;
+  border-bottom: 1px solid #1f1f1f !important;
+  color: #ffffff !important;
+}
+
+/* ---------- LEFT SIDEBAR ---------- */
+aside,
+.sidebar,
+.left-sidebar,
+.nav-sidebar,
+[class*="sidebar"],
+[class*="left-nav"] {
+  background-color: #0d0d0d !important;
+  border-right: 1px solid #1f1f1f !important;
+  color: #ffffff !important;
+}
+
+/* Sidebar nav links */
+.sidebar a,
+aside a,
+[class*="sidebar"] a,
+[class*="nav-item"] {
+  color: #999999 !important;
+  text-decoration: none !important;
+}
+
+.sidebar a:hover,
+aside a:hover,
+[class*="sidebar"] a:hover,
+[class*="nav-item"]:hover {
+  color: #FFD000 !important;
+}
+
+/* Active nav item */
+[class*="nav-item"][class*="active"],
+[class*="nav-item"][class*="router-link-active"] {
+  color: #FFD000 !important;
+  border-left: 2px solid #FFD000 !important;
+}
+
+/* ---------- MAIN CONTENT AREA ---------- */
+main,
+.main-content,
+.portal-content,
+.content-wrapper,
+.home-wrapper,
+[class*="main-content"],
+[class*="portal-home"],
+[class*="content-area"] {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* ---------- WELCOME HEADING ---------- */
+.portal-content h1,
+.portal-content h2,
+.portal-content h3,
+main h1,
+main h2,
+main h3,
+[class*="welcome"] h1,
+[class*="welcome"] h2 {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+/* Greeting "Hi, [name]" sub-text */
+[class*="greeting"],
+[class*="hi-text"],
+.portal-content p,
+main > div > p {
+  color: #666666 !important;
+}
+
+/* ---------- CARDS & PANELS ---------- */
+.card,
+.n-card,
+.content-card,
+.file-card,
+[class*="card-wrapper"],
+[class*="shared-files"],
+[class*="panel"] {
+  background-color: #111111 !important;
+  border: 1px solid #1f1f1f !important;
+  border-radius: 8px !important;
+  color: #ffffff !important;
+}
+
+.n-card-header,
+[class*="card-header"],
+[class*="card__header"] {
+  color: #ffffff !important;
+  border-bottom: 1px solid #1f1f1f !important;
+}
+
+/* ---------- EMPTY STATE ---------- */
+[class*="empty-state"],
+[class*="no-data"],
+[class*="you-dont"] {
+  color: #444444 !important;
+}
+
+/* ---------- AVATAR ---------- */
+.avatar,
+[class*="avatar"],
+[class*="profile-pic"] {
+  background-color: #FFD000 !important;
+  color: #000000 !important;
+  border: none !important;
+}
+
+/* ---------- ICONS ---------- */
+[class*="icon"],
+svg {
+  color: #666666 !important;
+  fill: currentColor;
+}
+
+[class*="icon"]:hover,
+svg:hover {
+  color: #FFD000 !important;
+}
+
+/* ---------- "+ Add Files" BUTTON ---------- */
+[class*="add-files"],
+[class*="add-btn"],
+button[class*="ghost"],
+.n-button--tertiary-type {
+  color: #FFD000 !important;
+  border-color: #FFD000 !important;
+}
+
+/* ---------- GENERAL WHITE OVERRIDES ---------- */
+.bg-white,
+[class*="bg-white"] {
+  background-color: #111111 !important;
+}
+
+.text-gray-900,
+.text-gray-800,
+.text-gray-700,
+[class*="text-gray-9"],
+[class*="text-gray-8"] {
+  color: #ffffff !important;
+}
+
+.text-gray-600,
+.text-gray-500,
+.text-gray-400,
+[class*="text-gray-6"],
+[class*="text-gray-5"],
+[class*="text-gray-4"] {
+  color: #888888 !important;
+}
+
+.border,
+.border-gray-200,
+.border-gray-100,
+[class*="border-gray"] {
+  border-color: #1f1f1f !important;
+}
+
+/* ---------- DROPDOWN / POPUP MENUS ---------- */
+.n-dropdown-menu,
+.n-popover,
+[class*="dropdown-menu"],
+[class*="popover"] {
+  background-color: #111111 !important;
+  border: 1px solid #2a2a2a !important;
+  color: #ffffff !important;
+}
+
+.n-dropdown-option:hover,
+[class*="dropdown-item"]:hover {
+  background-color: #1a1a1a !important;
+  color: #FFD000 !important;
+}
+
+/* ---------- NOTIFICATION BELL / TOP ICONS ---------- */
+[class*="notification"],
+[class*="bell-icon"] {
+  color: #666666 !important;
+}
+
+[class*="notification-badge"],
+[class*="badge"] {
+  background-color: #FFD000 !important;
+  color: #000000 !important;
+}

@@ -130,7 +130,11 @@ function CheckoutForm({ plan }) {
         <input type="email" placeholder="jane@yourbusiness.com" value={info.email} onChange={update('email')} required style={inputStyle} />
       </div>
 
-      <PaymentElement options={{ layout: 'tabs' }} onReady={() => setReady(true)} />
+      <PaymentElement
+        options={{ layout: 'tabs' }}
+        onReady={() => setReady(true)}
+        onLoadError={(e) => setError('Card form failed to load: ' + (e?.error?.message || 'unknown error. Your Stripe account may need activation.'))}
+      />
 
       {error && <p style={{ color: '#ff6b6b', fontSize: '0.9rem', margin: 0 }}>⚠ {error}</p>}
 
