@@ -31,27 +31,22 @@
       '#app, [id="app"], [class*="app-"], [class*="-app"] { background-color: #000000 !important; }',
       'div, section, article, aside, nav, header, main, footer, ul, li { background-color: transparent !important; }',
       'body > div, body > div > div { background-color: #000000 !important; }',
-      // Sidebar
       '[class*="sidebar"], [class*="left-"], [class*="nav-wrapper"], [class*="side-nav"] { background-color: #0d0d0d !important; border-right: 1px solid #1f1f1f !important; }',
-      // Header
       '[class*="header"], [class*="top-bar"], [class*="navbar"], [class*="topbar"] { background-color: #0d0d0d !important; border-bottom: 1px solid #1f1f1f !important; }',
-      // Text
       'h1, h2, h3, h4, h5, h6 { color: #ffffff !important; }',
       'p, span, li, td, th, label { color: #cccccc !important; }',
       'a { color: #FFD000 !important; text-decoration: none !important; }',
       'a:hover { color: #ffffff !important; }',
-      // Cards
       '[class*="card"], [class*="panel"], [class*="widget"], [class*="section-"] { background-color: #111111 !important; border: 1px solid #1f1f1f !important; border-radius: 8px !important; }',
-      // Tailwind overrides
       '.bg-white, .bg-gray-50, .bg-gray-100 { background-color: #000000 !important; }',
       '.text-gray-900, .text-gray-800, .text-gray-700 { color: #ffffff !important; }',
       '.text-gray-600, .text-gray-500, .text-gray-400 { color: #888888 !important; }',
       '.border, .border-gray-200, .border-gray-100 { border-color: #1f1f1f !important; }',
-      // Avatar
       '[class*="avatar"] { background-color: #FFD000 !important; color: #000000 !important; }',
-      // Inputs
       'input, textarea, select { background-color: #111111 !important; color: #ffffff !important; border-color: #2a2a2a !important; }',
       'input::placeholder, textarea::placeholder { color: #555555 !important; }',
+      // Overlay card: Vue scoped data attr + w-3 class covers w-3/4
+      '[data-v-4a0af137][class*="w-3"] { display: none !important; visibility: hidden !important; }',
     ].join('\n');
     document.head.appendChild(s);
   }
@@ -66,26 +61,40 @@
     }).observe(document.head, { childList: true });
   }
 
-  // Hide portal name text overlay
-  function hideOverlays() {
-    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-    var node;
-    while ((node = walker.nextNode())) {
-      var text = node.nodeValue.trim().toLowerCase();
-      if (text === 'thehypebox' || text === 'the hype box' || text.includes('everything you need')) {
-        var parent = node.parentElement;
-        if (parent && parent.querySelectorAll('img').length === 0) {
-          parent.style.setProperty('display', 'none', 'important');
-        }
+  // Hide portal name/tagline overlay card
+  function hideOverlay() {
+    var els = document.querySelectorAll('*');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      var cls = el.className;
+      if (typeof cls !== 'string') continue;
+      if (cls.indexOf('w-3/4') !== -1) {
+        el.style.setProperty('display', 'none', 'important');
+        el.style.setProperty('visibility', 'hidden', 'important');
+      }
+    }
+    // Also find by tagline text and hide the parent container
+    var nodes = document.querySelectorAll('p, div, span');
+    for (var j = 0; j < nodes.length; j++) {
+      var n = nodes[j];
+      if (n.children.length > 0) continue;
+      var txt = (n.textContent || '').trim().toLowerCase();
+      if (txt.indexOf('everything') !== -1 && (txt.indexOf('automation') !== -1 || txt.indexOf('ai') !== -1)) {
+        var p = n.parentElement;
+        if (p) { p.style.setProperty('display', 'none', 'important'); }
+        n.style.setProperty('display', 'none', 'important');
       }
     }
   }
 
-  new MutationObserver(hideOverlays).observe(document.body, { childList: true, subtree: true });
-  hideOverlays();
-  setTimeout(hideOverlays, 300);
-  setTimeout(hideOverlays, 1000);
-  setTimeout(hideOverlays, 3000);
+  new MutationObserver(hideOverlay).observe(document.body, { childList: true, subtree: true });
+  hideOverlay();
+  setInterval(hideOverlay, 300);
+  setTimeout(hideOverlay, 500);
+  setTimeout(hideOverlay, 1000);
+  setTimeout(hideOverlay, 2000);
+  setTimeout(hideOverlay, 3000);
+  setTimeout(hideOverlay, 5000);
 
   // Inject immediately and after Vue mounts
   watchAndKeepStyles();

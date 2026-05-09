@@ -615,6 +615,56 @@
   margin-top: auto;
 }
 
+/* --- Pricing hero background --- */
+.pricingHero {
+  position: relative;
+  overflow: hidden;
+}
+
+.pricingHeroBg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.pricingHeroBgImg {
+  width: 55%;
+  max-width: 520px;
+  opacity: 0.18;
+  user-select: none;
+}
+
+.pricingHeroContent {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Founders marquee --- */
+.foundersMarquee {
+  overflow: hidden;
+  border-top: 1px solid var(--grey-700);
+  background: #0a0a0a;
+  padding: 0.9rem 0;
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+}
+
+.foundersMarqueeTrack {
+  display: inline-flex;
+  align-items: center;
+  animation: marqueeScroll 35s linear infinite;
+}
+
+@keyframes marqueeScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 /* --- Testimonials --- */
 .testimonialsGrid {
   display: grid;

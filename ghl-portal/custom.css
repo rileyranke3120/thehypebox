@@ -410,3 +410,10 @@ button[class*="ghost"],
   background-color: #FFD000 !important;
   color: #000000 !important;
 }
+
+/* ---------- LOGIN OVERLAY CARD (portal name + tagline over cover image) ---------- */
+/* Vue scoped attribute data-v-4a0af137 + class w-3/4 */
+[data-v-4a0af137][class*="w-3"] {
+  display: none !important;
+  visibility: hidden !important;
+}
