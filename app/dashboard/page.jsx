@@ -1218,21 +1218,26 @@ export default function DashboardPage() {
                   {!callsLoading && calls.length === 0 && <p style={{ color: '#aaa', padding: '12px 0' }}>No calls yet — Alex is standing by.</p>}
                   <ul className={styles.agentList}>
                     {calls.slice(0, 10).map((call) => (
-                      <li key={call.call_id} className={styles.agentItem}>
-                        <span className={styles.agentItemIcon} style={{ background: '#0D1F35' }} aria-hidden="true">{phoneIcon12}</span>
-                        <div className={styles.agentItemInfo}>
-                          <div className={styles.agentItemName}>
-                            {call.scrubbed_call_analysis?.custom_analysis_data?.['custom data']?.match(new RegExp('Caller Name: ([^\\n]+)'))?.[1]?.trim() || call.from_number || 'Web Call'}
+                      <li key={call.call_id} className={styles.agentItem} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+                        <div style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10 }}>
+                          <span className={styles.agentItemIcon} style={{ background: '#0D1F35' }} aria-hidden="true">{phoneIcon12}</span>
+                          <div className={styles.agentItemInfo} style={{ flex: 1 }}>
+                            <div className={styles.agentItemName}>
+                              {call.scrubbed_call_analysis?.custom_analysis_data?.['custom data']?.match(new RegExp('Caller Name: ([^\\n]+)'))?.[1]?.trim() || call.from_number || 'Web Call'}
+                            </div>
+                            <div className={styles.agentItemSub}>
+                              {call.scrubbed_call_analysis?.call_summary?.slice(0, 100) || 'No summary'}
+                            </div>
+                            <div className={styles.agentItemSub}>{call.start_timestamp ? new Date(call.start_timestamp).toLocaleString() : ''}</div>
                           </div>
-                          <div className={styles.agentItemSub}>
-                            {call.scrubbed_call_analysis?.call_summary?.slice(0, 80) || 'No summary'}...
+                          <div className={styles.agentItemStatus}>
+                            <span className={`${styles.statusDot} ${call.scrubbed_call_analysis?.user_sentiment === 'Positive' ? styles.statusDotGreen : call.scrubbed_call_analysis?.user_sentiment === 'Negative' ? styles.statusDotRed : styles.statusDotYellow}`}></span>
+                            <span>{call.duration_ms ? Math.round(call.duration_ms / 1000) + 's' : 'ongoing'}</span>
                           </div>
-                          <div className={styles.agentItemSub}>{call.start_timestamp ? new Date(call.start_timestamp).toLocaleString() : ''}</div>
                         </div>
-                        <div className={styles.agentItemStatus}>
-                          <span className={`${styles.statusDot} ${call.scrubbed_call_analysis?.user_sentiment === 'Positive' ? styles.statusDotGreen : call.scrubbed_call_analysis?.user_sentiment === 'Negative' ? styles.statusDotRed : styles.statusDotYellow}`}></span>
-                          <span>{call.duration_ms ? Math.round(call.duration_ms / 1000) + 's' : 'ongoing'}</span>
-                        </div>
+                        {call.recording_url && (
+                          <audio controls src={call.recording_url} style={{ width: '100%', height: 32, accentColor: '#F5C400' }} preload="none" />
+                        )}
                       </li>
                     ))}
                   </ul>
