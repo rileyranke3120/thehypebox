@@ -48,7 +48,7 @@ export default function Nav() {
           </nav>
 
           <div className={styles.navCta}>
-            <Link href="/login" className="btn btn-ghost">Log In</Link>
+            <a href="https://app.thehypeboxllc.com" className="btn btn-ghost" target="_blank" rel="noopener noreferrer">Log In</a>
           </div>
 
           {/* Hamburger — mobile only */}
@@ -81,9 +81,9 @@ export default function Nav() {
           </ul>
         </nav>
         <div className={styles.mobileDrawerCta}>
-          <Link href="/login" className="btn btn-ghost" onClick={close} style={{ width: '100%', justifyContent: 'center' }}>
+          <a href="https://app.thehypeboxllc.com" className="btn btn-ghost" onClick={close} style={{ width: '100%', justifyContent: 'center' }} target="_blank" rel="noopener noreferrer">
             Log In
-          </Link>
+          </a>
         </div>
       </div>
     </>
