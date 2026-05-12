@@ -1,5 +1,14 @@
+import Image from 'next/image';
 import styles from '@/styles/marketing.module.css';
 import TrialButton from './TrialButton';
+
+const LogoSep = () => (
+  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 2rem' }} aria-hidden="true">
+    <Image src="/logo.png" alt="" width={60} height={36} style={{ height: '26px', width: 'auto', opacity: 0.6, mixBlendMode: 'screen' }} />
+  </span>
+);
+
+const MARQUEE_TEXT = 'THE FOUNDERS BOX ~~~ FULL SERVICES · AUTOMATION · AI EMPLOYEES · CRM & INTEGRATIONS ~~~ BOOK A CALL!';
 
 const LaunchIcon = () => (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
@@ -42,11 +51,11 @@ const PLANS = [
     price: '97',
     period: '/mo',
     features: [
-      'CRM + contact management',
-      'Website + hosting',
-      'Unified inbox (text, email, social)',
-      'Basic automation (instant responses)',
-      'Appointment scheduling',
+      'CRM + Contact Management',
+      'Website + Hosting',
+      'Unified Inbox (Text, Email, Social)',
+      'Basic Automation (Instant Responses)',
+      'Appointment Scheduling',
     ],
     cta: 'Start Free Trial',
     href: '/checkout?plan=launch',
@@ -60,11 +69,11 @@ const PLANS = [
     price: '297',
     period: '/mo',
     features: [
-      'Everything in The Launch Box',
-      'Advanced automation workflows',
-      'Lead capture funnels',
-      'AI-assisted responses',
-      'Review & reputation tools',
+      'Everything In The Launch Box',
+      'Advanced Automation Workflows',
+      'Lead Capture Funnels',
+      'AI-Assisted Responses',
+      'Review & Reputation Tools',
     ],
     cta: 'Start Free Trial',
     href: '/checkout?plan=rocket',
@@ -79,11 +88,11 @@ const PLANS = [
     period: '/mo',
     badge: 'Most Popular',
     features: [
-      'Everything in The Rocket Box',
-      'AI phone receptionist',
-      'Full pipeline tracking',
-      'Team access + workflows',
-      'Priority support',
+      'Everything In The Rocket Box',
+      'AI Phone Receptionist',
+      'Full Pipeline Tracking',
+      'Team Access + Workflows',
+      'Priority Support',
     ],
     cta: 'Start Free Trial',
     href: '/checkout?plan=velocity',
@@ -96,11 +105,11 @@ const PLANS = [
     tagline: 'Go all in. Run your business like an empire.',
     callPrice: true,
     features: [
-      'Everything in The Velocity Box',
-      'Custom AI agent build-out',
-      'Deep analytics & reporting',
-      'Dedicated account manager',
-      'White-glove onboarding',
+      'Everything In The Velocity Box',
+      'Custom AI Agent Build-Out',
+      'Deep Analytics & Reporting',
+      'Dedicated Account Manager',
+      'White-Glove Onboarding',
     ],
     cta: 'Book a Call',
     href: '/demo',
@@ -110,11 +119,16 @@ const PLANS = [
 
 export default function PricingSection() {
   return (
-    <section id="pricing" className="section" aria-labelledby="pricing-heading">
-      <div className="container">
+    <section id="pricing" className={`section ${styles.pricingHero}`} aria-labelledby="pricing-heading">
+      <div className={styles.pricingHeroBg} aria-hidden="true">
+        <div className={styles.pricingHeroBgImg}>
+          <Image src="/HypeMEbutton.png" alt="" width={520} height={620} style={{ width: '100%', height: 'auto' }} />
+        </div>
+      </div>
+      <div className={`container ${styles.pricingHeroContent}`}>
         <div className={styles.sectionHeaderCenter}>
           <span className="tag">Pricing</span>
-          <h2 id="pricing-heading">Choose Your Level</h2>
+          <h2 id="pricing-heading">Mission Control</h2>
           <p className={styles.freeTrialBadge}>
             <strong>Free 14-Day Trial on All Plans</strong> — No credit card required
           </p>
@@ -131,7 +145,7 @@ export default function PricingSection() {
                 {plan.badge && (
                   <div className={styles.pricingCardBadge}>{plan.badge}</div>
                 )}
-                <div className={styles.pricingCardIcon}>
+                <div className={styles.pricingCardIcon} style={{ color: plan.iconColor }}>
                   <Icon />
                 </div>
                 <div className={styles.pricingCardTier}>{plan.name}</div>
@@ -173,6 +187,18 @@ export default function PricingSection() {
           No contracts · No hidden fees · Cancel anytime
         </p>
       </div>
+
+      <div className={styles.foundersMarquee} aria-label="Founders Box">
+        <div className={styles.foundersMarqueeTrack}>
+          {[0, 1, 2, 3].map((i) => (
+            <span key={i} style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.12em', color: 'var(--yellow)', paddingRight: '2rem' }}>{MARQUEE_TEXT}</span>
+              <LogoSep />
+            </span>
+          ))}
+        </div>
+      </div>
     </section>
+
   );
 }

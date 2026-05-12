@@ -4,17 +4,43 @@
  * Accepts: { date: string } — raw natural language from the caller,
  * e.g. "this Thursday", "April 28th", "next Monday", or "2026-04-28".
  * Parsed server-side using chrono-node with today's Eastern date as reference.
+ *
+ * Client credentials are resolved by agent_id (from Retell's call payload),
+ * falling back to Dave's env vars so existing calls keep working.
+ *
  * Returns: { slots: ["10:00 AM", "11:30 AM", ...] }
  */
 
 import * as chrono from 'chrono-node';
+import { createClient } from '@/lib/supabase';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_API_VERSION = '2021-07-28';
 
-function ghlHeaders() {
+// Look up a client's GHL credentials by their Retell agent_id
+async function getClientCreds(agentId) {
+  if (!agentId) return null;
+  const supabase = createClient();
+  const { data } = await supabase
+    .from('users')
+    .select('ghl_api_key, ghl_location_id, ghl_calendar_id')
+    .eq('retell_agent_id', agentId)
+    .single();
+  return data || null;
+}
+
+// Prefer client record from Supabase, fall back to Dave's env vars
+function resolveGhlCreds(clientCreds) {
   return {
-    Authorization: `Bearer ${process.env.GHL_DAVE_API_KEY}`,
+    apiKey:     clientCreds?.ghl_api_key     || process.env.GHL_DAVE_API_KEY,
+    locationId: clientCreds?.ghl_location_id || process.env.GHL_DAVE_LOCATION_ID,
+    calendarId: clientCreds?.ghl_calendar_id || process.env.GHL_DAVE_CALENDAR_ID,
+  };
+}
+
+function ghlHeaders(apiKey) {
+  return {
+    Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
     Version: GHL_API_VERSION,
   };
@@ -42,15 +68,12 @@ function easternMidnightMs(dateStr) {
     }).format(noonUtc),
     10
   );
-  // noon UTC in Eastern = easternHour (8 for EDT, 7 for EST)
-  // offset from UTC = easternHour - 12 (e.g. -4 for EDT, -5 for EST)
   const offsetHours = easternHour - 12;
   return new Date(`${dateStr}T00:00:00Z`).getTime() - offsetHours * 3_600_000;
 }
 
 // Parse a raw natural language date string into "YYYY-MM-DD"
 function parseDate(raw) {
-  // Already ISO — pass through
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
   const ref = new Date(
     new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) + 'T00:00:00'
@@ -73,6 +96,12 @@ export async function POST(request) {
 
   console.log('[check-availability] raw body:', JSON.stringify(body));
 
+  // Resolve GHL credentials — look up by agent_id, fall back to Dave's env vars
+  const agentId = body.agent_id ?? null;
+  const clientCreds = await getClientCreds(agentId);
+  const creds = resolveGhlCreds(clientCreds);
+  console.log(`[check-availability] agent_id=${agentId} using calendarId=${creds.calendarId}`);
+
   // Retell wraps tool arguments in body.args; fall back to body itself for direct testing
   const args = body.args ?? body;
   const { date: rawDate } = args;
@@ -92,14 +121,13 @@ export async function POST(request) {
   const startMs = easternMidnightMs(date);
   const endMs = startMs + 24 * 3_600_000 - 1;
 
-  const calendarId = process.env.GHL_DAVE_CALENDAR_ID;
-  const url = `${GHL_API_BASE}/calendars/${calendarId}/free-slots?startDate=${startMs}&endDate=${endMs}&timezone=America%2FNew_York`;
+  const url = `${GHL_API_BASE}/calendars/${creds.calendarId}/free-slots?startDate=${startMs}&endDate=${endMs}&timezone=America%2FNew_York`;
 
-  console.log(`[check-availability] date=${date} startMs=${startMs} (${new Date(startMs).toISOString()}) endMs=${endMs} (${new Date(endMs).toISOString()})`);
-  console.log(`[check-availability] calendarId=${calendarId} url=${url}`);
+  console.log(`[check-availability] date=${date} startMs=${startMs} endMs=${endMs}`);
+  console.log(`[check-availability] calendarId=${creds.calendarId} url=${url}`);
 
   try {
-    const res = await fetch(url, { headers: ghlHeaders() });
+    const res = await fetch(url, { headers: ghlHeaders(creds.apiKey) });
     const raw = await res.json();
 
     console.log(`[check-availability] GHL status=${res.status} response=${JSON.stringify(raw)}`);
@@ -108,11 +136,9 @@ export async function POST(request) {
       return Response.json({ error: 'Failed to fetch availability from GHL', details: raw }, { status: 502 });
     }
 
-    // GHL returns { "YYYY-MM-DD": { slots: ["2026-04-28T09:00:00-04:00", ...] }, traceId: "..." }
     const dateKeys = Object.keys(raw).filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k));
     console.log(`[check-availability] date keys in response: ${JSON.stringify(dateKeys)}`);
 
-    // Prefer the exact requested date; fall back to first date key if GHL returns a different key
     const dateKey = dateKeys.find((k) => k === date) ?? dateKeys[0];
     const slots = dateKey ? (raw[dateKey]?.slots ?? []) : [];
     const formatted = slots.map(formatSlot);
