@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import styles from '@/styles/marketing.module.css';
 
 const NAV_LINKS = [
   { href: '#services', label: 'Services' },
   { href: '#how', label: 'How It Works' },
   { href: '#pricing', label: 'Pricing' },
-  { href: '#booking', label: 'Book a Call' },
+  { href: '/demo', label: 'Demo' },
+  { href: '#contact', label: 'Contact Us' },
 ];
 
 export default function Nav() {
@@ -33,8 +35,8 @@ export default function Nav() {
     <>
       <header className={`${styles.nav}${scrolled ? ' ' + styles.navScrolled : ''}`} role="banner">
         <div className={`container ${styles.navInner}`}>
-          <Link href="/" className={styles.navLogo} aria-label="TheHypeBox — Home">
-            The<span>Hype</span>Box
+          <Link href="/" aria-label="TheHypeBox — Home">
+            <Image src="/logo.png" alt="The Hype Box" height={44} width={220} style={{ height: '44px', width: 'auto', display: 'block', mixBlendMode: 'screen' }} priority />
           </Link>
 
           <nav aria-label="Primary">
@@ -46,8 +48,7 @@ export default function Nav() {
           </nav>
 
           <div className={styles.navCta}>
-            <Link href="/login" className="btn btn-ghost">Log In</Link>
-            <a href="#booking" className="btn btn-primary">Book Free Call</a>
+            <Link href="/login" className="btn btn-primary">Log In</Link>
           </div>
 
           {/* Hamburger — mobile only */}

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import styles from '@/styles/marketing.module.css';
 
 export default function Footer() {
@@ -6,15 +7,16 @@ export default function Footer() {
     <footer className={styles.footer} role="contentinfo">
       <div className="container">
         <div className={styles.footerTop}>
-          <Link href="/" className={styles.footerLogo} aria-label="TheHypeBox — Home">
-            The<span>Hype</span>Box
+          <Link href="/" aria-label="TheHypeBox — Home">
+            <Image src="/logo.png" alt="The Hype Box" height={48} width={240} style={{ height: '48px', width: 'auto', display: 'block', mixBlendMode: 'screen' }} />
           </Link>
 
           <nav aria-label="Footer" className={styles.footerLinks}>
             <a href="#services">Services</a>
             <a href="#pricing">Pricing</a>
             <a href="#booking">Book a Call</a>
-            <a href="mailto:riley@thehypebox.com">Contact</a>
+            <Link href="/faq">FAQ</Link>
+            <Link href="/contact">Contact</Link>
           </nav>
 
           <div className={styles.footerSocial}>
@@ -44,6 +46,7 @@ export default function Footer() {
           <div className={styles.footerLegal}>
             <Link href="/privacy">Privacy Policy</Link>
             <Link href="/terms">Terms of Service</Link>
+            <Link href="/refund-policy">Refund Policy</Link>
           </div>
         </div>
       </div>

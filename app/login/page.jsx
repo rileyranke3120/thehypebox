@@ -1,9 +1,14 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import styles from '@/styles/login.module.css';
-import LoginForm from './LoginForm';
 
 export default function LoginPage() {
+  function handleSubmit(e) {
+    e.preventDefault();
+    window.location.href = 'https://app.thehypeboxllc.com';
+  }
   return (
     <div className={styles.loginLayout}>
 
@@ -33,15 +38,46 @@ export default function LoginPage() {
             <p className={styles.loginBoxSub}>Log in to your Hype Box Command Center.</p>
           </div>
 
-          <LoginForm />
+          <form className={styles.loginForm} onSubmit={handleSubmit} noValidate>
+
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel} htmlFor="email">Email</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                className={styles.formInput}
+                placeholder="you@yourbusiness.com"
+                autoComplete="email"
+                required
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel} htmlFor="password">
+                Password
+                <a href="#" className={styles.formLabelLink}>Forgot password?</a>
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                className={styles.formInput}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+              />
+            </div>
+
+            <button type="submit" className={`btn btn-primary ${styles.loginBtn}`}>
+              Log In
+            </button>
+
+          </form>
 
           <p className={styles.loginBoxFooter}>
             Not a client yet?{' '}
             <Link href="/#services">See how it works →</Link>
-          </p>
-
-          <p className={styles.loginBoxFooter}>
-            <Link href="/">← Back to site</Link>
           </p>
 
         </div>
