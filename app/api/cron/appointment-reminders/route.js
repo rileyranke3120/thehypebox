@@ -112,8 +112,9 @@ export async function GET(request) {
             totalSent++;
             console.log(`[appointment-reminders] sent to ${phone} for ${businessName} at ${appointmentTime}`);
           } else {
-            const err = await res.json();
-            failures.push({ phone, error: err.error || `HTTP ${res.status}` });
+            let errMsg = `HTTP ${res.status}`;
+            try { const body = await res.json(); errMsg = body.error || errMsg; } catch (_) {}
+            failures.push({ phone, error: errMsg });
           }
         } catch (apptErr) {
           console.error(`[appointment-reminders] appt error for client ${client.id}:`, apptErr.message);

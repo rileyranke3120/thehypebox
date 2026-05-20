@@ -26,7 +26,7 @@ export async function POST(request) {
       business_name,
       client_id: client_id ?? null,
       sent_at: new Date().toISOString(),
-    }).then().catch((e) => console.error('[post-service-followup] log failed:', e.message));
+    }).catch((e) => console.error('[post-service-followup] log failed:', e.message));
 
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -27,7 +27,7 @@ export async function POST(request) {
       appointment_time,
       client_id: client_id ?? null,
       sent_at: new Date().toISOString(),
-    }).then().catch((e) => console.error('[appointment-reminder] log failed:', e.message));
+    }).catch((e) => console.error('[appointment-reminder] log failed:', e.message));
 
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -41,7 +41,7 @@ export async function POST(request) {
       step: stepNum,
       client_id: client_id ?? null,
       sent_at: new Date().toISOString(),
-    }).then().catch((e) => console.error('[lead-nurture] log failed:', e.message));
+    }).catch((e) => console.error('[lead-nurture] log failed:', e.message));
 
     return NextResponse.json({ ok: true });
   } catch (error) {
