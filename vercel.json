@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/post-service-followups",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/cold-outreach",
+      "schedule": "0 9 * * *"
     }
   ]
 }
