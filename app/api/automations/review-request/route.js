@@ -42,7 +42,7 @@ export async function POST(request) {
       customer_name,
       client_id: user?.id ?? null,
       sent_at: new Date().toISOString(),
-    }).then().catch((e) => console.error('[review-request] log failed:', e.message));
+    }).catch((e) => console.error('[review-request] log failed:', e.message));
 
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -26,7 +26,7 @@ export async function POST(request) {
       client_id: client_id ?? null,
       timestamp: new Date().toISOString(),
       text_sent: true,
-    }).then().catch((e) => console.error('[missed-call-followup] log failed:', e.message));
+    }).catch((e) => console.error('[missed-call-followup] log failed:', e.message));
 
     return NextResponse.json({ ok: true });
   } catch (error) {

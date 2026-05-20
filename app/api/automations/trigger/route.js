@@ -83,7 +83,7 @@ export async function POST(request) {
       payload: mergedPayload,
       triggered_at: new Date().toISOString(),
       status,
-    }).then().catch((e) => console.error('[automations/trigger] log failed:', e.message));
+    }).catch((e) => console.error('[automations/trigger] log failed:', e.message));
 
     if (!res.ok) {
       return NextResponse.json({ ok: false, error: result.error || 'Automation failed', status }, { status: res.status });
@@ -99,7 +99,7 @@ export async function POST(request) {
       payload: payload || null,
       triggered_at: new Date().toISOString(),
       status: 'error',
-    }).then().catch(() => {});
+    }).catch(() => {});
 
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
