@@ -13,65 +13,114 @@ function unsubscribeUrl(id) {
   return `${APP_URL}/api/outreach/unsubscribe?id=${id}`;
 }
 
-function footer(id) {
-  return `
-    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:0.75rem;color:#aaa;line-height:1.6;">
-      TheHypeBox LLC · 243 Cherrington Rd, Westerville OH 43081<br>
-      <a href="${unsubscribeUrl(id)}" style="color:#aaa;">Unsubscribe</a>
-    </div>`;
+function emailWrapper(content, id) {
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:system-ui,-apple-system,sans-serif;">
+  <div style="max-width:580px;margin:0 auto;background:#ffffff;">
+
+    <!-- Header -->
+    <div style="background:#0a0a0a;padding:24px 32px;text-align:left;">
+      <span style="font-size:1.1rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#FFD000;">THE HYPE BOX</span>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:36px 32px;font-size:0.97rem;color:#222;line-height:1.8;">
+      ${content}
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#0a0a0a;padding:20px 32px;text-align:center;">
+      <p style="font-size:0.72rem;color:#555;margin:0;line-height:1.8;">
+        TheHypeBox LLC · 243 Cherrington Rd, Westerville OH 43081<br>
+        <a href="${unsubscribeUrl(id)}" style="color:#555;text-decoration:underline;">Unsubscribe</a>
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>`;
 }
 
 function buildEmail(step, prospect) {
   const first = prospect.first_name || 'there';
-  const unsub = unsubscribeUrl(prospect.id);
 
   if (step === 0) {
     return {
       subject: `Missing calls, ${first}?`,
-      html: `
-        <div style="max-width:560px;margin:0 auto;font-family:system-ui,sans-serif;font-size:1rem;color:#111;line-height:1.7;padding:32px 16px;">
-          <p>Hey ${first},</p>
-          <p>Quick question — when you're on a job and a new customer calls, what happens to that call?</p>
-          <p>Most contractors I talk to in Columbus say the same thing: it goes to voicemail, the person doesn't leave one, and that job goes to whoever picked up.</p>
-          <p>I built an AI system specifically for home service businesses that answers every call, books the appointment, and follows up with leads automatically — 24/7, even when you're on a roof.</p>
-          <p>Free 14-day trial, no credit card needed. Takes one day to set up.</p>
-          <p>Worth a look? → <a href="${APP_URL}" style="color:#000;font-weight:600;">thehypeboxllc.com</a></p>
-          <p style="margin-top:24px;">— Riley</p>
-          ${footer(prospect.id)}
-        </div>`,
+      html: emailWrapper(`
+        <p style="margin:0 0 16px;">Hey ${first},</p>
+        <p style="margin:0 0 16px;">Quick question — when you're on a job and a new customer calls, what happens to that call?</p>
+        <p style="margin:0 0 16px;">Most contractors in Columbus say the same thing: voicemail, no message left, job goes to whoever picked up.</p>
+        <p style="margin:0 0 16px;">I built an AI system for home service businesses that <strong>answers every call, books the appointment, and follows up with leads automatically</strong> — 24/7, even when you're on the job.</p>
+
+        <!-- Feature pills -->
+        <div style="margin:24px 0;display:flex;flex-wrap:wrap;gap:8px;">
+          ${['📞 Answers every call', '📅 Books appointments', '💬 Instant lead follow-up', '⭐ Review automation'].map(f =>
+            `<span style="display:inline-block;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:0.82rem;color:#333;">${f}</span>`
+          ).join('')}
+        </div>
+
+        <p style="margin:0 0 24px;">Free 14-day trial. No credit card. One day to set up.</p>
+
+        <a href="${APP_URL}" style="display:inline-block;background:#FFD000;color:#000;font-weight:800;font-size:0.95rem;padding:14px 28px;border-radius:4px;text-decoration:none;letter-spacing:0.04em;text-transform:uppercase;">See How It Works →</a>
+
+        <p style="margin:28px 0 0;color:#666;">— Riley<br><span style="font-size:0.82rem;">Founder, TheHypeBox</span></p>
+      `, prospect.id),
     };
   }
 
   if (step === 1) {
     return {
       subject: `What it actually looks like`,
-      html: `
-        <div style="max-width:560px;margin:0 auto;font-family:system-ui,sans-serif;font-size:1rem;color:#111;line-height:1.7;padding:32px 16px;">
-          <p>Hey ${first},</p>
-          <p>Wanted to show you what the system actually does, not just tell you.</p>
-          <p>When someone calls your business: the AI answers, captures their name and what they need, and books them directly onto your calendar. You get a notification. They get a confirmation text.</p>
-          <p>When a new lead comes in from your website or Google: they get a text back in under a minute, automatically. Most competitors take hours to respond.</p>
-          <p>You can see a live demo here → <a href="${APP_URL}/demo" style="color:#000;font-weight:600;">thehypeboxllc.com/demo</a></p>
-          <p>Still free for 14 days if you want to try it on your own business.</p>
-          <p style="margin-top:24px;">— Riley</p>
-          ${footer(prospect.id)}
-        </div>`,
+      html: emailWrapper(`
+        <p style="margin:0 0 16px;">Hey ${first},</p>
+        <p style="margin:0 0 16px;">Wanted to show you what this actually does — not just tell you.</p>
+
+        <!-- What happens box -->
+        <div style="background:#f9f9f9;border-left:3px solid #FFD000;padding:20px 24px;margin:20px 0;border-radius:0 4px 4px 0;">
+          <p style="margin:0 0 12px;font-weight:700;font-size:0.9rem;color:#111;text-transform:uppercase;letter-spacing:0.05em;">When someone calls your business:</p>
+          <p style="margin:0 0 8px;font-size:0.9rem;color:#444;">→ AI answers instantly, 24/7</p>
+          <p style="margin:0 0 8px;font-size:0.9rem;color:#444;">→ Captures their name, number & what they need</p>
+          <p style="margin:0 0 8px;font-size:0.9rem;color:#444;">→ Books them on your calendar automatically</p>
+          <p style="margin:0;font-size:0.9rem;color:#444;">→ You get a notification. They get a confirmation text.</p>
+        </div>
+
+        <div style="background:#f9f9f9;border-left:3px solid #FFD000;padding:20px 24px;margin:20px 0;border-radius:0 4px 4px 0;">
+          <p style="margin:0 0 12px;font-weight:700;font-size:0.9rem;color:#111;text-transform:uppercase;letter-spacing:0.05em;">When a new lead comes in from Google:</p>
+          <p style="margin:0 0 8px;font-size:0.9rem;color:#444;">→ They get a text back in under 60 seconds</p>
+          <p style="margin:0;font-size:0.9rem;color:#444;">→ Most competitors take hours — you respond first, you win the job</p>
+        </div>
+
+        <p style="margin:0 0 24px;">See it live:</p>
+        <a href="${APP_URL}/demo" style="display:inline-block;background:#FFD000;color:#000;font-weight:800;font-size:0.95rem;padding:14px 28px;border-radius:4px;text-decoration:none;letter-spacing:0.04em;text-transform:uppercase;">View Live Demo →</a>
+
+        <p style="margin:28px 0 0;color:#666;">— Riley<br><span style="font-size:0.82rem;">Founder, TheHypeBox</span></p>
+      `, prospect.id),
     };
   }
 
   // step === 2
   return {
     subject: `Last one from me`,
-    html: `
-      <div style="max-width:560px;margin:0 auto;font-family:system-ui,sans-serif;font-size:1rem;color:#111;line-height:1.7;padding:32px 16px;">
-        <p>Hey ${first},</p>
-        <p>Last email, I promise.</p>
-        <p>If missing calls and slow follow-ups aren't a problem for your business, ignore this. But if you're losing even 2–3 jobs a month to it — at $500–$2,000 a job — the math on a $97/mo tool fixes itself pretty fast.</p>
-        <p>14-day free trial, no card required, cancel anytime.</p>
-        <p>→ <a href="${APP_URL}" style="color:#000;font-weight:600;">thehypeboxllc.com</a></p>
-        <p style="margin-top:24px;">— Riley</p>
-        ${footer(prospect.id)}
-      </div>`,
+    html: emailWrapper(`
+      <p style="margin:0 0 16px;">Hey ${first},</p>
+      <p style="margin:0 0 16px;">Last email, I promise.</p>
+      <p style="margin:0 0 16px;">If missing calls isn't costing you anything, ignore this. But if you're losing even 2–3 jobs a month to it:</p>
+
+      <!-- Math box -->
+      <div style="background:#0a0a0a;color:#fff;padding:20px 24px;margin:20px 0;border-radius:4px;">
+        <p style="margin:0 0 8px;font-size:0.9rem;color:#aaa;">2 missed jobs/month × $1,000 avg job =</p>
+        <p style="margin:0 0 12px;font-size:1.4rem;font-weight:900;color:#FFD000;">$2,000/month walking out the door</p>
+        <p style="margin:0;font-size:0.82rem;color:#666;">The Hype Box starts at $97/mo</p>
+      </div>
+
+      <p style="margin:0 0 24px;">14-day free trial. No card required. Cancel anytime.</p>
+      <a href="${APP_URL}" style="display:inline-block;background:#FFD000;color:#000;font-weight:800;font-size:0.95rem;padding:14px 28px;border-radius:4px;text-decoration:none;letter-spacing:0.04em;text-transform:uppercase;">Start Free Trial →</a>
+
+      <p style="margin:28px 0 0;color:#666;">— Riley<br><span style="font-size:0.82rem;">Founder, TheHypeBox</span></p>
+    `, prospect.id),
   };
 }
 
