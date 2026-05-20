@@ -13,6 +13,20 @@ function unsubscribeUrl(id) {
   return `${APP_URL}/api/outreach/unsubscribe?id=${id}`;
 }
 
+function auditUrl(id) {
+  return `${APP_URL}/audit?id=${id}`;
+}
+
+function auditPS(prospect) {
+  return `
+    <div style="margin-top:28px;padding:16px 20px;background:#f9f9f9;border-left:3px solid #FFD000;border-radius:0 4px 4px 0;">
+      <p style="margin:0;font-size:0.88rem;color:#444;line-height:1.6;">
+        <strong style="color:#111;">P.S.</strong> — I ran a free marketing audit on <strong>${prospect.company || 'your business'}</strong> and the score wasn't great.
+        <a href="${auditUrl(prospect.id)}" style="color:#000;font-weight:700;text-decoration:underline;">Click here to see your report →</a>
+      </p>
+    </div>`;
+}
+
 function emailWrapper(content, id) {
   return `<!DOCTYPE html>
 <html>
@@ -67,6 +81,7 @@ function buildEmail(step, prospect) {
         <a href="${APP_URL}" style="display:inline-block;background:#FFD000;color:#000;font-weight:800;font-size:0.95rem;padding:14px 28px;border-radius:4px;text-decoration:none;letter-spacing:0.04em;text-transform:uppercase;">See How It Works →</a>
 
         <p style="margin:28px 0 0;color:#666;">— Riley<br><span style="font-size:0.82rem;">Founder, TheHypeBox</span></p>
+        ${auditPS(prospect)}
       `, prospect.id),
     };
   }
@@ -97,6 +112,7 @@ function buildEmail(step, prospect) {
         <a href="${APP_URL}/demo" style="display:inline-block;background:#FFD000;color:#000;font-weight:800;font-size:0.95rem;padding:14px 28px;border-radius:4px;text-decoration:none;letter-spacing:0.04em;text-transform:uppercase;">View Live Demo →</a>
 
         <p style="margin:28px 0 0;color:#666;">— Riley<br><span style="font-size:0.82rem;">Founder, TheHypeBox</span></p>
+        ${auditPS(prospect)}
       `, prospect.id),
     };
   }
@@ -120,6 +136,7 @@ function buildEmail(step, prospect) {
       <a href="${APP_URL}" style="display:inline-block;background:#FFD000;color:#000;font-weight:800;font-size:0.95rem;padding:14px 28px;border-radius:4px;text-decoration:none;letter-spacing:0.04em;text-transform:uppercase;">Start Free Trial →</a>
 
       <p style="margin:28px 0 0;color:#666;">— Riley<br><span style="font-size:0.82rem;">Founder, TheHypeBox</span></p>
+      ${auditPS(prospect)}
     `, prospect.id),
   };
 }
