@@ -24,8 +24,8 @@ try {
   }
 } catch {}
 
-const GHL_KEY = 'pit-adf27150-638c-40c9-95cc-f596973ebe56';
-const GHL_LOCATION_ID = 'Ra79aZSYkl96uPQajjkJ';
+const GHL_KEY = process.env.GHL_OUTREACH_API_KEY;
+const GHL_LOCATION_ID = process.env.GHL_OUTREACH_LOCATION_ID;
 const TAG = 'cold-outreach-columbus';
 const GHL_BASE = 'https://services.leadconnectorhq.com';
 const DELAY_MS = 350;
@@ -85,7 +85,6 @@ async function upsertGHLContact({ firstName, lastName, email, company, title, ph
     locationId: GHL_LOCATION_ID,
     firstName, lastName, email,
     companyName: company,
-    title,
     tags: [TAG],
   };
   if (phone) body.phone = phone;
@@ -133,6 +132,10 @@ async function run() {
   }
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');
+    process.exit(1);
+  }
+  if (!GHL_KEY || !GHL_LOCATION_ID) {
+    console.error('Missing GHL_OUTREACH_API_KEY or GHL_OUTREACH_LOCATION_ID in .env.local');
     process.exit(1);
   }
 
