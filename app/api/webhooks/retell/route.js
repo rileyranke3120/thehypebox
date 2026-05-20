@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { sendSMS } from '@/lib/twilio';
+import { findContactByPhone, createContact, addContactNote } from '@/lib/ghl';
 
 export async function POST(request) {
+  // Verify shared secret if configured (set RETELL_TOOL_SECRET in Vercel env vars,
+  // then add it as a custom header in Retell's webhook settings)
+  const secret = process.env.RETELL_TOOL_SECRET;
+  if (secret && request.headers.get('x-api-key') !== secret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const payload = await request.json();
 
@@ -92,25 +100,68 @@ export async function POST(request) {
       }
     }
 
+    // Look up client by agent_id — needed for branding, SMS credentials, and client_id on the log
+    let clientRow = null;
+    if (agent_id) {
+      const { data } = await supabase
+        .from('users')
+        .select('id, business_name, ghl_api_key, ghl_location_id')
+        .eq('retell_agent_id', agent_id)
+        .single();
+      clientRow = data || null;
+    }
+
     // Missed-call SMS + missed_calls log
     const missedReasons = ['no_answer', 'voicemail'];
     const isMissed = missedReasons.includes(disconnection_reason);
     let textSent = false;
 
     if (isMissed && phone) {
+      const businessName = clientRow?.business_name || 'our team';
       await sendSMS(
         phone,
-        "Hey! Sorry we missed your call at TheHypeBox. We'd love to help — reply here or visit thehypeboxllc.com to chat with Alex!"
+        `Hi! Sorry we missed your call at ${businessName}. How can we help? Reply here and we'll get right back to you!`,
+        { apiKey: clientRow?.ghl_api_key, locationId: clientRow?.ghl_location_id }
       );
       textSent = true;
     }
 
-    await supabase.from('missed_calls').insert({
-      call_id:    call_id || null,
-      from_number: phone,
-      timestamp:  start_timestamp ? new Date(start_timestamp).toISOString() : new Date().toISOString(),
-      text_sent:  textSent,
-    });
+    if (isMissed) {
+      await supabase.from('missed_calls').insert({
+        call_id:       call_id || null,
+        from_number:   phone,
+        business_name: clientRow?.business_name || null,
+        client_id:     clientRow?.id || null,
+        timestamp:     start_timestamp ? new Date(start_timestamp).toISOString() : new Date().toISOString(),
+        text_sent:     textSent,
+      });
+    }
+
+    // For completed calls with a summary, create/update the GHL contact and log the call
+    if (
+      (event === 'call_analyzed' || call_status === 'ended') &&
+      phone &&
+      call_summary &&
+      clientRow?.ghl_api_key &&
+      clientRow?.ghl_location_id
+    ) {
+      try {
+        let contactId = await findContactByPhone(clientRow.ghl_location_id, phone, clientRow.ghl_api_key);
+        if (!contactId) {
+          contactId = await createContact(clientRow.ghl_location_id, { phone }, clientRow.ghl_api_key);
+        }
+        if (contactId) {
+          const durationSec = start_timestamp && end_timestamp
+            ? Math.round((new Date(end_timestamp) - new Date(start_timestamp)) / 1000)
+            : null;
+          const durationStr = durationSec ? `${Math.floor(durationSec / 60)}m ${durationSec % 60}s` : 'unknown duration';
+          const noteBody = `📞 AI Call (${durationStr})\n\n${call_summary}`;
+          await addContactNote(contactId, noteBody, clientRow.ghl_api_key);
+        }
+      } catch (ghlErr) {
+        console.error('[retell webhook] GHL contact sync error:', ghlErr.message);
+      }
+    }
 
     return NextResponse.json({ ok: true, text_sent: textSent });
   } catch (error) {

@@ -1,0 +1,343 @@
+/* ============================================================
+   THE HYPE BOX — GHL Client Portal CSS
+   Matches thehypeboxllc.com design system exactly
+   Fonts: Barlow Condensed (headings) + DM Sans (body)
+   Colors: #F5C400 yellow | #0A0A0A black | #FFFFFF white
+   ============================================================ */
+
+/* ---- GOOGLE FONTS ---- */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Sans:wght@400;500;600&display=swap');
+
+/* ---- VARIABLES ---- */
+:root {
+  --yellow:    #F5C400;
+  --black:     #0A0A0A;
+  --grey-900:  #111111;
+  --grey-800:  #1A1A1A;
+  --grey-700:  #2A2A2A;
+  --grey-500:  #555555;
+  --grey-300:  #AAAAAA;
+  --white:     #FFFFFF;
+  --radius:    4px;
+  --transition: 150ms ease;
+}
+
+/* ---- GLOBAL ---- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body, html {
+  font-family: 'DM Sans', sans-serif !important;
+  background: var(--black) !important;
+  color: var(--white) !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
+/* ---- TYPOGRAPHY ---- */
+h1, h2, h3, h4, h5, h6,
+[class*="title"],
+[class*="heading"] {
+  font-family: 'Barlow Condensed', sans-serif !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.02em !important;
+  color: var(--white) !important;
+  line-height: 1.1 !important;
+}
+
+p, span, label, li, td, th, input, textarea, select, button {
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+p { color: var(--grey-300) !important; }
+
+a {
+  color: var(--yellow) !important;
+  text-decoration: none !important;
+  transition: opacity var(--transition) !important;
+}
+a:hover { opacity: 0.8 !important; }
+
+/* ---- BUTTONS ---- */
+button[type="submit"],
+.btn-primary,
+[class*="btn-primary"],
+[class*="primary-btn"],
+[class*="submit-btn"],
+.hl-btn-primary {
+  font-family: 'Barlow Condensed', sans-serif !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  background: var(--yellow) !important;
+  color: var(--black) !important;
+  border: 2px solid var(--yellow) !important;
+  border-radius: var(--radius) !important;
+  padding: 0.75rem 1.5rem !important;
+  transition: all var(--transition) !important;
+  cursor: pointer !important;
+}
+
+button[type="submit"]:hover,
+.btn-primary:hover,
+[class*="btn-primary"]:hover {
+  background: transparent !important;
+  color: var(--yellow) !important;
+  border-color: var(--yellow) !important;
+}
+
+/* Secondary/ghost buttons */
+.btn-secondary,
+[class*="btn-secondary"],
+[class*="ghost-btn"],
+button[type="button"] {
+  font-family: 'Barlow Condensed', sans-serif !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  background: transparent !important;
+  color: var(--white) !important;
+  border: 2px solid var(--grey-700) !important;
+  border-radius: var(--radius) !important;
+  transition: all var(--transition) !important;
+}
+
+button[type="button"]:hover,
+.btn-secondary:hover {
+  border-color: var(--yellow) !important;
+  color: var(--yellow) !important;
+}
+
+/* ---- INPUTS ---- */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+textarea,
+select,
+.form-control,
+[class*="input-field"],
+[class*="form-input"] {
+  font-family: 'DM Sans', sans-serif !important;
+  background: var(--grey-900) !important;
+  border: 1px solid var(--grey-700) !important;
+  color: var(--white) !important;
+  border-radius: var(--radius) !important;
+  transition: border-color var(--transition) !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+.form-control:focus {
+  border-color: var(--yellow) !important;
+  box-shadow: 0 0 0 3px rgba(245, 196, 0, 0.12) !important;
+  outline: none !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--grey-500) !important;
+}
+
+label {
+  color: var(--grey-300) !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+/* ---- LOGIN PAGE ---- */
+[class*="login"],
+[class*="auth-page"],
+[class*="auth-container"] {
+  background: var(--black) !important;
+}
+
+[class*="login-card"],
+[class*="auth-card"],
+[class*="login-box"],
+[class*="auth-box"] {
+  background: var(--grey-900) !important;
+  border: 1px solid var(--grey-700) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: 0 0 60px rgba(245, 196, 0, 0.05) !important;
+}
+
+/* Portal name/tagline on login */
+[class*="portal-name"],
+[class*="company-name"],
+[class*="brand-name"],
+[class*="portal-title"] {
+  font-family: 'Barlow Condensed', sans-serif !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: var(--yellow) !important;
+}
+
+/* ---- SIDEBAR / NAV ---- */
+.sidebar,
+[class*="sidebar"],
+[class*="side-nav"],
+[class*="left-panel"],
+[class*="left-menu"],
+nav {
+  background: var(--black) !important;
+  border-right: 1px solid var(--grey-700) !important;
+}
+
+[class*="nav-item"],
+[class*="nav-link"],
+[class*="menu-item"],
+[class*="sidebar-item"] {
+  font-family: 'Barlow Condensed', sans-serif !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: var(--grey-300) !important;
+  border-radius: var(--radius) !important;
+  transition: color var(--transition) !important;
+}
+
+[class*="nav-item"]:hover,
+[class*="nav-link"]:hover,
+[class*="menu-item"]:hover {
+  color: var(--white) !important;
+  background: var(--grey-800) !important;
+}
+
+[class*="nav-item"].active,
+[class*="nav-link"].active,
+[class*="active-item"],
+[class*="router-link-active"] {
+  background: var(--yellow) !important;
+  color: var(--black) !important;
+  font-weight: 700 !important;
+}
+
+/* ---- TOPBAR / HEADER ---- */
+.topbar, .header, [class*="topbar"], [class*="top-nav"], [class*="header-bar"] {
+  background: var(--black) !important;
+  border-bottom: 1px solid var(--grey-700) !important;
+}
+
+/* ---- MAIN CONTENT ---- */
+.main-content,
+[class*="main-content"],
+[class*="content-wrapper"],
+[class*="page-content"],
+.dashboard-content {
+  background: var(--black) !important;
+}
+
+/* ---- CARDS / PANELS ---- */
+.card,
+.panel,
+[class*="card"],
+[class*="widget"],
+[class*="panel-box"],
+.dashboard-card {
+  background: var(--grey-900) !important;
+  border: 1px solid var(--grey-700) !important;
+  border-radius: var(--radius) !important;
+}
+
+/* ---- TAG / BADGE ---- */
+.badge, .tag, [class*="badge"], [class*="status-tag"], [class*="chip"] {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--yellow) !important;
+  background: transparent !important;
+  border: 1px solid var(--yellow) !important;
+  border-radius: 2px !important;
+  padding: 0.2rem 0.5rem !important;
+}
+
+/* ---- TABLES ---- */
+table { background: var(--grey-900) !important; }
+
+th {
+  font-family: 'Barlow Condensed', sans-serif !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  background: var(--black) !important;
+  color: var(--yellow) !important;
+  border-bottom: 1px solid var(--grey-700) !important;
+}
+
+td {
+  border-color: var(--grey-700) !important;
+  color: var(--white) !important;
+}
+
+tr:hover td { background: var(--grey-800) !important; }
+
+/* ---- DIVIDERS ---- */
+hr, .divider {
+  height: 1px !important;
+  background: var(--grey-700) !important;
+  border: none !important;
+}
+
+/* ---- DROPDOWNS ---- */
+[class*="dropdown-menu"],
+[class*="dropdown-content"],
+.n-dropdown-menu {
+  background: var(--grey-900) !important;
+  border: 1px solid var(--grey-700) !important;
+  border-radius: var(--radius) !important;
+}
+
+[class*="dropdown-item"]:hover {
+  background: var(--grey-800) !important;
+  color: var(--yellow) !important;
+}
+
+/* ---- MODALS ---- */
+[class*="modal-content"],
+[class*="modal-wrapper"],
+.dialog-content {
+  background: var(--grey-900) !important;
+  border: 1px solid var(--grey-700) !important;
+  border-radius: var(--radius) !important;
+  color: var(--white) !important;
+}
+
+[class*="modal-header"] { border-bottom: 1px solid var(--grey-700) !important; }
+[class*="modal-footer"] { border-top: 1px solid var(--grey-700) !important; }
+
+/* ---- PROGRESS BARS ---- */
+[class*="progress-bar"],
+[class*="progress-fill"] {
+  background: var(--yellow) !important;
+}
+
+/* ---- SCROLLBAR ---- */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--black); }
+::-webkit-scrollbar-thumb { background: var(--grey-700); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--yellow); }
+
+/* ---- BACKGROUND RADIAL GLOW (matches hero) ---- */
+body::before {
+  content: '';
+  position: fixed;
+  top: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(245, 196, 0, 0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}

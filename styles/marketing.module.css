@@ -462,7 +462,7 @@
 /* --- Pricing --- */
 .pricingGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
   margin-top: 3rem;
   align-items: stretch;
@@ -893,6 +893,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: transparent;
 }
 
 .problems {
@@ -970,6 +971,71 @@
   margin-top: 3rem;
 }
 
+/* --- HYPE ME click-to-call band (below pricing) --- */
+.hypemeCallBand {
+  background: #000000;
+  border-top: 1px solid var(--grey-700);
+  padding: 3.5rem 0 4rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hypemeCallBand::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 600px 320px at 50% 50%, rgba(245, 196, 0, 0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hypemeCallLabel {
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--grey-500);
+  margin-bottom: 0.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.hypemeCallBtn {
+  display: inline-block;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.2s ease;
+  line-height: 0;
+  background: transparent;
+}
+
+.hypemeCallBtn:hover {
+  transform: scale(1.07);
+  opacity: 1;
+}
+
+.hypemeCallImg {
+  width: 300px !important;
+  height: auto !important;
+  max-width: 85vw;
+  display: block;
+  background: transparent;
+}
+
+.hypemeCallNumber {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--yellow);
+  margin-top: 0.9rem;
+  opacity: 0.85;
+}
+
 /* --- Footer micro text --- */
 .footerMicro {
   text-align: center;
@@ -979,6 +1045,188 @@
   padding: 1.25rem 0;
   border-bottom: 1px solid var(--grey-700);
   margin-bottom: 1.5rem;
+}
+
+/* --- How It Works header with mascot --- */
+.howHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
+}
+
+.howMascot {
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   MISSION CONTROL PRICING — image-based with overlay buttons
+   ============================================================ */
+
+.missionWrap {
+  background: #000;
+  position: relative;
+}
+
+.missionImageWrap {
+  position: relative;
+  width: 100%;
+  line-height: 0;
+}
+
+/* Transparent overlay — fills the image container for button positioning */
+.missionOverlay {
+  position: absolute;
+  inset: 0;
+}
+
+/* Invisible clickable buttons sitting on top of the image buttons */
+.missionOverlayBtn {
+  position: absolute;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  display: block;
+  /* Uncomment to debug positions: */
+  /* background: rgba(255,0,0,0.3) !important; */
+}
+
+/* Mobile fallback cards */
+.missionMobile {
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 2rem 1.5rem;
+  background: #060606;
+}
+
+.missionMobileCard {
+  background: #0d0d0d;
+  border: 1px solid rgba(255,208,0,0.25);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.missionMobileCardFeatured {
+  border-color: var(--yellow);
+}
+
+.missionMobileHead {
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--white);
+  margin-bottom: 0.75rem;
+}
+
+.missionMobilePrice {
+  font-family: var(--font-heading);
+  font-size: 3rem;
+  font-weight: 900;
+  color: var(--white);
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.missionMobilePrice sup {
+  font-size: 1.2rem;
+  vertical-align: super;
+}
+
+.missionMobilePrice span {
+  font-size: 0.9rem;
+  color: var(--grey-400);
+}
+
+.missionMobileSavings {
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: var(--yellow);
+  margin-bottom: 0.2rem;
+}
+
+.missionMobileAnnual {
+  font-size: 0.78rem;
+  color: var(--grey-400);
+  margin-bottom: 1.25rem;
+}
+
+.missionMobileBtn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  background: var(--yellow) !important;
+  color: var(--black) !important;
+  font-family: var(--font-heading) !important;
+  font-size: 0.85rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.1em !important;
+  padding: 0.85rem !important;
+  border-radius: 4px !important;
+  border: none !important;
+  cursor: pointer !important;
+}
+
+/* --- HypeMe Phone CTA Band --- */
+.hypemeBand {
+  background: #000000;
+  border-top: 1px solid var(--grey-700);
+  border-bottom: 1px solid var(--grey-700);
+  padding: 5rem 0;
+}
+
+.hypemeBandInner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.hypemeCopy .tag {
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+.hypemeHeading {
+  font-size: 2.75rem;
+  font-weight: 900;
+  margin: 0 0 0.75rem;
+  line-height: 1.1;
+}
+
+.hypemeImage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* --- Book a Call / Founders Section --- */
+.bookingSection {
+  background: linear-gradient(135deg, #0a0a0a 0%, #0f0f0f 100%);
+  border-top: 1px solid rgba(245, 196, 0, 0.15);
+}
+
+.bookingInner {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5rem;
+  align-items: center;
+}
+
+.bookingMascot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.bookingCopy .tag {
+  display: inline-block;
+  margin-bottom: 1rem;
 }
 
 @media (max-width: 1200px) {
@@ -1040,6 +1288,45 @@
     grid-template-columns: 1fr;
   }
 
+  .missionImageWrap {
+    display: none;
+  }
+
+  .missionMobile {
+    display: flex;
+  }
+
+  .howHeader {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .howMascot {
+    display: none;
+  }
+
+  .hypemeBandInner {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .hypemeImage {
+    order: -1;
+  }
+
+  .hypemeHeading {
+    font-size: 2rem;
+  }
+
+  .bookingInner {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .bookingMascot {
+    display: none;
+  }
+
   .navLinks {
     display: none;
   }
@@ -1054,6 +1341,17 @@
 }
 
 /* About section */
+.aboutHeader {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  margin-bottom: 3rem;
+}
+
+.aboutMascot {
+  flex-shrink: 0;
+}
+
 .aboutGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1094,6 +1392,15 @@
 }
 
 @media (max-width: 768px) {
+  .aboutHeader {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .aboutMascot {
+    display: none;
+  }
+
   .aboutGrid {
     grid-template-columns: 1fr;
   }

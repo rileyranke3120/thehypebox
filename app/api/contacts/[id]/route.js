@@ -3,15 +3,12 @@ import { NextResponse } from 'next/server';
 import { getContact, addContactNote } from '@/lib/ghl';
 import { sendSMS } from '@/lib/twilio';
 import { createClient } from '@/lib/supabase';
-
-function getApiKey(session) {
-  return session.user?.ghl_api_key || (session.user?.role === 'super_admin' ? process.env.GHL_API_KEY : null);
-}
+import { getGHLCredentials } from '@/lib/ghl-session';
 
 export async function GET(request, { params }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const apiKey = getApiKey(session);
+  const { apiKey } = await getGHLCredentials(session);
   if (!apiKey) return NextResponse.json({ error: 'No GHL API key configured.' }, { status: 400 });
 
   try {
@@ -25,7 +22,7 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const apiKey = getApiKey(session);
+  const { apiKey, locationId } = await getGHLCredentials(session);
   if (!apiKey) return NextResponse.json({ error: 'No GHL API key configured.' }, { status: 400 });
 
   const body = await request.json();
@@ -42,7 +39,7 @@ export async function POST(request, { params }) {
     if (action === 'sms') {
       const { phone, message } = body;
       if (!phone || !message) return NextResponse.json({ error: 'phone and message required.' }, { status: 400 });
-      await sendSMS(phone, message);
+      await sendSMS(phone, message, { apiKey, locationId });
 
       const supabase = createClient();
       const { data: user } = await supabase.from('users').select('id').eq('email', session.user.email).single();

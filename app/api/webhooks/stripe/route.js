@@ -8,7 +8,8 @@ import { paymentSuccessEmail, paymentFailedEmail, subscriptionCanceledEmail, hig
 import { createSubAccount } from '@/lib/highlevel';
 
 const PLAN_LABELS = {
-  launch: 'The Launch Box', rocket: 'The Rocket Box', velocity: 'The Velocity Box',
+  launch: 'The Launch Box',   rocket: 'The Rocket Box',   velocity: 'The Velocity Box',
+  starter: 'The Launch Box',  growth: 'The Rocket Box',   pro: 'The Velocity Box',
 };
 
 function generatePassword() {
@@ -97,6 +98,67 @@ export async function POST(request) {
         const plan = session.metadata?.plan || 'velocity';
         const name = session.metadata?.name || customer.name || '';
         await createAccount(customer.email, name, plan);
+
+        // Auto-provision GHL sub-account (fire-and-forget — non-blocking)
+        let ghlProvisioned = false;
+        try {
+          const { data: existing } = await supabase
+            .from('users')
+            .select('id, ghl_location_id')
+            .eq('email', customer.email.toLowerCase())
+            .single();
+
+          if (existing && !existing.ghl_location_id) {
+            const hlAccount = await createSubAccount({ name, email: customer.email, plan });
+            await supabase.from('users').update({
+              ghl_location_id: hlAccount.locationId,
+              ghl_user_id: hlAccount.userId || null,
+              retell_agent_id: hlAccount.retellAgentId || null,
+            }).eq('id', existing.id);
+
+            if (hlAccount.userId) {
+              const tpl = highLevelAccessEmail({
+                name: name || customer.email,
+                plan,
+                locationId: hlAccount.locationId,
+                hlEmail: customer.email,
+                hlPassword: hlAccount.password,
+                dashboardUrl: hlAccount.dashboardUrl,
+                hasRetell: !!hlAccount.retellAgentId,
+              });
+              await sendEmail({ to: customer.email, ...tpl });
+            }
+            ghlProvisioned = true;
+            console.log(`[stripe webhook] auto-provisioned GHL for ${customer.email}: ${hlAccount.locationId}`);
+          }
+        } catch (ghlErr) {
+          console.error(`[stripe webhook] auto-GHL provision failed for ${customer.email}:`, ghlErr.message);
+        }
+
+        // Notify Riley of new signup
+        try {
+          const planLabel = PLAN_LABELS[plan] || plan;
+          await sendEmail({
+            to: 'riley@thehypeboxllc.com',
+            subject: `🎉 New signup: ${name || customer.email} — ${planLabel}`,
+            html: `<div style="background:#0a0a0a;padding:32px 24px;font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
+              <p style="font-size:1.4rem;font-weight:900;color:#FFD000;margin:0 0 16px;letter-spacing:0.08em;text-transform:uppercase;">THE HYPE BOX</p>
+              <p style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 12px;">New client just signed up!</p>
+              <div style="background:#111;border:1px solid #222;border-radius:6px;padding:16px;margin-bottom:20px;">
+                <p style="margin:0 0 6px;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Name</p>
+                <p style="margin:0 0 16px;font-size:0.95rem;color:#fff;">${name || '—'}</p>
+                <p style="margin:0 0 6px;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Email</p>
+                <p style="margin:0 0 16px;font-size:0.95rem;color:#fff;">${customer.email}</p>
+                <p style="margin:0 0 6px;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Plan</p>
+                <p style="margin:0 0 16px;font-size:0.95rem;font-weight:700;color:#FFD000;">${planLabel}</p>
+                <p style="margin:0 0 6px;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">GHL Provisioned</p>
+                <p style="margin:0;font-size:0.85rem;color:${ghlProvisioned ? '#4CAF50' : '#FF8C00'};">${ghlProvisioned ? 'Yes — auto-provisioned' : 'No — needs manual setup'}</p>
+              </div>
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/admin/clients" style="display:inline-block;background:#FFD000;color:#000;font-weight:700;font-size:0.85rem;padding:10px 20px;border-radius:4px;text-decoration:none;letter-spacing:0.05em;text-transform:uppercase;">View in Admin →</a>
+            </div>`,
+          });
+        } catch (_) {}
+
         console.log(`[stripe webhook] checkout completed for ${customer.email}`);
         break;
       }
@@ -128,18 +190,40 @@ export async function POST(request) {
         const customer = await stripe.customers.retrieve(sub.customer);
         if (customer.deleted || !customer.email) break;
 
+        const { data: canceledUser } = await supabase
+          .from('users')
+          .select('plan, ghl_user_id')
+          .eq('email', customer.email.toLowerCase())
+          .single();
+
         await supabase
           .from('users')
           .update({ plan_status: 'canceled' })
           .eq('email', customer.email.toLowerCase());
 
+        // Remove GHL access
+        if (canceledUser?.ghl_user_id) {
+          const ghlKey = process.env.GHL_AGENCY_KEY || process.env.GHL_AGENCY_API_KEY;
+          if (ghlKey) {
+            try {
+              const ghlRes = await fetch(`https://services.leadconnectorhq.com/users/${canceledUser.ghl_user_id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${ghlKey}`, Version: '2021-07-28' },
+              });
+              if (!ghlRes.ok) {
+                console.error(`[stripe webhook] GHL delete user failed: HTTP ${ghlRes.status}`);
+              } else {
+                console.log(`[stripe webhook] GHL user ${canceledUser.ghl_user_id} removed for ${customer.email}`);
+              }
+            } catch (ghlErr) {
+              console.error('[stripe webhook] GHL offboarding error:', ghlErr.message);
+            }
+          }
+        }
+
         // Send cancellation email
         try {
-          const { data: user } = await supabase
-            .from('users')
-            .select('plan')
-            .eq('email', customer.email.toLowerCase())
-            .single();
+          const user = canceledUser;
 
           const tpl = subscriptionCanceledEmail({
             name: customer.name || customer.email,
@@ -258,12 +342,15 @@ export async function POST(request) {
               plan: user?.plan || 'launch',
             });
 
+            const hlUpdates = {
+              ghl_location_id: hlAccount.locationId,
+              ghl_user_id: hlAccount.userId,
+            };
+            if (hlAccount.retellAgentId) hlUpdates.retell_agent_id = hlAccount.retellAgentId;
+
             await supabase
               .from('users')
-              .update({
-                ghl_location_id: hlAccount.locationId,
-                ghl_user_id: hlAccount.userId,
-              })
+              .update(hlUpdates)
               .eq('email', customer.email.toLowerCase());
 
             // Send HL access email to customer
@@ -275,6 +362,7 @@ export async function POST(request) {
                 hlEmail: customer.email,
                 hlPassword: hlAccount.password,
                 dashboardUrl: hlAccount.dashboardUrl,
+                hasRetell: !!hlAccount.retellAgentId,
               });
               await sendEmail({ to: customer.email, ...tpl });
             } catch (emailErr) {

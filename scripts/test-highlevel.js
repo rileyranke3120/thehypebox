@@ -7,7 +7,7 @@
  *   node scripts/test-highlevel.js create-account --email test@example.com --name "Test User" --plan launch
  *
  * Requires env vars in .env.local:
- *   GHL_AGENCY_API_KEY
+ *   GHL_AGENCY_KEY
  *   GHL_SNAPSHOT_ID
  */
 

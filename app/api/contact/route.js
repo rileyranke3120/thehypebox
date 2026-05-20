@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { ghlFetch } from '@/lib/ghl';
 import { sendEmail } from '@/lib/send-email';
 
+function esc(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 // Simple in-memory rate limit: 1 submission per email per minute
 const rateLimits = new Map();
 function checkRateLimit(email) {
@@ -34,31 +38,33 @@ export async function POST(request) {
     const locationId = process.env.GHL_LOCATION_ID;
     const apiKey = process.env.GHL_API_KEY;
 
-    // ── 1. Create / update contact in GoHighLevel ──────────────
-    const contactRes = await ghlFetch('/contacts/', apiKey, {
-      method: 'POST',
-      body: JSON.stringify({
-        firstName,
-        lastName,
-        email,
-        phone: phone || undefined,
-        locationId,
-        source: 'Website',
-        tags: ['website-inquiry'],
-      }),
-    });
-
-    const contactId = contactRes.contact?.id;
-
-    if (contactId && message?.trim()) {
-      await ghlFetch(`/contacts/${contactId}/notes`, apiKey, {
+    // ── 1. Create / update contact in GoHighLevel (non-fatal) ──
+    let contactId = null;
+    try {
+      const contactRes = await ghlFetch('/contacts/', apiKey, {
         method: 'POST',
         body: JSON.stringify({
-          body: `Website inquiry from ${name}${subject ? ` [${subject}]` : ''}:\n\n${message.trim()}`,
+          firstName,
+          lastName,
+          email,
+          phone: phone || undefined,
+          locationId,
+          source: 'Website',
+          tags: ['website-inquiry'],
         }),
-      }).catch((err) => {
-        console.warn('Note creation failed:', err.message);
       });
+      contactId = contactRes.contact?.id;
+
+      if (contactId && message?.trim()) {
+        await ghlFetch(`/contacts/${contactId}/notes`, apiKey, {
+          method: 'POST',
+          body: JSON.stringify({
+            body: `Website inquiry from ${name}${subject ? ` [${subject}]` : ''}:\n\n${message.trim()}`,
+          }),
+        }).catch((err) => console.warn('[contact] note creation failed:', err.message));
+      }
+    } catch (ghlErr) {
+      console.error('[contact] GHL contact creation failed (non-fatal):', ghlErr.message);
     }
 
     // ── 2. Email notification to riley@thehypeboxllc.com ───────
@@ -71,10 +77,10 @@ export async function POST(request) {
           <div style="max-width:560px;margin:0 auto;padding:48px 24px;">
             <div style="margin-bottom:24px;"><span style="font-size:1.2rem;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#FFD000;">THE HYPE BOX — Contact Form</span></div>
             <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
-              <tr><td style="padding:8px 0;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;width:80px;">From</td><td style="padding:8px 0;color:#fff;">${name}</td></tr>
-              <tr><td style="padding:8px 0;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Email</td><td style="padding:8px 0;"><a href="mailto:${email}" style="color:#FFD000;">${email}</a></td></tr>
-              ${subject ? `<tr><td style="padding:8px 0;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Subject</td><td style="padding:8px 0;color:#fff;">${subject}</td></tr>` : ''}
-              ${phone ? `<tr><td style="padding:8px 0;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Phone</td><td style="padding:8px 0;color:#fff;">${phone}</td></tr>` : ''}
+              <tr><td style="padding:8px 0;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;width:80px;">From</td><td style="padding:8px 0;color:#fff;">${esc(name)}</td></tr>
+              <tr><td style="padding:8px 0;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Email</td><td style="padding:8px 0;"><a href="mailto:${esc(email)}" style="color:#FFD000;">${esc(email)}</a></td></tr>
+              ${subject ? `<tr><td style="padding:8px 0;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Subject</td><td style="padding:8px 0;color:#fff;">${esc(subject)}</td></tr>` : ''}
+              ${phone ? `<tr><td style="padding:8px 0;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Phone</td><td style="padding:8px 0;color:#fff;">${esc(phone)}</td></tr>` : ''}
             </table>
             <div style="background:#111;border:1px solid #222;border-radius:4px;padding:20px;">
               <p style="font-size:0.75rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px;">Message</p>
@@ -89,7 +95,7 @@ export async function POST(request) {
     }
 
     // ── 3. Confirmation email to the user ──────────────────────
-    const firstName2 = firstName || name;
+    const firstName2 = esc(firstName || name);
     try {
       await sendEmail({
         to: email,

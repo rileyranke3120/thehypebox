@@ -29,12 +29,12 @@ async function getClientCreds(agentId) {
   return data || null;
 }
 
-// Prefer client record from Supabase, fall back to Dave's env vars
+// Prefer client record from Supabase, then TheHypeBox's own creds, then Dave's
 function resolveGhlCreds(clientCreds) {
   return {
-    apiKey:     clientCreds?.ghl_api_key     || process.env.GHL_DAVE_API_KEY,
-    locationId: clientCreds?.ghl_location_id || process.env.GHL_DAVE_LOCATION_ID,
-    calendarId: clientCreds?.ghl_calendar_id || process.env.GHL_DAVE_CALENDAR_ID,
+    apiKey:     clientCreds?.ghl_api_key     || process.env.GHL_API_KEY             || process.env.GHL_DAVE_API_KEY,
+    locationId: clientCreds?.ghl_location_id || process.env.GHL_LOCATION_ID         || process.env.GHL_DAVE_LOCATION_ID,
+    calendarId: clientCreds?.ghl_calendar_id || process.env.GHL_HYPEBOX_CALENDAR_ID || process.env.GHL_DAVE_CALENDAR_ID,
   };
 }
 
@@ -87,6 +87,12 @@ function parseDate(raw) {
 }
 
 export async function POST(request) {
+  // Validate Retell tool secret if configured (optional — skip if env var not set)
+  const secret = process.env.RETELL_TOOL_SECRET;
+  if (secret && request.headers.get('x-api-key') !== secret) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   let body;
   try {
     body = await request.json();
@@ -102,6 +108,11 @@ export async function POST(request) {
   const creds = resolveGhlCreds(clientCreds);
   console.log(`[check-availability] agent_id=${agentId} using calendarId=${creds.calendarId}`);
 
+  if (!creds.calendarId) {
+    console.error('[check-availability] no calendarId — client has no ghl_calendar_id set');
+    return Response.json({ error: "Booking isn't configured for this account yet." }, { status: 503 });
+  }
+
   // Retell wraps tool arguments in body.args; fall back to body itself for direct testing
   const args = body.args ?? body;
   const { date: rawDate } = args;
@@ -112,8 +123,8 @@ export async function POST(request) {
   let date;
   try {
     date = parseDate(rawDate);
-  } catch (err) {
-    return Response.json({ error: err.message }, { status: 422 });
+  } catch {
+    return Response.json({ error: "I couldn't understand that date. Please try a clear date like 'next Tuesday' or 'May 25th'." }, { status: 422 });
   }
 
   console.log(`[check-availability] raw="${rawDate}" parsed="${date}"`);

@@ -5,7 +5,7 @@ import { trialEndingEmail } from '@/lib/email-templates';
 
 export const dynamic = 'force-dynamic';
 
-const PLAN_PRICES = { launch: 97, rocket: 297, velocity: 497 };
+const PLAN_PRICES = { launch: 97, rocket: 297, velocity: 497, starter: 97, growth: 297, pro: 497 };
 
 export async function GET(request) {
   // Verify this request is from Vercel Cron (or your own call with the secret)
@@ -25,7 +25,7 @@ export async function GET(request) {
 
     const { data: users, error } = await supabase
       .from('users')
-      .select('email, name, plan, trial_ends_at')
+      .select('email, name, plan, trial_ends_at, toggles')
       .eq('plan_status', 'trialing')
       .gte('trial_ends_at', windowStart.toISOString())
       .lt('trial_ends_at', windowEnd.toISOString());
@@ -36,6 +36,12 @@ export async function GET(request) {
     const failures = [];
 
     for (const user of users ?? []) {
+      // Deduplication: skip if reminder already sent (prevents double-send on cron retry)
+      if (user.toggles?.trial_reminder_sent) {
+        console.log(`[trial-reminders] already sent to ${user.email}, skipping`);
+        continue;
+      }
+
       try {
         const trialEnd = new Date(user.trial_ends_at);
         const tpl = trialEndingEmail({
@@ -45,6 +51,10 @@ export async function GET(request) {
           trialEndDate: trialEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
         });
         await sendEmail({ to: user.email, ...tpl });
+        await supabase
+          .from('users')
+          .update({ toggles: { ...(user.toggles || {}), trial_reminder_sent: true } })
+          .eq('email', user.email);
         emailsSent++;
         console.log(`[trial-reminders] sent to ${user.email}`);
       } catch (err) {

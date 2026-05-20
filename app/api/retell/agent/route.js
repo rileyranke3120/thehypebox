@@ -2,12 +2,14 @@ import { auth } from '@/auth';
 import { createClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
-const AGENCY_AGENT_ID = 'agent_132e809e21c0ff5eb0f006d59e';
-const RETELL_BASE = 'https://api.retellai.com/v2';
+const AGENCY_AGENT_ID = process.env.RETELL_AGENCY_AGENT_ID || null;
+const RETELL_BASE = 'https://api.retellai.com';
 
 function retellHeaders() {
+  const key = process.env.RETELL_API_KEY;
+  if (!key) throw new Error('RETELL_API_KEY is not configured');
   return {
-    Authorization: `Bearer ${process.env.RETELL_API_KEY}`,
+    Authorization: `Bearer ${key}`,
     'Content-Type': 'application/json',
   };
 }
@@ -30,6 +32,7 @@ export async function GET() {
 
   try {
     const agentId = await resolveAgentId(session.user.email);
+    if (!agentId) return NextResponse.json({ ok: false, error: 'No Retell agent configured' }, { status: 404 });
     const res = await fetch(`${RETELL_BASE}/get-agent/${agentId}`, { headers: retellHeaders() });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || `Retell error: ${res.status}`);
@@ -47,6 +50,7 @@ export async function PATCH(request) {
   try {
     const updates = await request.json();
     const agentId = await resolveAgentId(session.user.email);
+    if (!agentId) return NextResponse.json({ ok: false, error: 'No Retell agent configured' }, { status: 404 });
 
     const res = await fetch(`${RETELL_BASE}/update-agent/${agentId}`, {
       method: 'PATCH',

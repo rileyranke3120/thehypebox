@@ -9,22 +9,22 @@ import { logout } from '@/app/actions/auth';
 import styles from '@/styles/dashboard.module.css';
 
 const PLAN_NAMES = {
-  launch: 'The Launch Box',
-  rocket: 'The Rocket Box',
-  velocity: 'The Velocity Box',
+  launch: 'The Launch Box',   rocket: 'The Rocket Box',   velocity: 'The Velocity Box',
+  starter: 'The Launch Box',  growth: 'The Rocket Box',   pro: 'The Velocity Box',
 };
 
 const PLAN_PRICES = {
-  launch: 97,
-  rocket: 297,
-  velocity: 497,
+  launch: 97,   rocket: 297,   velocity: 497,
+  starter: 97,  growth: 297,   pro: 497,
 };
 
 const STATUS_CONFIG = {
-  trialing: { label: 'Free Trial', color: '#F5C400', bg: 'rgba(245,196,0,0.1)', dot: '#F5C400' },
-  active:   { label: 'Active',     color: '#28C840', bg: 'rgba(40,200,64,0.1)',  dot: '#28C840' },
-  canceled: { label: 'Canceled',   color: '#888',    bg: 'rgba(136,136,136,0.1)', dot: '#555' },
-  past_due: { label: 'Payment Failed', color: '#E24B4A', bg: 'rgba(226,75,74,0.1)', dot: '#E24B4A' },
+  trialing: { label: 'Free Trial',     color: '#F5C400', bg: 'rgba(245,196,0,0.1)',   dot: '#F5C400' },
+  active:   { label: 'Active',         color: '#28C840', bg: 'rgba(40,200,64,0.1)',    dot: '#28C840' },
+  canceled: { label: 'Canceled',       color: '#888',    bg: 'rgba(136,136,136,0.1)', dot: '#555'    },
+  past_due: { label: 'Payment Failed', color: '#E24B4A', bg: 'rgba(226,75,74,0.1)',   dot: '#E24B4A' },
+  expired:  { label: 'Trial Expired',  color: '#E24B4A', bg: 'rgba(226,75,74,0.1)',   dot: '#E24B4A' },
+  incomplete: { label: 'Incomplete',   color: '#888',    bg: 'rgba(136,136,136,0.1)', dot: '#555'    },
 };
 
 function getInitials(name) {
@@ -163,6 +163,19 @@ export default function BillingPage() {
           <h1>Billing</h1>
           <p>Manage your subscription and payment method</p>
         </div>
+
+        {/* Trial expired alert */}
+        {sub?.planStatus === 'expired' && (
+          <div style={{ margin: '0 0 1.5rem', padding: '1rem 1.25rem', background: 'rgba(226,75,74,0.1)', border: '1px solid rgba(226,75,74,0.3)', borderLeft: '3px solid #E24B4A', borderRadius: '4px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+            <div>
+              <p style={{ color: '#E24B4A', fontWeight: 600, fontSize: '0.9rem', margin: '0 0 0.25rem' }}>Your trial has ended</p>
+              <p style={{ color: '#aaa', fontSize: '0.85rem', margin: 0 }}>Subscribe now to restore access to your AI receptionist, automations, and dashboard.</p>
+            </div>
+            <a href="/#pricing" className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', whiteSpace: 'nowrap', flexShrink: 0, textDecoration: 'none' }}>
+              Choose a Plan →
+            </a>
+          </div>
+        )}
 
         {/* Past due alert */}
         {sub?.planStatus === 'past_due' && (

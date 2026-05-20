@@ -1,28 +1,33 @@
 import { auth } from '@/auth';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const supabase = createClient();
   try {
     const user = session.user ?? {};
     const isSuperAdmin = user.role === 'super_admin';
-    // Fetch Retell calls (all agents / all clients for super_admin)
-    const retellRes = await fetch('https://api.retellai.com/v2/list-calls', {
+    // Fetch Retell calls — admin sees all, clients scoped to their agent
+    const retellBody = { limit: 50 };
+    if (!isSuperAdmin && user.retell_agent_id) {
+      retellBody.filter_criteria = { agent_id: [user.retell_agent_id] };
+    } else if (!isSuperAdmin) {
+      // No agent provisioned yet — skip Retell fetch
+    }
+    const retellRes = !isSuperAdmin && !user.retell_agent_id ? null : await fetch('https://api.retellai.com/v2/list-calls', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.RETELL_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ limit: 50 }),
+      body: JSON.stringify(retellBody),
     });
-    const retellData = retellRes.ok ? await retellRes.json() : [];
+    const retellData = retellRes?.ok ? await retellRes.json() : [];
     const retellCalls = (Array.isArray(retellData) ? retellData : retellData?.calls ?? []).map((c) => ({
       id: c.call_id,
       source: 'retell',

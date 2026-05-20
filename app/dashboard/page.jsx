@@ -26,6 +26,71 @@ function getInitials(name) {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
+function ChangePasswordPanel() {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setMsg(null);
+    if (next !== confirm) { setMsg({ ok: false, text: 'Passwords do not match.' }); return; }
+    if (next.length < 8) { setMsg({ ok: false, text: 'Password must be at least 8 characters.' }); return; }
+    setSaving(true);
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: current, newPassword: next }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMsg({ ok: true, text: 'Password updated successfully.' });
+        setCurrent(''); setNext(''); setConfirm('');
+      } else {
+        setMsg({ ok: false, text: data.error || 'Failed to update password.' });
+      }
+    } catch {
+      setMsg({ ok: false, text: 'Something went wrong. Please try again.' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inp = { width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14, boxSizing: 'border-box' };
+  const lbl = { display: 'block', fontSize: 12, color: '#888', marginBottom: 6 };
+
+  return (
+    <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: 10, padding: '20px 24px', marginTop: 16 }}>
+      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff', marginBottom: 16, letterSpacing: '0.04em' }}>Security — Change Password</div>
+      <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+        <div>
+          <label style={lbl}>Current Password</label>
+          <input type="password" value={current} onChange={e => setCurrent(e.target.value)} style={inp} required />
+        </div>
+        <div>
+          <label style={lbl}>New Password</label>
+          <input type="password" value={next} onChange={e => setNext(e.target.value)} style={inp} minLength={8} required />
+        </div>
+        <div>
+          <label style={lbl}>Confirm New Password</label>
+          <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} style={inp} required />
+        </div>
+        {msg && (
+          <div style={{ gridColumn: '1 / -1', fontSize: 13, color: msg.ok ? '#4CAF50' : '#E24B4A' }}>{msg.text}</div>
+        )}
+        <div style={{ gridColumn: '1 / -1' }}>
+          <button type="submit" disabled={saving} style={{ background: saving ? '#222' : '#FFD000', color: saving ? '#555' : '#000', border: 'none', borderRadius: 6, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
+            {saving ? 'Saving…' : 'Update Password'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function Msg({ text }) {
   if (!text) return null;
   const ok = !text.startsWith('❌');
@@ -130,22 +195,21 @@ export default function DashboardPage() {
   const [appointments, setAppointments] = useState([]);
   const [showApptModal, setShowApptModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
-  const [apptForm, setApptForm] = useState({ customer_name: '', service: '', time: '', phone: '' });
+  const [apptForm, setApptForm] = useState({ customer_name: '', service: '', time: '', phone: '', title: '', notes: '' });
   const [apptSaving, setApptSaving] = useState(false);
 
   const fetchAppointments = async (weekStart) => {
     if (!session?.user?.email) return;
     try {
-      const { supabase } = await import('@/lib/supabase');
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
       const { data } = await supabase
         .from('appointments')
         .select('*')
         .eq('user_email', session.user.email)
-        .gte('appointment_date', weekStart.toISOString().split('T')[0])
-        .lte('appointment_date', weekEnd.toISOString().split('T')[0])
-        .order('appointment_time', { ascending: true });
+        .gte('date', weekStart.toISOString().split('T')[0])
+        .lte('date', weekEnd.toISOString().split('T')[0])
+        .order('time', { ascending: true });
       if (data) setAppointments(data);
     } catch {
       // Supabase not yet configured
@@ -162,17 +226,20 @@ export default function DashboardPage() {
     if (!apptForm.customer_name || !apptForm.service || !apptForm.time) return;
     setApptSaving(true);
     try {
-      const { supabase } = await import('@/lib/supabase');
-      await supabase.from('appointments').insert({
-        user_email: session?.user?.email,
-        customer_name: apptForm.customer_name,
-        service: apptForm.service,
-        appointment_date: selectedDate.toISOString().split('T')[0],
-        appointment_time: apptForm.time,
-        phone: apptForm.phone,
+      const res = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: selectedDate.toISOString().split('T')[0],
+          time: apptForm.time,
+          title: `${apptForm.customer_name} — ${apptForm.service}`,
+          notes: apptForm.phone || null,
+        }),
       });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
       setShowApptModal(false);
-      setApptForm({ customer_name: '', service: '', time: '', phone: '' });
+      setApptForm({ customer_name: '', service: '', time: '', phone: '', title: '', notes: '' });
       fetchAppointments(calWeekStart);
     } catch {
       // handle silently
@@ -189,7 +256,7 @@ export default function DashboardPage() {
 
   const apptsByDate = (date) => {
     const key = date.toISOString().split('T')[0];
-    return appointments.filter((a) => a.appointment_date === key);
+    return appointments.filter((a) => a.date === key);
   };
 
   const calWeekLabel = (() => {
@@ -209,7 +276,6 @@ export default function DashboardPage() {
     if (activePage !== 'billing' || !session?.user?.email) return;
     (async () => {
       try {
-        const { supabase } = await import('@/lib/supabase');
         const { data } = await supabase
           .from('users')
           .select('plan, created_at')
@@ -230,8 +296,9 @@ export default function DashboardPage() {
     return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   })();
 
-  const planName = billingData.plan || 'Growth';
-  const planPrice = planName === 'Starter' ? '$97' : planName === 'Pro' ? '$497' : '$297';
+  const planName = billingData.plan || 'launch';
+  const _planPrices = { launch: '$97', starter: '$97', rocket: '$297', growth: '$297', velocity: '$497', pro: '$497' };
+  const planPrice = _planPrices[planName] || '$97';
 
   // ── Settings state
   const [isEditing, setIsEditing] = useState(false);
@@ -261,7 +328,6 @@ export default function DashboardPage() {
     if (activePage !== 'settings' || !session?.user?.email) return;
     (async () => {
       try {
-        const { supabase } = await import('@/lib/supabase');
         const { data } = await supabase
           .from('users')
           .select('name, phone, address, business_hours, website')
@@ -286,7 +352,6 @@ export default function DashboardPage() {
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      const { supabase } = await import('@/lib/supabase');
       await supabase
         .from('users')
         .update({
@@ -317,19 +382,20 @@ export default function DashboardPage() {
   const [activityItems, setActivityItems] = useState([]);
   const [overviewData, setOverviewData] = useState(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
+  const [accountStatus, setAccountStatus] = useState(null);
 
   const [agentToggles, setAgentToggles] = useState({
     phone: true, scheduling: true, accounting: true, crm: true,
   });
 
   const [userRole, setUserRole] = useState('client');
-  const [userPlan, setUserPlan] = useState('starter');
+  const [userPlan, setUserPlan] = useState('launch');
   const [clientProfile, setClientProfile] = useState(null);
   const [onboardingComplete, setOnboardingComplete] = useState(true);
 
   const [clients, setClients] = useState([]);
   const [clientsLoading, setClientsLoading] = useState(false);
-  const [addClientForm, setAddClientForm] = useState({ name: '', email: '', business_name: '', phone: '', plan: 'starter' });
+  const [addClientForm, setAddClientForm] = useState({ name: '', email: '', business_name: '', business_phone: '', plan: 'launch' });
   const [addClientMsg, setAddClientMsg] = useState('');
   const [addClientSaving, setAddClientSaving] = useState(false);
   const [automationLogs, setAutomationLogs] = useState([]);
@@ -386,7 +452,7 @@ export default function DashboardPage() {
   const [selectedDay, setSelectedDay] = useState(null);
   const [apptMsg, setApptMsg] = useState('');
 
-  const [billingPlan, setBillingPlan] = useState('starter');
+  const [billingPlan, setBillingPlan] = useState('launch');
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingMsg, setBillingMsg] = useState('');
 
@@ -408,6 +474,13 @@ export default function DashboardPage() {
   }, [session, onboardingComplete]);
 
   useEffect(() => {
+    fetch('/api/account/status')
+      .then((r) => r.json())
+      .then((d) => { if (d.plan_status) setAccountStatus(d); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     setOverviewLoading(true);
     fetch('/api/overview')
       .then((r) => r.json())
@@ -418,11 +491,11 @@ export default function DashboardPage() {
             data.recentActivity.slice(0, 5).map((log) => ({
               text: [
                 log.business_name ? `[${log.business_name}]` : null,
-                log.automation_type || 'Automation',
+                log.automation || 'Automation',
                 log.status ? `— ${log.status}` : null,
               ].filter(Boolean).join(' '),
-              time: log.created_at
-                ? new Date(log.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+              time: (log.triggered_at || log.created_at)
+                ? new Date(log.triggered_at || log.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
                 : '',
               type: log.status === 'success' ? 'green' : log.status === 'failed' ? 'yellow' : 'blue',
             }))
@@ -489,7 +562,7 @@ export default function DashboardPage() {
       .then(({ data }) => {
         if (data) {
           setUserRole(data.role || 'client');
-          setUserPlan(data.plan || 'starter');
+          setUserPlan(data.plan || 'launch');
           setClientProfile(data);
           setOnboardingComplete(data.onboarding_complete ?? false);
           setSettingsForm({
@@ -499,6 +572,9 @@ export default function DashboardPage() {
             avatar_url: data.avatar_url || '',
             google_review_url: data.google_review_url || '',
           });
+          if (data.toggles && typeof data.toggles === 'object') {
+            setToggleStates(prev => ({ ...prev, ...data.toggles }));
+          }
           // Pre-populate review/reactivation forms with business name
           if (data.business_name) {
             setReviewForm(f => ({ ...f, business_name: data.business_name }));
@@ -565,7 +641,7 @@ export default function DashboardPage() {
     const data = await res.json();
     setAddClientSaving(false);
     setAddClientMsg(data.error ? '❌ ' + data.error : '✅ Client added successfully!');
-    if (!data.error) setAddClientForm({ name: '', email: '', business_name: '', phone: '', plan: 'starter' });
+    if (!data.error) setAddClientForm({ name: '', email: '', business_name: '', business_phone: '', plan: 'launch' });
   }
 
   async function saveSettings() {
@@ -1069,6 +1145,21 @@ export default function DashboardPage() {
       {/* MAIN */}
       <main className={styles.main} id="main-content">
 
+        {/* Trial countdown banner */}
+        {((accountStatus?.plan_status ?? session?.user?.plan_status) === 'trialing') && (accountStatus?.trial_ends_at ?? session?.user?.trial_ends_at) && (() => {
+          const daysLeft = Math.ceil((new Date(accountStatus?.trial_ends_at ?? session.user.trial_ends_at) - Date.now()) / 86400000);
+          if (daysLeft < 0) return null;
+          const color = daysLeft <= 3 ? '#FF8C00' : '#FFD000';
+          return (
+            <div style={{ background: '#1a1400', border: `1px solid ${color}40`, borderRadius: 6, padding: '10px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.82rem', color: color, fontWeight: 600 }}>
+                {daysLeft === 0 ? 'Trial ends today!' : `Trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}
+              </span>
+              <a href="/dashboard/billing" style={{ fontSize: '0.75rem', background: color, color: '#000', padding: '4px 12px', borderRadius: 3, textDecoration: 'none', fontWeight: 700 }}>Upgrade Now</a>
+            </div>
+          );
+        })()}
+
         {/* === OVERVIEW === */}
         {activePage === 'overview' && (
           <section>
@@ -1371,7 +1462,7 @@ export default function DashboardPage() {
                         className={`${styles.calDayCol} ${isToday ? styles.calDayColToday : ''}`}
                         onClick={() => {
                           setSelectedDate(day);
-                          setApptForm({ customer_name: '', service: '', time: '', phone: '' });
+                          setApptForm({ customer_name: '', service: '', time: '', phone: '', title: '', notes: '' });
                           setShowApptModal(true);
                         }}
                       >
@@ -1384,8 +1475,8 @@ export default function DashboardPage() {
                         <div className={styles.calDayBody}>
                           {dayAppts.map((appt) => (
                             <div key={appt.id} className={styles.calApptChip} onClick={(e) => e.stopPropagation()}>
-                              <div className={styles.calApptChipTime}>{appt.appointment_time?.slice(0, 5)}</div>
-                              <div className={styles.calApptChipName}>{appt.customer_name}</div>
+                              <div className={styles.calApptChipTime}>{appt.time?.slice(0, 5)}</div>
+                              <div className={styles.calApptChipName}>{appt.title}</div>
                             </div>
                           ))}
                           {dayAppts.length === 0 && (
@@ -2164,6 +2255,9 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+
+            {/* Change password */}
+            <ChangePasswordPanel />
           </section>
         )}
 
@@ -2274,9 +2368,9 @@ export default function DashboardPage() {
             </div>
             <div className={styles.metricsGrid}>
               <div className={styles.metricCard}><div className={styles.metricCardLabel}>Total Clients</div><div className={styles.metricCardValue} style={{ color: '#7B2FFF' }}>{clients.length}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ all time</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Active</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>{clients.filter(c => c.active).length}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ paying</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>MRR</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>${clients.filter(c => c.active).reduce((a, c) => a + (c.plan === 'pro' ? 797 : c.plan === 'growth' ? 497 : 297), 0).toLocaleString()}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ monthly</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>ARR</div><div className={styles.metricCardValue}>${(clients.filter(c => c.active).reduce((a, c) => a + (c.plan === 'pro' ? 797 : c.plan === 'growth' ? 497 : 297), 0) * 12).toLocaleString()}</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— projected</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Active</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>{clients.filter(c => c.plan_status === 'active' || c.plan_status === 'trialing').length}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ paying</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>MRR</div><div className={styles.metricCardValue} style={{ color: '#F5C400' }}>${clients.filter(c => c.plan_status === 'active' || c.plan_status === 'trialing').reduce((a, c) => a + ({'pro':497,'velocity':497,'growth':297,'rocket':297}[c.plan] || 97), 0).toLocaleString()}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ monthly</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>ARR</div><div className={styles.metricCardValue}>${(clients.filter(c => c.plan_status === 'active' || c.plan_status === 'trialing').reduce((a, c) => a + ({'pro':497,'velocity':497,'growth':297,'rocket':297}[c.plan] || 97), 0) * 12).toLocaleString()}</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— projected</div></div>
             </div>
             <div className={styles.panel}>
               <div className={styles.panelHeader}><span className={styles.panelTitle}>Client List</span></div>
@@ -2292,7 +2386,7 @@ export default function DashboardPage() {
                       </div>
                       <div className={styles.agentItemStatus}>
                         <span className={`${styles.statusDot} ${client.active ? styles.statusDotGreen : styles.statusDotRed}`}></span>
-                        <span style={{ textTransform: 'capitalize' }}>{client.plan || 'starter'}</span>
+                        <span style={{ textTransform: 'capitalize' }}>{client.plan || 'launch'}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <select
@@ -2350,7 +2444,7 @@ export default function DashboardPage() {
                     ['Business Name', 'business_name', 'text', "Dave's Plumbing"],
                     ['Owner Name', 'name', 'text', 'Dave Smith'],
                     ['Email', 'email', 'email', 'dave@davesplumbing.com'],
-                    ['Phone', 'phone', 'tel', '(555) 800-1234'],
+                    ['Phone', 'business_phone', 'tel', '(555) 800-1234'],
                   ].map(([label, field, type, placeholder]) => (
                     <div key={field} style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>{label}</label>
@@ -2370,9 +2464,9 @@ export default function DashboardPage() {
                       onChange={e => setAddClientForm(f => ({ ...f, plan: e.target.value }))}
                       style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', padding: '8px 12px', fontSize: 14 }}
                     >
-                      <option value="starter">Starter — $297/mo</option>
-                      <option value="growth">Growth — $497/mo</option>
-                      <option value="pro">Pro — $797/mo</option>
+                      <option value="launch">Launch Box — $97/mo</option>
+                      <option value="rocket">Rocket Box — $297/mo</option>
+                      <option value="velocity">Velocity Box — $497/mo</option>
                     </select>
                   </div>
                   <button

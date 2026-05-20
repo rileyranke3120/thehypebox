@@ -90,28 +90,29 @@ function CheckoutForm({ plan }) {
         return;
       }
 
-      // Fire account creation (non-blocking)
-      fetch('/api/checkout/finalize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: info.email, name: info.name, plan }),
-      }).catch(() => {});
-
       // Confirm setup with client secret
+      const onboardingUrl = `${window.location.origin}/onboarding?plan=${plan}&email=${encodeURIComponent(info.email)}`;
       const { error: confirmErr } = await stripe.confirmSetup({
         elements,
         clientSecret: data.clientSecret,
         confirmParams: {
-          return_url: `${window.location.origin}/trial-confirmed?plan=${plan}`,
+          return_url: onboardingUrl,
           payment_method_data: { billing_details: { name: info.name, email: info.email } },
         },
+        redirect: 'if_required',
       });
 
       if (confirmErr) {
         setError(confirmErr.message || 'Card setup failed. Please try again.');
         setLoading(false);
       } else {
-        window.location.href = `${window.location.origin}/trial-confirmed?plan=${plan}`;
+        // Setup confirmed — now activate account (non-blocking, Stripe webhook also handles this)
+        fetch('/api/checkout/finalize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: info.email, name: info.name, plan }),
+        }).catch(() => {});
+        window.location.href = onboardingUrl;
       }
     } catch (err) {
       setError(err?.message || 'Something went wrong — please try again.');

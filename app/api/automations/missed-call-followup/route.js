@@ -4,7 +4,7 @@ import { sendSMS } from '@/lib/twilio';
 
 export async function POST(request) {
   try {
-    const { phone_number, business_name } = await request.json();
+    const { phone_number, business_name, ghl_api_key, ghl_location_id, client_id } = await request.json();
 
     if (!phone_number || !business_name) {
       return NextResponse.json(
@@ -15,16 +15,18 @@ export async function POST(request) {
 
     await sendSMS(
       phone_number,
-      `Hi! Sorry we missed your call at ${business_name}. How can we help? Reply here and we'll get right back to you!`
+      `Hi! Sorry we missed your call at ${business_name}. How can we help? Reply here and we'll get right back to you!`,
+      { apiKey: ghl_api_key, locationId: ghl_location_id }
     );
 
     const supabase = createClient();
-    await supabase.from('missed_calls').insert({
+    supabase.from('missed_calls').insert({
       from_number: phone_number,
       business_name,
+      client_id: client_id ?? null,
       timestamp: new Date().toISOString(),
       text_sent: true,
-    });
+    }).then().catch((e) => console.error('[missed-call-followup] log failed:', e.message));
 
     return NextResponse.json({ ok: true });
   } catch (error) {

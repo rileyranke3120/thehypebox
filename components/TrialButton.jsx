@@ -3,7 +3,7 @@
 export default function TrialButton({ plan, className, style, children }) {
   return (
     <button
-      onClick={() => { window.location.href = `/checkout?plan=${plan || 'velocity'}`; }}
+      onClick={() => { window.location.href = `/checkout?plan=${plan || 'launch'}`; }}
       className={className || 'btn btn-primary'}
       style={style}
     >

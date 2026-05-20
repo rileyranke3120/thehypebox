@@ -3,11 +3,16 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 
 export async function GET() {
+  const session = await auth();
+  if (!session || session.user?.role !== 'super_admin') {
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+  }
+
   try {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('users')
-      .select('*')
+      .select('id, email, name, business_name, plan, plan_status, role, active, created_at, ghl_location_id, retell_agent_id, trial_ends_at')
       .eq('role', 'client')
       .order('created_at', { ascending: false });
 
@@ -38,6 +43,7 @@ export async function PATCH(request) {
     if (body.hours          !== undefined) updates.business_hours = body.hours          || null;
     if (body.avatar_url          !== undefined) updates.avatar_url          = body.avatar_url          || null;
     if (body.google_review_url   !== undefined) updates.google_review_url   = body.google_review_url   || null;
+    if (body.toggles             !== undefined) updates.toggles             = body.toggles             || null;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ ok: false, error: 'No updatable fields provided' }, { status: 400 });
@@ -60,6 +66,11 @@ export async function PATCH(request) {
 }
 
 export async function POST(request) {
+  const session = await auth();
+  if (!session || session.user?.role !== 'super_admin') {
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+  }
+
   try {
     const { email, name, business_name, business_phone, plan } = await request.json();
 
@@ -78,7 +89,7 @@ export async function POST(request) {
         name,
         business_name: business_name || null,
         business_phone: business_phone || null,
-        plan: plan || 'starter',
+        plan: plan || 'launch',
         role: 'client',
         active: true,
         created_at: new Date().toISOString(),

@@ -1057,7 +1057,7 @@ export default function DemoPage() {
             </div>
             <div className={styles.metricsGrid}>
               <div className={styles.metricCard}><div className={styles.metricCardLabel}>Current Plan</div><div className={styles.metricCardValue} style={{ color: '#F5C400', textTransform: 'capitalize' }}>{billingPlan}</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ active</div></div>
-              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Monthly Cost</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>${billingPlan === 'pro' ? '797' : billingPlan === 'growth' ? '497' : '297'}</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— per month</div></div>
+              <div className={styles.metricCard}><div className={styles.metricCardLabel}>Monthly Cost</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>${billingPlan === 'pro' ? '497' : billingPlan === 'growth' ? '297' : '97'}</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— per month</div></div>
               <div className={styles.metricCard}><div className={styles.metricCardLabel}>Setup Fee</div><div className={styles.metricCardValue}>$495</div><div className={`${styles.metricCardDelta} ${styles.deltaFlat}`}>— one time</div></div>
               <div className={styles.metricCard}><div className={styles.metricCardLabel}>Status</div><div className={styles.metricCardValue} style={{ color: '#1D9E75' }}>Active</div><div className={`${styles.metricCardDelta} ${styles.deltaUp}`}>↑ all systems go</div></div>
             </div>
@@ -1066,9 +1066,9 @@ export default function DemoPage() {
                 <div className={styles.panelHeader}><span className={styles.panelTitle}>Plan Comparison</span></div>
                 <div className={styles.panelBody}>
                   {[
-                    { name: 'Starter', key: 'starter', price: '$297/mo', color: '#378ADD', features: ['Phone Agent (Alex)', 'Missed Call Text Back', 'Appointment Reminders', 'Review Requests', 'Dashboard Access'] },
-                    { name: 'Growth', key: 'growth', price: '$497/mo', color: '#1D9E75', features: ['Everything in Starter', 'Reactivation Agent', 'Post-Service Follow-Up', 'Lead Nurture (3-step)', 'Birthday Agent', 'Live Chat Agent'] },
-                    { name: 'Pro', key: 'pro', price: '$797/mo', color: '#F5C400', features: ['Everything in Growth', 'Outbound Sales Agent', 'Social Media Agent', 'Review Monitor', 'Invoice Follow-Up', 'Monthly Strategy Call'] },
+                    { name: 'Starter', key: 'starter', price: '$97/mo', color: '#378ADD', features: ['Phone Agent (Alex)', 'Missed Call Text Back', 'Appointment Reminders', 'Review Requests', 'Dashboard Access'] },
+                    { name: 'Growth', key: 'growth', price: '$297/mo', color: '#1D9E75', features: ['Everything in Starter', 'Reactivation Agent', 'Post-Service Follow-Up', 'Lead Nurture (3-step)', 'Birthday Agent', 'Live Chat Agent'] },
+                    { name: 'Pro', key: 'pro', price: '$497/mo', color: '#F5C400', features: ['Everything in Growth', 'Outbound Sales Agent', 'Social Media Agent', 'Review Monitor', 'Invoice Follow-Up', 'Monthly Strategy Call'] },
                   ].map((plan) => (
                     <div key={plan.key} style={{ marginBottom: 20, padding: 16, background: billingPlan === plan.key ? '#1a1a1a' : '#111', borderRadius: 8, border: `1px solid ${billingPlan === plan.key ? plan.color : '#222'}` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -1096,7 +1096,7 @@ export default function DemoPage() {
                 <div className={styles.panelHeader}><span className={styles.panelTitle}>Invoice History</span></div>
                 <div className={styles.panelBody}>
                   <ul className={styles.agentList}>
-                    {[['April 2026', '$497', 'growth'], ['March 2026', '$497', 'growth'], ['February 2026', '$297', 'starter'], ['January 2026', '$297', 'starter']].map(([month, amount, plan]) => (
+                    {[['April 2026', '$297', 'growth'], ['March 2026', '$297', 'growth'], ['February 2026', '$97', 'starter'], ['January 2026', '$97', 'starter']].map(([month, amount, plan]) => (
                       <li key={month} className={styles.agentItem}>
                         <span className={styles.agentItemIcon} style={{ background: '#1A1A1A' }} aria-hidden="true">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="18" rx="2" stroke="#888780" strokeWidth="1.5"/><line x1="8" y1="8" x2="16" y2="8" stroke="#888780" strokeWidth="1.4" strokeLinecap="round"/><line x1="8" y1="12" x2="16" y2="12" stroke="#888780" strokeWidth="1.4" strokeLinecap="round"/><line x1="8" y1="16" x2="12" y2="16" stroke="#888780" strokeWidth="1.4" strokeLinecap="round"/></svg>

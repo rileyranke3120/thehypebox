@@ -10,7 +10,7 @@ const NAV_LINKS = [
   { href: '#how', label: 'How It Works' },
   { href: '#pricing', label: 'Pricing' },
   { href: '/demo', label: 'Demo' },
-  { href: '#contact', label: 'Contact Us' },
+  { href: '#booking', label: 'Book a Call' },
 ];
 
 export default function Nav() {

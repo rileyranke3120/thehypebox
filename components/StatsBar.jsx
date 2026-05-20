@@ -6,20 +6,20 @@ export default function StatsBar() {
       <div className="container">
         <dl className={styles.statsGrid}>
           <div>
-            <dt className={styles.statsLabel}>Always On</dt>
             <dd className={styles.statsValue}>24/7</dd>
+            <dt className={styles.statsLabel}>AI Always On</dt>
           </div>
           <div>
-            <dt className={styles.statsLabel}>Setup Time</dt>
-            <dd className={styles.statsValue}>15 Min</dd>
+            <dd className={styles.statsValue}>&lt; 60s</dd>
+            <dt className={styles.statsLabel}>Lead Response Time</dt>
           </div>
           <div>
-            <dt className={styles.statsLabel}>US-Based Support</dt>
             <dd className={styles.statsValue}>100%</dd>
+            <dt className={styles.statsLabel}>US-Based Support</dt>
           </div>
           <div>
-            <dt className={styles.statsLabel}>Missed Calls</dt>
             <dd className={styles.statsValue}>0</dd>
+            <dt className={styles.statsLabel}>Missed Calls</dt>
           </div>
         </dl>
       </div>

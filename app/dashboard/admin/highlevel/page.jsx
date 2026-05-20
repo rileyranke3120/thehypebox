@@ -5,6 +5,16 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import styles from '@/styles/dashboard.module.css';
 
+const SIDEBAR = [
+  ['/dashboard', '← Dashboard'],
+  ['/dashboard/admin/clients', 'Client Health'],
+  ['/dashboard/admin/calls', 'Call Analytics'],
+  ['/dashboard/admin/comms', 'Comms Log'],
+  ['/dashboard/admin/highlevel', 'GHL Provisioning'],
+  ['/dashboard/admin/retell', 'Retell / Sarah'],
+  ['/dashboard/admin/widget', 'Widget Embed'],
+];
+
 export default function AdminHighLevelPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -46,10 +56,7 @@ export default function AdminHighLevelPage() {
     try {
       const res = await fetch('/api/admin/create-highlevel', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_SECRET || ''}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, sendAccessEmail: true }),
       });
       const data = await res.json();
@@ -82,7 +89,7 @@ export default function AdminHighLevelPage() {
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
         {/* Sidebar */}
         <nav className={styles.sidebar}>
-          <a href="/dashboard" className={styles.sidebarLink}>← Back to Dashboard</a>
+          {SIDEBAR.map(([href, label]) => <a key={href} href={href} className={styles.sidebarLink}>{label}</a>)}
         </nav>
 
         {/* Main */}

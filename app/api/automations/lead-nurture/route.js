@@ -13,7 +13,7 @@ const STEP_MESSAGES = {
 
 export async function POST(request) {
   try {
-    const { phone_number, customer_name, business_name, step } = await request.json();
+    const { phone_number, customer_name, business_name, step, ghl_api_key, ghl_location_id, client_id } = await request.json();
 
     if (!phone_number || !customer_name || !business_name || !step) {
       return NextResponse.json(
@@ -32,15 +32,16 @@ export async function POST(request) {
       );
     }
 
-    await sendSMS(phone_number, buildMessage(customer_name, business_name));
+    await sendSMS(phone_number, buildMessage(customer_name, business_name), { apiKey: ghl_api_key, locationId: ghl_location_id });
 
     const supabase = createClient();
-    await supabase.from('lead_nurture').insert({
+    supabase.from('lead_nurture').insert({
       phone_number,
       customer_name,
       step: stepNum,
+      client_id: client_id ?? null,
       sent_at: new Date().toISOString(),
-    });
+    }).then().catch((e) => console.error('[lead-nurture] log failed:', e.message));
 
     return NextResponse.json({ ok: true });
   } catch (error) {

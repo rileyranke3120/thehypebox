@@ -4,7 +4,7 @@ import { sendSMS } from '@/lib/twilio';
 
 export async function POST(request) {
   try {
-    const { phone_number, customer_name, business_name, appointment_time } = await request.json();
+    const { phone_number, customer_name, business_name, appointment_time, ghl_api_key, ghl_location_id, client_id } = await request.json();
 
     if (!phone_number || !customer_name || !business_name || !appointment_time) {
       return NextResponse.json(
@@ -15,16 +15,19 @@ export async function POST(request) {
 
     await sendSMS(
       phone_number,
-      `Hi ${customer_name}! Just a reminder you have an appointment at ${business_name} tomorrow at ${appointment_time}. Reply CONFIRM to confirm or CANCEL to cancel.`
+      `Hi ${customer_name}! Just a reminder you have an appointment at ${business_name} tomorrow at ${appointment_time}. Reply CONFIRM to confirm or CANCEL to cancel.`,
+      { apiKey: ghl_api_key, locationId: ghl_location_id }
     );
 
     const supabase = createClient();
-    await supabase.from('appointment_reminders').insert({
+    supabase.from('appointment_reminders').insert({
       phone_number,
       customer_name,
+      business_name,
       appointment_time,
+      client_id: client_id ?? null,
       sent_at: new Date().toISOString(),
-    });
+    }).then().catch((e) => console.error('[appointment-reminder] log failed:', e.message));
 
     return NextResponse.json({ ok: true });
   } catch (error) {

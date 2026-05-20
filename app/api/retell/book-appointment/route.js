@@ -35,12 +35,12 @@ async function getClientCreds(agentId) {
   return data || null;
 }
 
-// Prefer client record from Supabase, fall back to Dave's env vars
+// Prefer client record from Supabase, then TheHypeBox's own creds, then Dave's
 function resolveGhlCreds(clientCreds) {
   return {
-    apiKey:     clientCreds?.ghl_api_key     || process.env.GHL_DAVE_API_KEY,
-    locationId: clientCreds?.ghl_location_id || process.env.GHL_DAVE_LOCATION_ID,
-    calendarId: clientCreds?.ghl_calendar_id || process.env.GHL_DAVE_CALENDAR_ID,
+    apiKey:     clientCreds?.ghl_api_key     || process.env.GHL_API_KEY             || process.env.GHL_DAVE_API_KEY,
+    locationId: clientCreds?.ghl_location_id || process.env.GHL_LOCATION_ID         || process.env.GHL_DAVE_LOCATION_ID,
+    calendarId: clientCreds?.ghl_calendar_id || process.env.GHL_HYPEBOX_CALENDAR_ID || process.env.GHL_DAVE_CALENDAR_ID,
   };
 }
 
@@ -219,6 +219,12 @@ async function bookAppointment({ contactId, startTime }, creds) {
 }
 
 export async function POST(request) {
+  // Validate Retell tool secret if configured (optional — skip if env var not set)
+  const secret = process.env.RETELL_TOOL_SECRET;
+  if (secret && request.headers.get('x-api-key') !== secret) {
+    return Response.json({ success: false, message: 'Unauthorized.' });
+  }
+
   let body;
   try {
     body = await request.json();
@@ -238,6 +244,11 @@ export async function POST(request) {
   const clientCreds = await getClientCreds(agentId);
   const creds = resolveGhlCreds(clientCreds);
   console.log(`[book-appointment] agent_id=${agentId} using locationId=${creds.locationId} calendarId=${creds.calendarId}`);
+
+  if (!creds.calendarId) {
+    console.error('[book-appointment] no calendarId — client has no ghl_calendar_id set');
+    return Response.json({ success: false, message: "I'm sorry, booking isn't set up for this account yet. Please call us directly." });
+  }
 
   if (!name || !phone || !address || !rawDate || !rawTime) {
     console.log(`[book-appointment] missing fields — name=${name} phone=${phone} address=${address} date=${rawDate} time=${rawTime}`);

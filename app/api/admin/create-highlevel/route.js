@@ -1,3 +1,4 @@
+import { auth } from '@/auth';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { createSubAccount } from '@/lib/highlevel';
@@ -7,9 +8,11 @@ import { highLevelAccessEmail } from '@/lib/email-templates';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
-  // Verify admin secret
+  const session = await auth();
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
+  const isAdmin = session?.user?.role === 'super_admin';
+  const hasSecret = process.env.ADMIN_SECRET && authHeader === `Bearer ${process.env.ADMIN_SECRET}`;
+  if (!isAdmin && !hasSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -22,7 +25,7 @@ export async function POST(request) {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, email, name, plan, ghl_location_id')
+    .select('id, email, name, business_name, plan, ghl_location_id')
     .eq('email', email.toLowerCase())
     .single();
 
@@ -45,17 +48,21 @@ export async function POST(request) {
       email: user.email,
       phone: '',
       plan: user.plan || 'launch',
+      businessName: user.business_name || user.name || user.email,
     });
   } catch (err) {
     return NextResponse.json({ error: `HighLevel error: ${err.message}` }, { status: 502 });
   }
 
+  const dbUpdate = {
+    ghl_location_id: hlAccount.locationId,
+    ghl_user_id: hlAccount.userId,
+  };
+  if (hlAccount.retellAgentId) dbUpdate.retell_agent_id = hlAccount.retellAgentId;
+
   await supabase
     .from('users')
-    .update({
-      ghl_location_id: hlAccount.locationId,
-      ghl_user_id: hlAccount.userId,
-    })
+    .update(dbUpdate)
     .eq('id', user.id);
 
   if (sendAccessEmail) {
@@ -67,6 +74,7 @@ export async function POST(request) {
         hlEmail: user.email,
         hlPassword: hlAccount.password,
         dashboardUrl: hlAccount.dashboardUrl,
+        hasRetell: !!hlAccount.retellAgentId,
       });
       await sendEmail({ to: user.email, ...tpl });
     } catch (emailErr) {

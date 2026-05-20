@@ -5,9 +5,8 @@ import { createClient } from '@/lib/supabase';
 import { getMailer } from '@/lib/mailer';
 
 const PLAN_LABELS = {
-  launch:   'The Launch Box',
-  rocket:   'The Rocket Box',
-  velocity: 'The Velocity Box',
+  launch: 'The Launch Box',   rocket: 'The Rocket Box',   velocity: 'The Velocity Box',
+  starter: 'The Launch Box',  growth: 'The Rocket Box',   pro: 'The Velocity Box',
 };
 
 function generatePassword() {

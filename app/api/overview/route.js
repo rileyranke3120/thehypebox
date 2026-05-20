@@ -2,6 +2,7 @@ import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { getContacts, getOpportunities, getAppointments, getReviews } from '@/lib/ghl';
+import { getGHLCredentials } from '@/lib/ghl-session';
 
 function getSupabase() {
   return createClient(
@@ -13,7 +14,7 @@ function getSupabase() {
 export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  console.log('[overview] session.user:', { role: session.user?.role, ghl_location_id: session.user?.ghl_location_id, ghl_api_key: session.user?.ghl_api_key });
+  console.log('[overview] session.user:', { role: session.user?.role, ghl_location_id: session.user?.ghl_location_id, has_api_key: !!session.user?.ghl_api_key });
 
   try {
     const user = session.user ?? {};
@@ -21,7 +22,7 @@ export async function GET() {
     if (isSuperAdmin) {
       return NextResponse.json(await getSuperAdminOverview());
     } else {
-      return NextResponse.json(await getClientOverview(user));
+      return NextResponse.json(await getClientOverview(user, session));
     }
   } catch (err) {
     console.error('Overview API error:', err);
@@ -34,27 +35,28 @@ async function getSuperAdminOverview() {
   const supabase = getSupabase();
   const { data: clients = [] } = await supabase
     .from('users')
-    .select('id, business_name, plan, active, created_at')
+    .select('id, business_name, plan, plan_status, active, created_at')
     .eq('role', 'client');
 
   const clientIds = clients.map((c) => c.id);
-  const activeClients = clients.filter((c) => c.active).length;
+  const activeClients = clients.filter((c) => c.plan_status === 'active' || c.plan_status === 'trialing').length;
 
-  const planPrice = { starter: 297, growth: 497, pro: 797 };
+  const planPrice = { launch: 97, starter: 97, rocket: 297, growth: 297, velocity: 497, pro: 497 };
+  const isActive = (c) => c.plan_status === 'active' || c.plan_status === 'trialing';
   const monthlyRevenue = clients
-    .filter((c) => c.active)
+    .filter(isActive)
     .reduce((sum, c) => sum + (planPrice[c.plan] || 0), 0);
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const newClientsThisMonth = clients.filter((c) => c.created_at >= thirtyDaysAgo).length;
 
-  const planBreakdown = { starter: 0, growth: 0, pro: 0 };
+  const planBreakdown = { launch: 0, rocket: 0, velocity: 0, starter: 0, growth: 0, pro: 0 };
   clients.forEach((c) => { if (planBreakdown[c.plan] !== undefined) planBreakdown[c.plan]++; });
 
   let logsQuery = supabase
     .from('automation_logs')
-    .select('id, automation_type, status, created_at, client_id')
-    .order('created_at', { ascending: false })
+    .select('id, automation, status, triggered_at, client_id')
+    .order('triggered_at', { ascending: false })
     .limit(10);
   if (clientIds.length) logsQuery = logsQuery.in('client_id', clientIds);
   const { data: recentLogs = [] } = await logsQuery;
@@ -85,11 +87,10 @@ async function getSuperAdminOverview() {
 }
 
 // Client view: real data from GoHighLevel
-async function getClientOverview(user) {
+async function getClientOverview(user, session) {
   const supabase = getSupabase();
-  const locationId = user.ghl_location_id;
+  const { locationId, apiKey } = await getGHLCredentials(session);
   if (!locationId) throw new Error('No GHL location configured for this account.');
-  const apiKey = user.ghl_api_key || (user.role === 'super_admin' ? process.env.GHL_API_KEY : null);
   if (!apiKey) throw new Error('No GHL API key configured for this account.');
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -103,9 +104,9 @@ async function getClientOverview(user) {
     // Keep automation logs from Supabase (triggered by this app's automations)
     supabase
       .from('automation_logs')
-      .select('id, automation_type, status, created_at, client_id')
+      .select('id, automation, status, triggered_at, client_id')
       .eq('client_id', user.id)
-      .order('created_at', { ascending: false })
+      .order('triggered_at', { ascending: false })
       .limit(10)
       .then(({ data }) => data ?? []),
   ]);
@@ -123,9 +124,9 @@ async function getClientOverview(user) {
   // Missed calls still come from Retell webhook → Supabase
   const { data: missedCalls = [] } = await supabase
     .from('missed_calls')
-    .select('id, created_at')
+    .select('id, timestamp')
     .eq('client_id', user.id)
-    .gte('created_at', thirtyDaysAgo);
+    .gte('timestamp', thirtyDaysAgo);
 
   return {
     isSuperAdmin: false,

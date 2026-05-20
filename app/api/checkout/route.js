@@ -3,9 +3,9 @@ import stripe from '@/lib/stripe';
 import { createClient } from '@/lib/supabase';
 
 const PLAN_CONFIG = {
-  launch:   { internal: 'starter', priceEnv: 'STRIPE_PRICE_LAUNCH' },
-  rocket:   { internal: 'growth',  priceEnv: 'STRIPE_PRICE_ROCKET' },
-  velocity: { internal: 'pro',     priceEnv: 'STRIPE_PRICE_VELOCITY' },
+  launch:   { internal: 'launch',   priceEnv: 'STRIPE_PRICE_LAUNCH' },
+  rocket:   { internal: 'rocket',   priceEnv: 'STRIPE_PRICE_ROCKET' },
+  velocity: { internal: 'velocity', priceEnv: 'STRIPE_PRICE_VELOCITY' },
 };
 
 export async function POST(request) {

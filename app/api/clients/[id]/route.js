@@ -1,7 +1,13 @@
+import { auth } from '@/auth';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 
 export async function GET(_request, { params }) {
+  const session = await auth();
+  if (!session || session.user?.role !== 'super_admin') {
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+  }
+
   try {
     const supabase = createClient();
     const { data, error } = await supabase
@@ -20,6 +26,11 @@ export async function GET(_request, { params }) {
 }
 
 export async function PATCH(request, { params }) {
+  const session = await auth();
+  if (!session || session.user?.role !== 'super_admin') {
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+  }
+
   try {
     const updates = await request.json();
     const allowed = [
@@ -56,6 +67,11 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(_request, { params }) {
+  const session = await auth();
+  if (!session || session.user?.role !== 'super_admin') {
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+  }
+
   try {
     const supabase = createClient();
     const { data, error } = await supabase

@@ -15,7 +15,13 @@ export async function GET() {
       .single();
 
     // super_admin sees all calls; clients are scoped to their own agent
-    const agentId = user?.role === 'super_admin' ? null : (user?.retell_agent_id ?? null);
+    const isSuperAdmin = user?.role === 'super_admin';
+    const agentId = isSuperAdmin ? null : (user?.retell_agent_id ?? null);
+
+    // Non-admin with no provisioned agent — return empty rather than leaking all calls
+    if (!isSuperAdmin && !agentId) {
+      return NextResponse.json({ calls: [] });
+    }
 
     const body = { limit: 20, sort_order: 'descending' };
     if (agentId) body.filter_criteria = { agent_id: [agentId] };

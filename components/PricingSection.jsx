@@ -1,55 +1,52 @@
+'use client';
+
 import Image from 'next/image';
-import styles from '@/styles/marketing.module.css';
+import styles from '@/styles/pricing.module.css';
 import TrialButton from './TrialButton';
 
-const LogoSep = () => (
-  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 2rem' }} aria-hidden="true">
-    <Image src="/logo.png" alt="" width={60} height={36} style={{ height: '26px', width: 'auto', opacity: 0.6, mixBlendMode: 'screen' }} />
-  </span>
-);
-
-const MARQUEE_TEXT = 'THE FOUNDERS BOX ~~~ FULL SERVICES · AUTOMATION · AI EMPLOYEES · CRM & INTEGRATIONS ~~~ BOOK A CALL!';
+// ── Custom plan header icons (generated, color-matched per plan) ──
 
 const LaunchIcon = () => (
-  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-    <rect x="1" y="1" width="26" height="26" rx="5" stroke="#FFD000" strokeWidth="2"/>
-    <path d="M14 20V8M9 13l5-5 5 5" stroke="#FFD000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+    <line x1="3" y1="22" x2="23" y2="22" stroke="#FFD000" strokeWidth="1.8" strokeLinecap="round"/>
+    <line x1="6" y1="22" x2="6" y2="16" stroke="#FFD000" strokeWidth="1.5" strokeLinecap="round"/>
+    <line x1="20" y1="22" x2="20" y2="16" stroke="#FFD000" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M13 4L9 14H13.5V16H12.5L13 18L13.5 16H12.5V14H17Z" fill="#FFD000"/>
+    <path d="M13 4L9 14L13 12.5L17 14Z" fill="#FFD000" stroke="#FFD000" strokeWidth="0.5" strokeLinejoin="round"/>
+    <path d="M11 18L13 21L15 18" fill="#FF8800" stroke="none"/>
   </svg>
 );
 
-const RocketIcon = () => (
-  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-    <path d="M14 3s-7 5-7 11v3l3 3h8l3-3v-3C21 8 14 3 14 3z" stroke="#378ADD" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <circle cx="14" cy="12" r="2" stroke="#378ADD" strokeWidth="1.5"/>
-    <path d="M11 20v1.5a3 3 0 006 0V20" stroke="#378ADD" strokeWidth="2"/>
-    <path d="M5 16a2.5 2.5 0 00-2 2.5l2 2.5M23 16a2.5 2.5 0 012 2.5l-2 2.5" stroke="#378ADD" strokeWidth="1.5" strokeLinecap="round"/>
+const BoosterIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+    <path d="M15 2L6 14H12.5L10.5 24L20 12H13.5L15 2Z" fill="#378ADD" strokeLinejoin="round"/>
+    <line x1="2" y1="9" x2="6" y2="9" stroke="#378ADD" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/>
+    <line x1="2" y1="13" x2="5" y2="13" stroke="#378ADD" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+    <line x1="2" y1="17" x2="6" y2="17" stroke="#378ADD" strokeWidth="1" strokeLinecap="round" opacity="0.25"/>
   </svg>
 );
 
-const VelocityIcon = () => (
-  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-    <path d="M17 3L7 16h8l-4 9L25 12h-9l3-9z" stroke="#1D9E75" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+const RocketBoxIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+    <path d="M13 2C13 2 8 7 8 14V17L10 19H16L18 17V14C18 7 13 2 13 2Z" fill="#1D9E75" strokeLinejoin="round"/>
+    <circle cx="13" cy="12" r="2.5" stroke="#000" strokeWidth="1.2" fill="rgba(0,0,0,0.4)"/>
+    <path d="M10 19L9 23L13 21L17 23L16 19" fill="#FF5500"/>
+    <path d="M8 14L5 16L8 18" stroke="#1D9E75" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+    <path d="M18 14L21 16L18 18" stroke="#1D9E75" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
   </svg>
 );
 
-const FoundersIcon = () => (
-  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-    <path d="M4 20l3.5-10 6.5 5 6.5-5L24 20H4z" stroke="#7B2FFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <line x1="4" y1="20" x2="24" y2="20" stroke="#7B2FFF" strokeWidth="2" strokeLinecap="round"/>
-    <circle cx="4" cy="10" r="1.5" fill="#7B2FFF"/>
-    <circle cx="14" cy="6" r="1.5" fill="#7B2FFF"/>
-    <circle cx="24" cy="10" r="1.5" fill="#7B2FFF"/>
-  </svg>
-);
 
+// ── Plan data ─────────────────────────────────────────────────
 const PLANS = [
   {
     slug: 'launch',
     name: 'The Launch Box',
+    monthly: 97,
+    annual: 932,
+    savings: 232,
+    discount: '20% OFF',
     Icon: LaunchIcon,
-    tagline: 'Start strong with the essentials',
-    price: '97',
-    period: '/mo',
     features: [
       'CRM + Contact Management',
       'Website + Hosting',
@@ -57,17 +54,16 @@ const PLANS = [
       'Basic Automation (Instant Responses)',
       'Appointment Scheduling',
     ],
-    cta: 'Start Free Trial',
-    href: '/checkout?plan=launch',
-    featured: false,
   },
   {
     slug: 'rocket',
     name: 'The Rocket Box',
-    Icon: RocketIcon,
-    tagline: 'Grow faster with more firepower',
-    price: '297',
-    period: '/mo',
+    monthly: 297,
+    annual: 2673,
+    savings: 891,
+    discount: '25% OFF',
+    featured: true,
+    Icon: BoosterIcon,
     features: [
       'Everything In The Launch Box',
       'Advanced Automation Workflows',
@@ -75,18 +71,15 @@ const PLANS = [
       'AI-Assisted Responses',
       'Review & Reputation Tools',
     ],
-    cta: 'Start Free Trial',
-    href: '/checkout?plan=rocket',
-    featured: false,
   },
   {
     slug: 'velocity',
     name: 'The Velocity Box',
-    Icon: VelocityIcon,
-    tagline: 'Full automation, full speed ahead',
-    price: '497',
-    period: '/mo',
-    badge: 'Most Popular',
+    monthly: 497,
+    annual: 4175,
+    savings: 1790,
+    discount: '30% OFF',
+    Icon: RocketBoxIcon,
     features: [
       'Everything In The Rocket Box',
       'AI Phone Receptionist',
@@ -94,111 +87,59 @@ const PLANS = [
       'Team Access + Workflows',
       'Priority Support',
     ],
-    cta: 'Start Free Trial',
-    href: '/checkout?plan=velocity',
-    featured: true,
-  },
-  {
-    slug: 'founders',
-    name: 'Founders Box',
-    Icon: FoundersIcon,
-    tagline: 'Go all in. Run your business like an empire.',
-    callPrice: true,
-    features: [
-      'Everything In The Velocity Box',
-      'Custom AI Agent Build-Out',
-      'Deep Analytics & Reporting',
-      'Dedicated Account Manager',
-      'White-Glove Onboarding',
-    ],
-    cta: 'Book a Call',
-    href: '/demo',
-    featured: false,
   },
 ];
 
 export default function PricingSection() {
   return (
-    <section id="pricing" className={`section ${styles.pricingHero}`} aria-labelledby="pricing-heading">
-      <div className={styles.pricingHeroBg} aria-hidden="true">
-        <div className={styles.pricingHeroBgImg}>
-          <Image src="/HypeMEbutton.png" alt="" width={520} height={620} style={{ width: '100%', height: 'auto' }} />
-        </div>
-      </div>
-      <div className={`container ${styles.pricingHeroContent}`}>
-        <div className={styles.sectionHeaderCenter}>
-          <span className="tag">Pricing</span>
-          <h2 id="pricing-heading">Mission Control</h2>
-          <p className={styles.freeTrialBadge}>
-            <strong>Free 14-Day Trial on All Plans</strong> — No credit card required
-          </p>
-        </div>
+    <section id="pricing" className={styles.section} aria-labelledby="pricing-heading">
 
-        <div className={styles.pricingGrid}>
-          {PLANS.map((plan) => {
-            const { Icon } = plan;
-            return (
-              <div
-                key={plan.name}
-                className={`${styles.pricingCard}${plan.featured ? ' ' + styles.pricingCardFeatured : ''}`}
-              >
-                {plan.badge && (
-                  <div className={styles.pricingCardBadge}>{plan.badge}</div>
-                )}
-                <div className={styles.pricingCardIcon} style={{ color: plan.iconColor }}>
-                  <Icon />
-                </div>
-                <div className={styles.pricingCardTier}>{plan.name}</div>
-                <p className={styles.pricingCardTagline}>{plan.tagline}</p>
-                <div className={styles.pricingCardPrice}>
-                  {plan.callPrice ? (
-                    <span style={{ fontSize: '1.75rem' }}>Book a Call</span>
-                  ) : (
-                    <><sup>$</sup>{plan.price}</>
-                  )}
-                </div>
-                {!plan.callPrice && (
-                  <div className={styles.pricingCardPeriod}>{plan.period}</div>
-                )}
-                <ul className={styles.pricingCardFeatures} style={{ marginTop: plan.callPrice ? '1.5rem' : undefined }}>
-                  {plan.features.map((f) => (
-                    <li key={f}>{f}</li>
-                  ))}
-                </ul>
-                {plan.callPrice ? (
-                  <a href={plan.href} className="btn btn-ghost">{plan.cta}</a>
-                ) : (
-                  <TrialButton plan={plan.slug} className={`btn ${plan.featured ? 'btn-primary' : 'btn-ghost'}`}>
-                    {plan.cta}
-                  </TrialButton>
-                )}
-                {!plan.callPrice && (
-                  <p className={styles.pricingCardTrialNote}>14-day free trial · No credit card needed</p>
-                )}
-                {plan.callPrice && (
-                  <p className={styles.pricingCardTrialNote}>Includes free trial period</p>
-                )}
+      {/* Image hero */}
+      <div className={styles.imageHero} aria-hidden="true" />
+
+      {/* Pricing cards */}
+      <div className={styles.cardsArea}>
+        <div className={styles.grid}>
+          {PLANS.map(({ Icon, ...plan }) => (
+            <div key={plan.slug} className={`${styles.card} ${plan.featured ? styles.cardFeatured : ''}`}>
+              {plan.featured && <div className={styles.cardBadge}>Most Popular</div>}
+
+              {/* Plan name with custom icon — no numbers, no labels */}
+              <div className={styles.cardHeader}>
+                <Icon />
+                <span className={styles.cardName}>{plan.name.toUpperCase()}</span>
               </div>
-            );
-          })}
-        </div>
 
-        <p style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--grey-500)', marginTop: '2rem', letterSpacing: '0.05em' }}>
-          No contracts · No hidden fees · Cancel anytime
-        </p>
-      </div>
+              <div className={styles.priceRow}>
+                <div className={styles.priceLeft}>
+                  <span className={styles.priceDollar}>$</span>
+                  <span className={styles.priceAmount}>{plan.monthly}</span>
+                  <span className={styles.pricePer}>/mo</span>
+                </div>
+                <div className={styles.priceBadge}>
+                  <span className={styles.priceBadgeOff}>{plan.discount}</span>
+                  <span className={styles.priceBadgeSave}>SAVE ${plan.savings.toLocaleString()}</span>
+                </div>
+              </div>
 
-      <div className={styles.foundersMarquee} aria-label="Founders Box">
-        <div className={styles.foundersMarqueeTrack}>
-          {[0, 1, 2, 3].map((i) => (
-            <span key={i} style={{ display: 'inline-flex', alignItems: 'center' }}>
-              <span style={{ fontFamily: 'var(--font-heading)', fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.12em', color: 'var(--yellow)', paddingRight: '2rem' }}>{MARQUEE_TEXT}</span>
-              <LogoSep />
-            </span>
+              <div className={styles.annual}>${plan.annual.toLocaleString()} / ANNUALLY</div>
+
+              <ul className={styles.features}>
+                {plan.features.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+
+              <TrialButton plan={plan.slug} className={styles.cta}>
+                START FREE TRIAL
+              </TrialButton>
+              <p className={styles.ctaNote}>14-day free trial · No credit card needed</p>
+            </div>
           ))}
         </div>
       </div>
-    </section>
 
+
+    </section>
   );
 }

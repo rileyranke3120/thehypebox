@@ -128,11 +128,11 @@ export default function Home() {
               </div>
               <div className={styles.mascotColumn}>
                 <Image
-                  src="/mascot.png"
-                  alt="The Hype Box mascot"
-                  width={180}
-                  height={220}
-                  style={{ width: '180px', height: 'auto', transform: 'scaleX(-1)', display: 'block' }}
+                  src="/mascot-phone.png"
+                  alt="The Hype Box AI answering calls"
+                  width={200}
+                  height={260}
+                  style={{ width: '200px', height: 'auto', display: 'block' }}
                 />
               </div>
               <div className={styles.solutionBlock}>
@@ -168,32 +168,132 @@ export default function Home() {
         {/* HOW IT WORKS */}
         <section id="how" className="section" aria-labelledby="how-heading">
           <div className="container">
-            <div className={styles.sectionHeaderCenter}>
-              <span className="tag">How It Works</span>
-              <h2 id="how-heading">Simple. Fast. Powerful.</h2>
-              <p style={{ marginTop: '0.75rem', fontSize: '1rem', color: 'var(--yellow)', fontWeight: 700 }}>Start your free 14-day trial — up and running in under an hour.</p>
+            <div className={styles.howHeader}>
+              <div className={styles.sectionHeaderCenter}>
+                <span className="tag">How It Works</span>
+                <h2 id="how-heading">Up and Running<br />in Under an Hour.</h2>
+                <p style={{ marginTop: '0.75rem', fontSize: '1rem', color: 'var(--yellow)', fontWeight: 700 }}>We set it up. You get back to work.</p>
+              </div>
+              <div className={styles.howMascot} aria-hidden="true">
+                <Image
+                  src="/mascot-magic.png"
+                  alt=""
+                  width={200}
+                  height={240}
+                  style={{ width: '200px', height: 'auto' }}
+                />
+              </div>
             </div>
             <div className={styles.howSteps}>
               <div className={styles.step}>
                 <div className={styles.stepNum} aria-hidden="true">01</div>
-                <h3 className={styles.stepTitle}>Start Your Free Trial</h3>
-                <p className={styles.stepDesc}>No credit card needed. We set up your system and bring everything into one place — same day.</p>
+                <h3 className={styles.stepTitle}>Pick Your Plan</h3>
+                <p className={styles.stepDesc}>Start your free 14-day trial. We configure your system, connect your tools, and get everything live — same day.</p>
               </div>
               <div className={styles.step}>
                 <div className={styles.stepNum} aria-hidden="true">02</div>
-                <h3 className={styles.stepTitle}>Automations Go Live</h3>
-                <p className={styles.stepDesc}>Your business starts responding, booking, and following up instantly — 24/7, even while you&apos;re on the job.</p>
+                <h3 className={styles.stepTitle}>Your AI Goes to Work</h3>
+                <p className={styles.stepDesc}>Every call answered. Every lead followed up. Every appointment booked automatically — 24/7, while you&apos;re on the job.</p>
               </div>
               <div className={styles.step}>
                 <div className={styles.stepNum} aria-hidden="true">03</div>
-                <h3 className={styles.stepTitle}>Grow Without the Chaos</h3>
-                <p className={styles.stepDesc}>Capture more leads, close more deals, and stay in control. Keep it if it works — cancel anytime if it doesn&apos;t.</p>
+                <h3 className={styles.stepTitle}>Close More. Stress Less.</h3>
+                <p className={styles.stepDesc}>More leads captured, more jobs booked, more 5-star reviews. Keep it if it works — cancel anytime if it doesn&apos;t.</p>
               </div>
             </div>
           </div>
         </section>
 
+        {/* TESTIMONIALS */}
+        <section id="results" className="section" aria-labelledby="testimonials-heading">
+          <div className="container">
+            <div className={styles.sectionHeaderCenter}>
+              <span className="tag">Results</span>
+              <h2 id="testimonials-heading">Real Businesses. Real Results.</h2>
+            </div>
+            <div className={styles.testimonialsGrid}>
+              <figure className={styles.testimonialCard}>
+                <blockquote className={styles.testimonialQuote}>
+                  &ldquo;I was losing 3–4 leads a week to voicemail. First week with The Hype Box, the AI caught 11 calls I would&apos;ve missed and booked 2 jobs right away. Paid for itself in month one.&rdquo;
+                </blockquote>
+                <figcaption className={styles.testimonialAuthor}>
+                  <div className={styles.testimonialAvatar}>MT</div>
+                  <div>
+                    <strong>Mike T.</strong>
+                    <span>Owner · Elite Roofing Solutions, Columbus OH</span>
+                  </div>
+                </figcaption>
+              </figure>
+              <figure className={styles.testimonialCard}>
+                <blockquote className={styles.testimonialQuote}>
+                  &ldquo;I didn&apos;t have time to chase every lead. Now the system texts them back in seconds and keeps following up automatically. I&apos;m closing jobs I would&apos;ve completely lost track of before.&rdquo;
+                </blockquote>
+                <figcaption className={styles.testimonialAuthor}>
+                  <div className={styles.testimonialAvatar}>CD</div>
+                  <div>
+                    <strong>Chris D.</strong>
+                    <span>Owner · ProTemp HVAC, Cincinnati OH</span>
+                  </div>
+                </figcaption>
+              </figure>
+              <figure className={styles.testimonialCard}>
+                <blockquote className={styles.testimonialQuote}>
+                  &ldquo;Set it up in an afternoon, had the AI answering calls by that evening. Books straight into my calendar. My wife asked if I finally hired a receptionist.&rdquo;
+                </blockquote>
+                <figcaption className={styles.testimonialAuthor}>
+                  <div className={styles.testimonialAvatar}>JR</div>
+                  <div>
+                    <strong>Jason R.</strong>
+                    <span>Owner · Peak Concrete Coatings, Dayton OH</span>
+                  </div>
+                </figcaption>
+              </figure>
+            </div>
+          </div>
+        </section>
+
         <PricingSection />
+
+
+        {/* BOOK A CALL */}
+        <section id="booking" className={`section ${styles.bookingSection}`} aria-labelledby="booking-heading">
+          <div className="container">
+            <div className={styles.bookingInner}>
+              <div className={styles.bookingMascot} aria-hidden="true">
+                <Image
+                  src="/mascot-flying.png"
+                  alt=""
+                  width={280}
+                  height={340}
+                  style={{ width: '280px', height: 'auto' }}
+                />
+              </div>
+              <div className={styles.bookingCopy}>
+                <span className="tag">Founders Box</span>
+                <h2 id="booking-heading">Ready to Go<br /><em style={{ fontStyle: 'normal', color: 'var(--yellow)' }}>All In?</em></h2>
+                <p style={{ color: 'var(--grey-300)', fontSize: '1rem', lineHeight: 1.7, margin: '1.25rem 0 2rem' }}>
+                  The Founders Box is built for businesses ready to run like an empire — custom AI build-out, dedicated account manager, and white-glove onboarding. Book a free 30-minute call and we&apos;ll show you exactly what&apos;s possible.
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+                  <a href="https://api.leadconnectorhq.com/widget/booking/Ws5pQCTkYNNeqtSwGII4" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', flexShrink: 0 }}>
+                    <Image
+                      src="/hypeme-button-new.png"
+                      alt="Book Your Free Strategy Call"
+                      width={1254}
+                      height={1254}
+                      style={{ width: '100%', maxWidth: '200px', height: 'auto', cursor: 'pointer' }}
+                    />
+                  </a>
+                  <a href="tel:8444497363" className="btn btn-primary" style={{ fontSize: '1.1rem', padding: '0.9rem 2.25rem', fontWeight: 900, flexShrink: 0, margin: '0 auto' }}>
+                    (844) 4-HYPE-ME
+                  </a>
+                </div>
+                <p style={{ marginTop: '0.75rem', fontSize: '0.82rem', color: 'var(--grey-500)' }}>30 minutes · No pressure · US-based team</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
 
         {/* FINAL CTA */}
         <section className={styles.ctaBand} aria-labelledby="cta-heading">
@@ -213,22 +313,33 @@ export default function Home() {
         {/* ABOUT / MISSION */}
         <section id="about" className="section" style={{ background: '#0a0a0a' }}>
           <div className="container">
-            <div className={styles.sectionHeaderCenter}>
-              <span className="tag">Who We Are</span>
-              <h2>Real AI. Real People. Real Results.</h2>
+            <div className={styles.aboutHeader}>
+              <div className={styles.aboutMascot} aria-hidden="true">
+                <Image
+                  src="/mascot-tablet.png"
+                  alt=""
+                  width={200}
+                  height={240}
+                  style={{ width: '200px', height: 'auto' }}
+                />
+              </div>
+              <div className={styles.sectionHeaderCenter} style={{ textAlign: 'left', margin: 0 }}>
+                <span className="tag">Who We Are</span>
+                <h2>Built for the<br />Trades. By People<br />Who Get It.</h2>
+              </div>
             </div>
             <div className={styles.aboutGrid}>
               <div className={styles.aboutBlock}>
                 <h3>Our Mission</h3>
-                <p>TheHypeBox exists to level the playing field for local businesses. We build and run AI automation systems that give small business owners the same tools used by Fortune 500 companies — at a price that actually makes sense.</p>
+                <p>TheHypeBox gives local service businesses the same AI tools used by Fortune 500 companies — configured for your business, at a price that actually makes sense.</p>
               </div>
               <div className={styles.aboutBlock}>
                 <h3>Who We Help</h3>
-                <p>We work with local service businesses — plumbers, HVAC, electricians, roofers, salons, auto shops, restaurants, and more. If you're running a business and losing leads because you can't answer every call, we fix that.</p>
+                <p>Roofers, HVAC, electricians, plumbers, concrete coaters, painters, landscapers. If you&apos;re running a trade business and losing leads because you can&apos;t answer every call — we fix that.</p>
               </div>
               <div className={styles.aboutBlock}>
-                <h3>How We're Different</h3>
-                <p>We don't just hand you software and walk away. We build your system, configure your AI, and stay with you. US-based support. No long-term contracts. Cancel anytime.</p>
+                <h3>How We&apos;re Different</h3>
+                <p>We don&apos;t hand you software and disappear. We build your system, configure your AI, and stay with you. US-based. No long-term contracts. Cancel anytime.</p>
               </div>
             </div>
           </div>

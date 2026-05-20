@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
+import { auth } from '@/auth';
 
 const VALID_AUTOMATIONS = [
   'review-request',
@@ -11,6 +12,16 @@ const VALID_AUTOMATIONS = [
 ];
 
 export async function POST(request) {
+  // Allow authenticated super_admin OR a webhook secret header for GHL/external callers
+  const session = await auth();
+  const webhookSecret = process.env.AUTOMATION_WEBHOOK_SECRET;
+  const reqSecret = request.headers.get('x-webhook-secret');
+  const isAdmin = session?.user?.role === 'super_admin';
+  const isWebhook = webhookSecret && reqSecret === webhookSecret;
+  if (!isAdmin && !isWebhook) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   const supabase = createClient();
   let automation, client_id, payload;
 
@@ -31,10 +42,10 @@ export async function POST(request) {
       );
     }
 
-    // Look up client to get business_name
+    // Look up client — include GHL credentials for per-client SMS routing
     const { data: client, error: clientError } = await supabase
       .from('users')
-      .select('id, name, business_name, email, business_phone')
+      .select('id, name, business_name, email, business_phone, ghl_api_key, ghl_location_id')
       .eq('id', client_id)
       .single();
 
@@ -42,9 +53,12 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Client not found' }, { status: 404 });
     }
 
-    // Merge business_name from client record if not already in payload
+    // Merge business_name + GHL credentials (payload can override if needed)
     const mergedPayload = {
       business_name: client.business_name,
+      ghl_api_key: client.ghl_api_key || undefined,
+      ghl_location_id: client.ghl_location_id || undefined,
+      client_id,
       ...payload,
     };
 
@@ -63,13 +77,13 @@ export async function POST(request) {
     const result = await res.json();
     const status = res.ok ? 'success' : 'failed';
 
-    await supabase.from('automation_logs').insert({
+    supabase.from('automation_logs').insert({
       client_id,
       automation,
       payload: mergedPayload,
       triggered_at: new Date().toISOString(),
       status,
-    });
+    }).then().catch((e) => console.error('[automations/trigger] log failed:', e.message));
 
     if (!res.ok) {
       return NextResponse.json({ ok: false, error: result.error || 'Automation failed', status }, { status: res.status });
@@ -79,16 +93,13 @@ export async function POST(request) {
   } catch (error) {
     console.error('[automations/trigger]', error);
 
-    // Best-effort log of the failure
-    try {
-      await supabase.from('automation_logs').insert({
-        client_id: client_id || null,
-        automation: automation || null,
-        payload: payload || null,
-        triggered_at: new Date().toISOString(),
-        status: 'error',
-      });
-    } catch (_) {}
+    supabase.from('automation_logs').insert({
+      client_id: client_id || null,
+      automation: automation || null,
+      payload: payload || null,
+      triggered_at: new Date().toISOString(),
+      status: 'error',
+    }).then().catch(() => {});
 
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }

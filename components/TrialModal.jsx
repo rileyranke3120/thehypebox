@@ -28,7 +28,7 @@ export default function TrialModal() {
 
   if (!open) return null;
 
-  const planData = PLAN_LABELS[plan] || PLAN_LABELS.velocity;
+  const planData = PLAN_LABELS[plan] || PLAN_LABELS.launch;
 
   return (
     <div

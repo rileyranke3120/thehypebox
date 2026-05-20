@@ -18,27 +18,31 @@ export async function POST(request) {
       );
     }
 
-    // Resolve business_name: request body → Supabase profile → session name
     const supabase = createClient();
     const { data: user } = await supabase
       .from('users')
-      .select('id, business_name')
+      .select('id, business_name, google_review_url, ghl_api_key, ghl_location_id')
       .eq('email', session.user.email)
       .single();
 
     const business_name = body.business_name || user?.business_name || session.user.name || 'our team';
+    const review_url = body.google_review_url || user?.google_review_url || null;
 
-    await sendSMS(
-      phone_number,
-      `Hi ${customer_name}! Thanks for choosing ${business_name}. We'd love your feedback — could you leave us a quick Google review? It means a lot to us!`
-    );
+    const message = review_url
+      ? `Hi ${customer_name}! Thanks for choosing ${business_name}. We'd love it if you left us a quick Google review — it means a lot to us! ${review_url}`
+      : `Hi ${customer_name}! Thanks for choosing ${business_name}. We'd love your feedback — could you leave us a quick Google review? It means a lot to us!`;
 
-    await supabase.from('review_requests').insert({
+    await sendSMS(phone_number, message, {
+      apiKey: user?.ghl_api_key || session.user.ghl_api_key,
+      locationId: user?.ghl_location_id || session.user.ghl_location_id,
+    });
+
+    supabase.from('review_requests').insert({
       phone_number,
       customer_name,
       client_id: user?.id ?? null,
       sent_at: new Date().toISOString(),
-    });
+    }).then().catch((e) => console.error('[review-request] log failed:', e.message));
 
     return NextResponse.json({ ok: true });
   } catch (error) {
