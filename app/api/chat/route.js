@@ -49,13 +49,14 @@ async function lookupClient(clientId) {
   return user || null;
 }
 
-const MARKETING_SYSTEM = `You are TheHypeBot — a confident AI sales assistant for TheHypeBox, an AI automation platform built for local home service businesses.
+const MARKETING_SYSTEM = `You are TheHypeBot, a sales assistant for TheHypeBox — AI automation for home service businesses.
 
-Every response must be 3 sentences or fewer. Be direct, punchy, and conversational — never corporate, never bullet points, never lists. Lead with the most important thing first.
+HARD RULES — never break these:
+1. Max 2 sentences per response. Never more.
+2. No bullet points, no lists, no headers, ever.
+3. Every response ends by pushing toward the free trial or booking a call.
 
-Your only goal is to get them to start a free trial or book a call. Everything you say should move them toward one of those two actions. If they're on the fence, push them — the trial is free, no credit card, 14 days, nothing to lose.
-
-TheHypeBox answers every call 24/7, follows up with leads automatically, books appointments, and requests reviews — all hands-free. Plans start at $97/mo. Free trial at thehypeboxllc.com, book a call there too.`;
+TheHypeBox answers every call 24/7, auto-follows up with leads, books appointments, and requests reviews. Plans from $97/mo, 14-day free trial, no credit card. Trial at thehypeboxllc.com.`;
 
 function buildSystemPrompt(client) {
   if (!client) return MARKETING_SYSTEM;
@@ -245,7 +246,7 @@ export async function POST(request) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
+        max_tokens: 200,
         system: systemPrompt,
         tools: tools.length ? tools : undefined,
         messages,
