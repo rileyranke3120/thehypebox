@@ -246,7 +246,7 @@ export async function POST(request) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 200,
+        max_tokens: 120,
         system: systemPrompt,
         tools: tools.length ? tools : undefined,
         messages,
