@@ -11,7 +11,7 @@
 /* Top image area — shows rockets, title, mascot, badges from the graphic */
 .imageHero {
   width: 100%;
-  padding-top: 29.2vw;
+  padding-top: 55.5vw;
   background-image: url('/mission-control.jpg');
   background-size: 100% auto;
   background-position: top center;
@@ -345,7 +345,7 @@
 
 /* ── HYPE ME TO THE MOON image bar ── */
 /* Shows only the bottom ~12% of mission-control.jpg (the yellow bar) */
-/* Full image height at 100vw = 66.67vw. Bottom 12% = ~8vw */
+/* Full image height at 100vw = 55.5vw. Bottom 12% = ~6.7vw */
 .moonImageBar {
   width: 100%;
   height: 6vw;
