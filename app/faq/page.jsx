@@ -13,7 +13,7 @@ const CATEGORIES = [
     items: [
       {
         question: 'How does the 14-day free trial work?',
-        answer: 'When you sign up, you get full access to your plan for 14 days completely free. No credit card charges during this period. After 14 days, your subscription automatically starts and you\'ll be billed monthly. You can cancel anytime during the trial to avoid any charges.',
+        answer: 'When you sign up, you get full access to your plan for 14 days completely free. No charges during this period. After 14 days, your subscription automatically starts and you\'ll be billed monthly. You can cancel anytime during the trial to avoid any charges.',
       },
       {
         question: 'When will I be charged?',

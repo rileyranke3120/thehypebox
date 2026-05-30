@@ -1,21 +1,46 @@
-export const runtime = 'edge';
+import { auth } from '@/auth';
 
-// IP-based rate limit: 20 requests per minute per IP (per edge worker instance)
-const ipHits = new Map();
-function checkChatRateLimit(ip) {
-  const now = Date.now();
-  const window = 60_000;
-  const max = 20;
-  const hits = (ipHits.get(ip) || []).filter((t) => now - t < window);
-  if (hits.length >= max) return false;
-  hits.push(now);
-  ipHits.set(ip, hits);
-  return true;
-}
-
+// Runs in Node.js runtime — auth() requires it (edge runtime can't load bcryptjs)
 const GHL_BASE = 'https://services.leadconnectorhq.com';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const RPC_HEADERS = {
+  apikey: SUPABASE_KEY,
+  Authorization: `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
+};
+
+// ── Per-minute rate limit (20 req/min per IP) — atomic via stored procedure ──
+async function checkChatRateLimit(ip) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return false; // fail closed if not configured
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/check_and_increment_chat_rate_limit`, {
+      method: 'POST',
+      headers: RPC_HEADERS,
+      body: JSON.stringify({ p_ip: ip, p_max: 20, p_window_seconds: 60 }),
+    });
+    return res.ok ? await res.json() : false; // fail closed if RPC unavailable
+  } catch {
+    return false;
+  }
+}
+
+// ── Per-day rate limit (200 req/day per IP) — atomic via stored procedure ────
+async function checkDailyLimit(ip) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return false; // fail closed if not configured
+  try {
+    const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/check_and_increment_chat_daily_limit`, {
+      method: 'POST',
+      headers: RPC_HEADERS,
+      body: JSON.stringify({ p_ip: ip, p_day: day, p_max: 200 }),
+    });
+    return res.ok ? await res.json() : false; // fail closed if RPC unavailable
+  } catch {
+    return false;
+  }
+}
 
 function ghlHeaders(apiKey) {
   return {
@@ -35,18 +60,23 @@ async function ghlFetch(path, apiKey, options = {}) {
   return data;
 }
 
-// Look up client from Supabase by ghl_location_id
-async function lookupClient(clientId) {
-  if (!clientId || clientId === 'marketing' || clientId === 'default') return null;
+// Look up client by session email and verify the requested locationId matches their account.
+// Returns the client record on success, null on mismatch or error.
+async function lookupClientForSession(email, requestedLocationId) {
   if (!SUPABASE_URL || !SUPABASE_KEY) return null;
-
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/users?ghl_location_id=eq.${encodeURIComponent(clientId)}&select=name,business_name,ghl_api_key,ghl_location_id,google_review_url&limit=1`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
-  );
-  if (!res.ok) return null;
-  const [user] = await res.json();
-  return user || null;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=name,business_name,ghl_api_key,ghl_location_id,google_review_url&limit=1`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+    );
+    if (!res.ok) return null;
+    const [user] = await res.json();
+    if (!user?.ghl_location_id) return null;
+    if (user.ghl_location_id !== requestedLocationId) return null;
+    return user;
+  } catch {
+    return null;
+  }
 }
 
 const MARKETING_SYSTEM = `You are TheHypeBot, a confident sales assistant for TheHypeBox — AI automation built for local home service businesses (HVAC, plumbing, roofing, electrical, landscaping, etc.).
@@ -71,32 +101,36 @@ PLANS & PRICING:
 - Launch Box: $97/mo — AI receptionist, missed call text-back, review requests, scheduling, contacts, pipeline, call log, billing
 - Rocket Box: $297/mo — Everything in Launch + reactivation campaigns, lead gen tools
 - Velocity Box: $497/mo — Everything in Rocket + full CRM, accounting integration
-- All plans: 14-day free trial, no credit card required, cancel anytime
+- All plans: 14-day free trial, cancel anytime
 - Setup takes one day, Riley handles onboarding personally
 
 TRIAL & SIGNUP:
 - Start at thehypeboxllc.com — click any "Start Free Trial" button
-- No credit card needed, 14 days free, then monthly billing starts
+- 14 days free, then monthly billing starts, cancel anytime
 - Book a call with Riley at thehypeboxllc.com if they want a walkthrough first`;
 
+
+function sanitize(str, maxLen) {
+  return String(str || '').replace(/[\n\r]/g, ' ').replace(/\{\{|\}\}|\[|\]/g, '').trim().slice(0, maxLen);
+}
 
 function buildSystemPrompt(client) {
   if (!client) return MARKETING_SYSTEM;
 
   const hasGHL = !!(client.ghl_api_key && client.ghl_location_id);
-  const biz = client.business_name || 'your business';
-  const owner = client.name ? client.name.split(' ')[0] : 'there';
+  const biz = sanitize(client.business_name || 'your business', 100);
+  const owner = sanitize(client.name ? client.name.split(' ')[0] : 'there', 50);
 
   return `You are TheHypeBox Assistant — a sharp AI helper built into the ${biz} dashboard.
 
 Every response must be 3 sentences or fewer. Be direct and conversational, no bullet points or lists, lead with the most useful thing first.
 
-${hasGHL ? 'You have live tools — use them. When asked for data or to take action, do it, don\'t just describe it.\n' : ''}You can pull contacts, open leads, and upcoming appointments${hasGHL ? '' : ' (connect your CRM to enable this)'}. You can also send review request texts to customers. For anything outside those tools, point ${owner} to the relevant dashboard section.`;
+${hasGHL ? 'You have live tools — use them. When asked for data or to take action, do it, don\'t just describe it.\n' : ''}You can pull contacts, open leads, and upcoming appointments${hasGHL ? '' : ' (connect your CRM to enable this)'}. For anything outside those tools, point ${owner} to the relevant dashboard section.`;
 }
 
 function buildTools(client) {
   if (!client?.ghl_api_key) return [];
-  const biz = client.business_name || 'your business';
+  const biz = sanitize(client.business_name || 'your business', 100);
 
   return [
     {
@@ -118,30 +152,11 @@ function buildTools(client) {
       description: `Get upcoming appointments for ${biz} in the next 7 days`,
       input_schema: { type: 'object', properties: {} },
     },
-    {
-      name: 'send_review_request',
-      description: 'Send a review request SMS to a customer. Use search_contacts first to confirm the phone number.',
-      input_schema: {
-        type: 'object',
-        properties: {
-          phone: { type: 'string', description: "Customer's phone number" },
-          name: { type: 'string', description: "Customer's first name" },
-        },
-        required: ['phone', 'name'],
-      },
-    },
   ];
 }
 
-function normalizePhone(phone) {
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
-  return `+${digits}`;
-}
-
 async function executeTool(name, input, client) {
-  const { ghl_api_key: apiKey, ghl_location_id: locationId, business_name, google_review_url } = client;
+  const { ghl_api_key: apiKey, ghl_location_id: locationId } = client;
 
   if (name === 'search_contacts') {
     const data = await ghlFetch(
@@ -188,51 +203,16 @@ async function executeTool(name, input, client) {
       .join('\n');
   }
 
-  if (name === 'send_review_request') {
-    const phone = normalizePhone(input.phone);
-
-    const searchRes = await fetch(`${GHL_BASE}/contacts/search`, {
-      method: 'POST',
-      headers: ghlHeaders(apiKey),
-      body: JSON.stringify({
-        locationId,
-        pageLimit: 1,
-        filters: [{ field: 'phone', operator: 'eq', value: phone }],
-      }),
-    });
-    let contactId;
-    if (searchRes.ok) {
-      const searchData = await searchRes.json();
-      contactId = searchData?.contacts?.[0]?.id;
-    }
-    if (!contactId) {
-      const createData = await ghlFetch('/contacts/', apiKey, {
-        method: 'POST',
-        body: JSON.stringify({ locationId, phone, firstName: input.name }),
-      });
-      contactId = createData?.contact?.id ?? createData?.meta?.contactId;
-    }
-    if (!contactId) throw new Error('Could not find or create contact');
-
-    const reviewLink = google_review_url ? ` Leave us a review here: ${google_review_url}` : '';
-    const message = `Hi ${input.name}! Thanks for choosing ${business_name || 'us'} — we really appreciate your business! Could you take a minute to leave us a Google review? It means the world to us! ⭐${reviewLink}`;
-
-    await fetch(`${GHL_BASE}/conversations/messages`, {
-      method: 'POST',
-      headers: ghlHeaders(apiKey),
-      body: JSON.stringify({ type: 'SMS', contactId, locationId, message }),
-    });
-
-    return `Review request sent to ${input.name} at ${phone}.`;
-  }
-
   return 'Unknown tool.';
 }
 
 export async function POST(request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (!checkChatRateLimit(ip)) {
+  const ip = request.headers.get('x-real-ip') || request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() || 'unknown';
+  if (!(await checkChatRateLimit(ip))) {
     return Response.json({ error: 'Too many requests — slow down.' }, { status: 429 });
+  }
+  if (!(await checkDailyLimit(ip))) {
+    return Response.json({ error: 'Daily message limit reached. Try again tomorrow.' }, { status: 429 });
   }
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
@@ -249,16 +229,44 @@ export async function POST(request) {
   if (!message?.trim()) return Response.json({ error: 'message is required' }, { status: 400 });
   if (message.length > 2000) return Response.json({ error: 'Message too long.' }, { status: 400 });
 
-  const client = await lookupClient(clientId);
+  // Sanitize history: reject invalid roles, always convert content to a capped string.
+  // Non-string content (e.g. tool_use arrays) is serialised to prevent prompt injection
+  // via injected tool_use/tool_result blocks in client-supplied history.
+  const sanitizedHistory = history
+    .filter(({ role }) => role === 'user' || role === 'assistant')
+    .slice(-10)
+    .map(({ role, content }) => ({
+      role,
+      content: typeof content === 'string'
+        ? content.slice(0, 500)
+        : JSON.stringify(content).slice(0, 500),
+    }));
+
+  // Non-public clientIds require an authenticated session scoped to that location.
+  // Public (marketing/default) mode: no auth needed, no GHL tools available.
+  const isPublicClient = !clientId || clientId === 'default' || clientId === 'marketing';
+  let client = null;
+
+  if (!isPublicClient) {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    client = await lookupClientForSession(session.user.email, clientId);
+    if (!client) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+  }
+
   const systemPrompt = buildSystemPrompt(client);
   const tools = buildTools(client);
 
   let messages = [
-    ...history.slice(-10).map(({ role, content }) => ({ role, content })),
+    ...sanitizedHistory,
     { role: 'user', content: message.trim() },
   ];
 
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 2; i++) {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -277,7 +285,7 @@ export async function POST(request) {
 
     const data = await res.json();
     if (!res.ok) {
-      console.error('[chat] Anthropic error:', JSON.stringify(data));
+      console.error('[chat] Anthropic error:', data?.error?.type);
       return Response.json({ error: 'AI unavailable' }, { status: 502 });
     }
 
@@ -297,7 +305,8 @@ export async function POST(request) {
             try {
               content = await executeTool(block.name, block.input, client);
             } catch (err) {
-              content = `Error: ${err.message}`;
+              console.error(`[chat] tool error [${block.name}]:`, err.message);
+              content = 'Tool call failed. Please try again.';
             }
             return { type: 'tool_result', tool_use_id: block.id, content };
           })

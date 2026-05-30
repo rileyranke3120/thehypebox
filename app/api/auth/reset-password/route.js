@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
-import { generateResetToken } from '@/lib/reset-token';
+import { generateResetToken, hashResetToken } from '@/lib/reset-token';
 import { sendEmail } from '@/lib/send-email';
+
+function esc(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 export async function POST(request) {
   try {
@@ -22,6 +26,16 @@ export async function POST(request) {
 
     if (user) {
       const token = generateResetToken(normalizedEmail);
+      const tokenHash = hashResetToken(token);
+      const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
+
+      // Store hash in DB — overwrites any previous token (old tokens are now invalid).
+      // Single-use is enforced in the confirm handler by clearing these fields after use.
+      await supabase
+        .from('users')
+        .update({ reset_token_hash: tokenHash, reset_token_expires_at: expiresAt })
+        .eq('email', normalizedEmail);
+
       const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
       const firstName = user.name ? user.name.split(' ')[0] : 'there';
 
@@ -33,7 +47,7 @@ export async function POST(request) {
             <div style="max-width:560px;margin:0 auto;padding:48px 24px;">
               <div style="margin-bottom:32px;"><span style="font-size:1.4rem;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#FFD000;">THE HYPE BOX</span></div>
               <h1 style="font-size:1.5rem;font-weight:800;color:#fff;margin:0 0 8px;">Reset your password</h1>
-              <p style="font-size:0.95rem;color:#999;margin:0 0 32px;">Hi ${firstName}, click the button below to set a new password. This link expires in 1 hour.</p>
+              <p style="font-size:0.95rem;color:#999;margin:0 0 32px;">Hi ${esc(firstName)}, click the button below to set a new password. This link expires in 1 hour.</p>
               <a href="${resetUrl}" style="display:inline-block;background:#FFD000;color:#000;font-weight:700;font-size:1rem;padding:14px 32px;border-radius:4px;text-decoration:none;">Reset Password →</a>
               <p style="font-size:0.82rem;color:#555;margin:24px 0 0;line-height:1.6;">If you didn't request this, ignore this email — your password won't change.<br>Link expires in 1 hour.</p>
               <p style="font-size:0.78rem;color:#333;margin:16px 0 0;word-break:break-all;">Or copy this URL: ${resetUrl}</p>

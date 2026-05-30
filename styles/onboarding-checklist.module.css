@@ -1,0 +1,131 @@
+.wrap {
+  background: #111111;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 1.25rem 1.5rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #555;
+  margin: 0;
+}
+
+.count {
+  font-size: 0.72rem;
+  color: #555;
+}
+
+.barTrack {
+  height: 4px;
+  background: #222;
+  border-radius: 2px;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: #FFD000;
+  border-radius: 2px;
+  transition: width 0.35s ease;
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #222;
+  border-radius: 5px;
+  cursor: pointer;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.step:hover:not(.stepDone) {
+  border-color: #333;
+  background: #161616;
+}
+
+.stepDone {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.checkbox {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid #444;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.checkboxChecked {
+  border-color: #FFD000;
+  background: #FFD000;
+}
+
+.checkmark {
+  width: 10px;
+  height: 10px;
+  stroke: #000;
+  fill: none;
+}
+
+.stepText {
+  font-size: 0.84rem;
+  color: #ccc;
+  line-height: 1.3;
+}
+
+.stepTextDone {
+  text-decoration: line-through;
+  color: #555;
+}
+
+.stepAction {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: #FFD000;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .wrap {
+    padding: 1rem;
+  }
+  .stepAction {
+    display: none;
+  }
+}

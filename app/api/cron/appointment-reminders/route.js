@@ -28,6 +28,10 @@ function formatTime(isoStr) {
 
 export async function GET(request) {
   const authHeader = request.headers.get('authorization');
+  if (!process.env.CRON_SECRET) {
+    console.error('[cron] CRON_SECRET env var is not set');
+    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+  }
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -43,7 +47,7 @@ export async function GET(request) {
 
   if (error) {
     console.error('[appointment-reminders] failed to load clients:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 
   const { startIso, endIso } = tomorrowWindow();
@@ -64,17 +68,32 @@ export async function GET(request) {
         (a) => a.appointmentStatus !== 'cancelled' && a.appointmentStatus !== 'invalid'
       );
 
-      for (const appt of upcoming) {
-        try {
-          const contactId = appt.contactId || appt.contact?.id;
-          if (!contactId) { totalSkipped++; continue; }
+      // Batch all GHL contact fetches for this client's appointments
+      const apptContactIds = upcoming.map((appt) => ({
+        appt,
+        contactId: appt.contactId || appt.contact?.id,
+      }));
+      totalSkipped += apptContactIds.filter((a) => !a.contactId).length;
+      const withContactId = apptContactIds.filter((a) => a.contactId);
 
-          const contact = await getContact(contactId, client.ghl_api_key);
-          const phone = contact?.phone || contact?.mobilePhone || null;
+      const contactResults = await Promise.all(
+        withContactId.map(({ appt, contactId }) =>
+          getContact(contactId, client.ghl_api_key)
+            .then((contact) => ({ appt, contact }))
+            .catch((err) => {
+              console.error(`[appointment-reminders] getContact failed for ${contactId}:`, err.message);
+              return { appt, contact: null };
+            })
+        )
+      );
+
+      for (const { appt, contact } of contactResults) {
+        if (!contact) { totalSkipped++; continue; }
+        try {
+          const phone = contact.phone || contact.mobilePhone || null;
           if (!phone) { totalSkipped++; continue; }
 
           const appointmentTime = formatTime(appt.startTime);
-          const apptKey = `${phone}::${appt.startTime}`;
 
           // Dedup — skip if reminder already sent for this appointment
           const { data: existing } = await supabase
@@ -92,18 +111,18 @@ export async function GET(request) {
 
           const businessName = client.business_name || 'us';
 
-          // Call the automation route directly
           const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://thehypeboxllc.com';
           const res = await fetch(`${baseUrl}/api/automations/appointment-reminder`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'x-webhook-secret': process.env.AUTOMATION_WEBHOOK_SECRET || '',
+            },
             body: JSON.stringify({
               phone_number: phone,
               customer_name: customerName,
               business_name: businessName,
               appointment_time: appointmentTime,
-              ghl_api_key: client.ghl_api_key,
-              ghl_location_id: client.ghl_location_id,
               client_id: client.id,
             }),
           });

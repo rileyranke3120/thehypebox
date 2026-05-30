@@ -48,7 +48,7 @@ export default function RefundPolicyPage() {
             <p style={bodyText}>Every TheHypeBox plan — Launch, Rocket, and Velocity — includes a <strong style={strong}>14-day free trial</strong>. Here&apos;s what that means:</p>
             <ul style={list}>
               <li>Your trial starts the moment you complete signup</li>
-              <li>No credit card charges occur during the trial period</li>
+              <li>No charges occur during the trial period</li>
               <li>You have full access to all features included in your selected plan during the trial</li>
               <li>If you cancel <strong style={strong}>before day 14</strong>, you will not be charged anything</li>
               <li>No refund is needed if you cancel during the trial — because nothing was charged</li>

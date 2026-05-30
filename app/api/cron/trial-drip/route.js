@@ -10,6 +10,10 @@ const DRIP_DAYS = [1, 3, 7, 10, 13];
 
 export async function GET(request) {
   const authHeader = request.headers.get('authorization');
+  if (!process.env.CRON_SECRET) {
+    console.error('[cron] CRON_SECRET env var is not set');
+    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+  }
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -24,7 +28,7 @@ export async function GET(request) {
     .not('trial_ends_at', 'is', null);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 
   const now = Date.now();
@@ -42,7 +46,6 @@ export async function GET(request) {
     // Don't send if trial already ended
     if (trialEnd < now) continue;
 
-    // Deduplication: skip if this day's email was already sent (prevents double-send on cron retry)
     const sentDays = user.toggles?.trial_drip_sent ?? [];
     if (sentDays.includes(daysSinceStart)) {
       console.log(`[trial-drip] day ${daysSinceStart} already sent to ${user.email}, skipping`);
@@ -59,13 +62,21 @@ export async function GET(request) {
 
     if (!tpl) continue;
 
+    // Atomic guard: claim this day before sending; 0 rows updated means another process already sent
+    const { data: claimed } = await supabase
+      .from('users')
+      .update({ toggles: { ...(user.toggles || {}), trial_drip_sent: [...sentDays, daysSinceStart] } })
+      .eq('email', user.email)
+      .or(`toggles.is.null,toggles->trial_drip_sent.is.null,not.toggles->trial_drip_sent.cs.${JSON.stringify([daysSinceStart])}`)
+      .select('email');
+
+    if (!claimed?.length) {
+      console.log(`[trial-drip] day ${daysSinceStart} already claimed for ${user.email}, skipping`);
+      continue;
+    }
+
     try {
       await sendEmail({ to: user.email, ...tpl });
-      // Mark this day as sent so a cron retry won't re-send
-      await supabase
-        .from('users')
-        .update({ toggles: { ...(user.toggles || {}), trial_drip_sent: [...sentDays, daysSinceStart] } })
-        .eq('email', user.email);
       sent++;
       console.log(`[trial-drip] day ${daysSinceStart} email sent to ${user.email}`);
     } catch (err) {

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { sendSMS } from '@/lib/twilio';
+import { auth } from '@/auth';
+import { insertWithRetry } from '@/lib/insert-with-retry';
 
 const STEP_MESSAGES = {
   1: (name, biz) =>
@@ -12,14 +14,28 @@ const STEP_MESSAGES = {
 };
 
 export async function POST(request) {
+  const session = await auth();
+  const secret = process.env.AUTOMATION_WEBHOOK_SECRET;
+  const isAdmin = session?.user?.role === 'super_admin';
+  const isWebhook = secret && request.headers.get('x-webhook-secret') === secret;
+  if (!isAdmin && !isWebhook) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    const { phone_number, customer_name, business_name, step, ghl_api_key, ghl_location_id, client_id } = await request.json();
+    const { phone_number, customer_name, business_name, step, client_id } = await request.json();
 
     if (!phone_number || !customer_name || !business_name || !step) {
       return NextResponse.json(
         { ok: false, error: 'phone_number, customer_name, business_name, and step are required' },
         { status: 400 }
       );
+    }
+
+    if (customer_name.length > 100) return NextResponse.json({ ok: false, error: 'customer_name must be 100 characters or fewer.' }, { status: 400 });
+
+    if (!client_id) {
+      return NextResponse.json({ ok: false, error: 'client_id is required' }, { status: 400 });
     }
 
     const stepNum = Number(step);
@@ -32,20 +48,34 @@ export async function POST(request) {
       );
     }
 
-    await sendSMS(phone_number, buildMessage(customer_name, business_name), { apiKey: ghl_api_key, locationId: ghl_location_id });
-
+    // Look up GHL credentials fresh from DB — never trust keys in request body
     const supabase = createClient();
-    supabase.from('lead_nurture').insert({
+    const { data: clientData } = await supabase
+      .from('users')
+      .select('ghl_api_key, ghl_location_id')
+      .eq('id', client_id)
+      .single();
+
+    if (!clientData?.ghl_api_key || !clientData?.ghl_location_id) {
+      return NextResponse.json({ ok: false, error: 'Client GHL credentials not configured' }, { status: 400 });
+    }
+
+    await sendSMS(phone_number, buildMessage(customer_name, business_name), {
+      apiKey: clientData.ghl_api_key,
+      locationId: clientData.ghl_location_id,
+    });
+
+    await insertWithRetry(supabase, 'lead_nurture', {
       phone_number,
       customer_name,
       step: stepNum,
-      client_id: client_id ?? null,
+      client_id,
       sent_at: new Date().toISOString(),
-    }).catch((e) => console.error('[lead-nurture] log failed:', e.message));
+    }, { tag: '[lead-nurture]' });
 
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('[lead-nurture]', error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'Something went wrong.' }, { status: 500 });
   }
 }

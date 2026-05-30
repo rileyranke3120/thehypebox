@@ -478,6 +478,29 @@ export default function DemoPage() {
             <span className={`${styles.statusDot} ${styles.statusDotGreen}`}></span>
             All systems operational
           </div>
+          <Link
+            href="/"
+            style={{ fontSize: 12, color: '#aaa', fontWeight: 600, letterSpacing: '0.04em', textDecoration: 'none', whiteSpace: 'nowrap' }}
+          >
+            ← Back to Site
+          </Link>
+          <Link
+            href="/?trial=1#pricing"
+            style={{
+              background: '#FFD000',
+              color: '#000',
+              fontSize: 12,
+              fontWeight: 900,
+              letterSpacing: '0.08em',
+              padding: '6px 14px',
+              borderRadius: 4,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+          >
+            Start Free Trial
+          </Link>
           <div className={styles.topbarUser}>
             <div className={styles.topbarAvatar} aria-hidden="true">{displayInitials}</div>
             <span>{displayName}</span>

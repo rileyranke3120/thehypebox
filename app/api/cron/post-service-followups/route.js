@@ -17,6 +17,10 @@ function todayWindow() {
 
 export async function GET(request) {
   const authHeader = request.headers.get('authorization');
+  if (!process.env.CRON_SECRET) {
+    console.error('[cron] CRON_SECRET env var is not set');
+    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+  }
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -32,7 +36,7 @@ export async function GET(request) {
 
   if (error) {
     console.error('[post-service-followups] failed to load clients:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 
   const { startIso, endIso } = todayWindow();
@@ -54,13 +58,29 @@ export async function GET(request) {
         (a) => a.appointmentStatus === 'showed' || a.appointmentStatus === 'completed' || !a.appointmentStatus
       );
 
-      for (const appt of completed) {
-        try {
-          const contactId = appt.contactId || appt.contact?.id;
-          if (!contactId) { totalSkipped++; continue; }
+      // Batch all GHL contact fetches for this client's completed appointments
+      const apptContactIds = completed.map((appt) => ({
+        appt,
+        contactId: appt.contactId || appt.contact?.id,
+      }));
+      totalSkipped += apptContactIds.filter((a) => !a.contactId).length;
+      const withContactId = apptContactIds.filter((a) => a.contactId);
 
-          const contact = await getContact(contactId, client.ghl_api_key);
-          const phone = contact?.phone || contact?.mobilePhone || null;
+      const contactResults = await Promise.all(
+        withContactId.map(({ appt, contactId }) =>
+          getContact(contactId, client.ghl_api_key)
+            .then((contact) => ({ appt, contact }))
+            .catch((err) => {
+              console.error(`[post-service-followups] getContact failed for ${contactId}:`, err.message);
+              return { appt, contact: null };
+            })
+        )
+      );
+
+      for (const { appt, contact } of contactResults) {
+        if (!contact) { totalSkipped++; continue; }
+        try {
+          const phone = contact.phone || contact.mobilePhone || null;
           if (!phone) { totalSkipped++; continue; }
 
           // Dedup — skip if followup already sent for this appointment
@@ -83,13 +103,14 @@ export async function GET(request) {
 
           const res = await fetch(`${baseUrl}/api/automations/post-service-followup`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'x-webhook-secret': process.env.AUTOMATION_WEBHOOK_SECRET || '',
+            },
             body: JSON.stringify({
               phone_number: phone,
               customer_name: customerName,
               business_name: businessName,
-              ghl_api_key: client.ghl_api_key,
-              ghl_location_id: client.ghl_location_id,
               client_id: client.id,
             }),
           });

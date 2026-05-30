@@ -1,8 +1,8 @@
+import { randomBytes } from 'crypto';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import stripe from '@/lib/stripe';
 import { createClient } from '@/lib/supabase';
-import { getMailer } from '@/lib/mailer';
 import { sendEmail } from '@/lib/send-email';
 import { paymentSuccessEmail, paymentFailedEmail, subscriptionCanceledEmail, highLevelAccessEmail } from '@/lib/email-templates';
 import { createSubAccount } from '@/lib/highlevel';
@@ -12,47 +12,52 @@ const PLAN_LABELS = {
   starter: 'The Launch Box',  growth: 'The Rocket Box',   pro: 'The Velocity Box',
 };
 
+function esc(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function generatePassword() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const bytes = randomBytes(12);
   let result = '';
   for (let i = 0; i < 12; i++) {
     if (i === 4 || i === 8) result += '-';
-    result += chars[Math.floor(Math.random() * chars.length)];
+    result += chars[bytes[i] % chars.length];
   }
   return result;
 }
 
 async function createAccount(email, name, plan) {
   const supabase = createClient();
-  const { data: existing } = await supabase.from('users').select('password_hash').eq('email', email.toLowerCase()).single();
-  if (existing?.password_hash) return;
 
   const tempPassword = generatePassword();
   const password_hash = await bcrypt.hash(tempPassword, 12);
 
-  await supabase.from('users').update({
+  // Atomic: only writes if password_hash is still null — prevents duplicate welcome emails
+  const { data: updated } = await supabase.from('users').update({
     password_hash,
     name: name || email.split('@')[0],
     plan_status: 'trialing',
-  }).eq('email', email.toLowerCase());
+  }).eq('email', email.toLowerCase()).is('password_hash', null).select().single();
+
+  if (!updated) return; // another process already activated this account
 
   const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL}/login`;
   const planLabel = PLAN_LABELS[plan] || plan;
 
   try {
-    await getMailer().sendMail({
-      from: '"TheHypeBox" <riley@thehypeboxllc.com>',
+    await sendEmail({
       to: email,
       subject: `Welcome to TheHypeBox — Your login details inside`,
       html: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0a0a0a;font-family:system-ui,sans-serif;">
         <div style="max-width:560px;margin:0 auto;padding:48px 24px;">
           <div style="margin-bottom:32px;"><span style="font-size:1.4rem;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#FFD000;">THE HYPE BOX</span></div>
-          <h1 style="font-size:1.75rem;font-weight:800;color:#fff;margin:0 0 8px;">You're in, ${name ? name.split(' ')[0] : 'friend'}!</h1>
-          <p style="font-size:1rem;color:#999;margin:0 0 32px;">Your <strong style="color:#FFD000;">${planLabel}</strong> 14-day free trial is now active.</p>
+          <h1 style="font-size:1.75rem;font-weight:800;color:#fff;margin:0 0 8px;">You're in, ${esc(name ? name.split(' ')[0] : 'friend')}!</h1>
+          <p style="font-size:1rem;color:#999;margin:0 0 32px;">Your <strong style="color:#FFD000;">${esc(planLabel)}</strong> 14-day free trial is now active.</p>
           <div style="background:#111;border:1px solid #222;border-radius:8px;padding:24px;margin-bottom:32px;">
             <p style="font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:#666;margin:0 0 16px;">Your Login Credentials</p>
-            <div style="margin-bottom:12px;"><p style="font-size:0.75rem;color:#555;margin:0 0 4px;text-transform:uppercase;letter-spacing:0.08em;">Email</p><p style="font-size:1rem;color:#fff;margin:0;font-family:monospace;">${email}</p></div>
-            <div><p style="font-size:0.75rem;color:#555;margin:0 0 4px;text-transform:uppercase;letter-spacing:0.08em;">Temporary Password</p><p style="font-size:1.2rem;color:#FFD000;margin:0;font-family:monospace;font-weight:700;letter-spacing:0.1em;">${tempPassword}</p></div>
+            <div style="margin-bottom:12px;"><p style="font-size:0.75rem;color:#555;margin:0 0 4px;text-transform:uppercase;letter-spacing:0.08em;">Email</p><p style="font-size:1rem;color:#fff;margin:0;font-family:monospace;">${esc(email)}</p></div>
+            <div><p style="font-size:0.75rem;color:#555;margin:0 0 4px;text-transform:uppercase;letter-spacing:0.08em;">Temporary Password</p><p style="font-size:1.2rem;color:#FFD000;margin:0;font-family:monospace;font-weight:700;letter-spacing:0.1em;">${esc(tempPassword)}</p></div>
           </div>
           <a href="${loginUrl}" style="display:inline-block;background:#FFD000;color:#000;font-weight:700;font-size:1rem;padding:14px 32px;border-radius:4px;text-decoration:none;">Log In to Your Dashboard →</a>
           <p style="font-size:0.82rem;color:#555;margin:32px 0 0;line-height:1.6;">Trial runs 14 days — no charge until it ends.<br>Questions? <a href="mailto:riley@thehypeboxllc.com" style="color:#FFD000;">riley@thehypeboxllc.com</a></p>
@@ -88,6 +93,15 @@ export async function POST(request) {
   const supabase = createClient();
 
   try {
+    // Deduplicate: return 200 immediately if this event has already been processed
+    const { error: dedupError } = await supabase
+      .from('stripe_event_ids')
+      .insert({ event_id: event.id, processed_at: new Date().toISOString() });
+    if (dedupError?.code === '23505') {
+      console.log(`[stripe webhook] duplicate event ${event.id} — skipping`);
+      return NextResponse.json({ ok: true, duplicate: true });
+    }
+
     switch (event.type) {
 
       case 'checkout.session.completed': {
@@ -146,11 +160,11 @@ export async function POST(request) {
               <p style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 12px;">New client just signed up!</p>
               <div style="background:#111;border:1px solid #222;border-radius:6px;padding:16px;margin-bottom:20px;">
                 <p style="margin:0 0 6px;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Name</p>
-                <p style="margin:0 0 16px;font-size:0.95rem;color:#fff;">${name || '—'}</p>
+                <p style="margin:0 0 16px;font-size:0.95rem;color:#fff;">${esc(name || '—')}</p>
                 <p style="margin:0 0 6px;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Email</p>
-                <p style="margin:0 0 16px;font-size:0.95rem;color:#fff;">${customer.email}</p>
+                <p style="margin:0 0 16px;font-size:0.95rem;color:#fff;">${esc(customer.email)}</p>
                 <p style="margin:0 0 6px;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Plan</p>
-                <p style="margin:0 0 16px;font-size:0.95rem;font-weight:700;color:#FFD000;">${planLabel}</p>
+                <p style="margin:0 0 16px;font-size:0.95rem;font-weight:700;color:#FFD000;">${esc(planLabel)}</p>
                 <p style="margin:0 0 6px;font-size:0.8rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">GHL Provisioned</p>
                 <p style="margin:0;font-size:0.85rem;color:${ghlProvisioned ? '#4CAF50' : '#FF8C00'};">${ghlProvisioned ? 'Yes — auto-provisioned' : 'No — needs manual setup'}</p>
               </div>
@@ -169,17 +183,33 @@ export async function POST(request) {
         const customer = await stripe.customers.retrieve(sub.customer);
         if (customer.deleted || !customer.email) break;
 
-        await supabase
-          .from('users')
-          .update({
-            plan_status: sub.status,
-            stripe_subscription_id: sub.id,
-            stripe_customer_id: sub.customer,
-            trial_ends_at: sub.trial_end
-              ? new Date(sub.trial_end * 1000).toISOString()
-              : null,
-          })
-          .eq('email', customer.email.toLowerCase());
+        const subData = {
+          plan_status: sub.status,
+          stripe_subscription_id: sub.id,
+          stripe_customer_id: sub.customer,
+          trial_ends_at: sub.trial_end
+            ? new Date(sub.trial_end * 1000).toISOString()
+            : null,
+        };
+
+        // Retry: the checkout API writes the user row and this webhook may fire before it finishes
+        let updated = false;
+        for (let attempt = 0; attempt < 3 && !updated; attempt++) {
+          if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt));
+          const { data } = await supabase
+            .from('users')
+            .update(subData)
+            .eq('email', customer.email.toLowerCase())
+            .select('email');
+          if (data?.length) updated = true;
+        }
+
+        if (!updated) {
+          // Row still not there — upsert so plan_status is written whenever checkout finishes
+          await supabase
+            .from('users')
+            .upsert({ email: customer.email.toLowerCase(), ...subData }, { onConflict: 'email' });
+        }
 
         console.log(`[stripe webhook] subscription ${sub.status} for ${customer.email}`);
         break;
@@ -198,7 +228,7 @@ export async function POST(request) {
 
         await supabase
           .from('users')
-          .update({ plan_status: 'canceled' })
+          .update({ plan_status: 'canceled', ghl_api_key: null })
           .eq('email', customer.email.toLowerCase());
 
         // Remove GHL access
@@ -212,11 +242,31 @@ export async function POST(request) {
               });
               if (!ghlRes.ok) {
                 console.error(`[stripe webhook] GHL delete user failed: HTTP ${ghlRes.status}`);
+                try {
+                  await sendEmail({
+                    to: 'riley@thehypeboxllc.com',
+                    subject: `ACTION REQUIRED: GHL offboarding failed for ${customer.email}`,
+                    html: `<p>GHL user deletion failed for <strong>${customer.email}</strong> (subscription canceled).</p>
+                           <p><strong>GHL User ID:</strong> ${canceledUser.ghl_user_id}</p>
+                           <p><strong>Error:</strong> HTTP ${ghlRes.status}</p>
+                           <p>Delete this user manually in the GHL agency dashboard to revoke their access.</p>`,
+                  });
+                } catch (_) {}
               } else {
                 console.log(`[stripe webhook] GHL user ${canceledUser.ghl_user_id} removed for ${customer.email}`);
               }
             } catch (ghlErr) {
               console.error('[stripe webhook] GHL offboarding error:', ghlErr.message);
+              try {
+                await sendEmail({
+                  to: 'riley@thehypeboxllc.com',
+                  subject: `ACTION REQUIRED: GHL offboarding failed for ${customer.email}`,
+                  html: `<p>GHL user deletion failed for <strong>${customer.email}</strong> (subscription canceled).</p>
+                         <p><strong>GHL User ID:</strong> ${canceledUser.ghl_user_id}</p>
+                         <p><strong>Error:</strong> ${ghlErr.message}</p>
+                         <p>Delete this user manually in the GHL agency dashboard to revoke their access.</p>`,
+                });
+              } catch (_) {}
             }
           }
         }
@@ -398,6 +448,6 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, type: event.type });
   } catch (err) {
     console.error('[stripe webhook] handler error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 }

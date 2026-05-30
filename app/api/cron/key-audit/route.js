@@ -3,6 +3,10 @@ import { sendEmail } from '@/lib/send-email';
 
 export const dynamic = 'force-dynamic';
 
+function esc(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 async function testGHLKey(name, key, locationId) {
   if (!key) return { name, ok: false, detail: 'Key missing' };
   try {
@@ -21,6 +25,10 @@ async function testGHLKey(name, key, locationId) {
 
 export async function GET(request) {
   const authHeader = request.headers.get('authorization');
+  if (!process.env.CRON_SECRET) {
+    console.error('[cron] CRON_SECRET env var is not set');
+    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+  }
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -64,8 +72,8 @@ export async function GET(request) {
   const rows = allResults.map(r =>
     `<tr style="border-bottom:1px solid #1a1a1a;">
       <td style="padding:8px 12px;font-size:0.75rem;color:${r.ok ? '#4CAF50' : '#E24B4A'};">${r.ok ? '✓' : '✗'}</td>
-      <td style="padding:8px 12px;font-size:0.8rem;color:#fff;">${r.name}</td>
-      <td style="padding:8px 12px;font-size:0.75rem;color:#666;">${r.detail || 'OK'}</td>
+      <td style="padding:8px 12px;font-size:0.8rem;color:#fff;">${esc(r.name)}</td>
+      <td style="padding:8px 12px;font-size:0.75rem;color:#666;">${esc(r.detail || 'OK')}</td>
     </tr>`
   ).join('');
 

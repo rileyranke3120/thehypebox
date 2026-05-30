@@ -7,7 +7,8 @@
     return scripts[scripts.length - 1];
   })();
   var clientId = (script && script.getAttribute('data-client')) || 'default';
-  var accentColor = (script && script.getAttribute('data-color')) || '#2563eb';
+  var rawColor = (script && script.getAttribute('data-color')) || '';
+  var accentColor = /^#[0-9a-f]{3,6}$/i.test(rawColor) ? rawColor : '#2563eb';
 
   // Prevent double-init
   if (window.__hypebox_widget_loaded) return;

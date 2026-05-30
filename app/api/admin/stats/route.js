@@ -12,6 +12,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  try {
   const supabase = createClient();
 
   const { data: users } = await supabase
@@ -96,4 +97,8 @@ export async function GET() {
     signupsByMonth: Object.entries(signupsByMonth).map(([month, count]) => ({ month, count })),
     mrrProjection,
   });
+  } catch (err) {
+    console.error('[admin/stats]', err);
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
+  }
 }

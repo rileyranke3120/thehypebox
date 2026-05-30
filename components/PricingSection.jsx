@@ -94,7 +94,19 @@ export default function PricingSection() {
   return (
     <section id="pricing" className={styles.section} aria-labelledby="pricing-heading">
 
-      {/* Image hero */}
+      {/* Logo above pricing cards */}
+      <div className={styles.logoRow} aria-hidden="true">
+        <Image
+          src="/hype-box-logo.png"
+          alt="TheHypeBox"
+          width={800}
+          height={300}
+          className={styles.logoImage}
+          priority
+        />
+      </div>
+
+      {/* Mission Control image — fades directly into pricing cards */}
       <div className={styles.imageHero} aria-hidden="true" />
 
       {/* Pricing cards */}
@@ -133,12 +145,11 @@ export default function PricingSection() {
               <TrialButton plan={plan.slug} className={styles.cta}>
                 START FREE TRIAL
               </TrialButton>
-              <p className={styles.ctaNote}>14-day free trial · No credit card needed</p>
+              <p className={styles.ctaNote}>14-day free trial · Cancel anytime</p>
             </div>
           ))}
         </div>
       </div>
-
 
     </section>
   );

@@ -11,7 +11,14 @@ export async function POST(request) {
   const session = await auth();
   const authHeader = request.headers.get('authorization');
   const isAdmin = session?.user?.role === 'super_admin';
+  // ADMIN_SECRET bypass — for CLI/automated provisioning only. Rotate this key periodically.
   const hasSecret = process.env.ADMIN_SECRET && authHeader === `Bearer ${process.env.ADMIN_SECRET}`;
+  if (hasSecret) {
+    console.warn('[admin/create-highlevel] ADMIN_SECRET bypass used', {
+      ip: request.headers.get('x-real-ip') || request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() || 'unknown',
+      time: new Date().toISOString(),
+    });
+  }
   if (!isAdmin && !hasSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -51,14 +58,16 @@ export async function POST(request) {
       businessName: user.business_name || user.name || user.email,
     });
   } catch (err) {
-    return NextResponse.json({ error: `HighLevel error: ${err.message}` }, { status: 502 });
+    console.error('[admin/create-highlevel] HighLevel error:', err);
+    return NextResponse.json({ error: 'HighLevel provisioning failed.' }, { status: 502 });
   }
 
   const dbUpdate = {
     ghl_location_id: hlAccount.locationId,
     ghl_user_id: hlAccount.userId,
   };
-  if (hlAccount.retellAgentId) dbUpdate.retell_agent_id = hlAccount.retellAgentId;
+  if (hlAccount.calendarId)    dbUpdate.ghl_calendar_id  = hlAccount.calendarId;
+  if (hlAccount.retellAgentId) dbUpdate.retell_agent_id  = hlAccount.retellAgentId;
 
   await supabase
     .from('users')

@@ -4,33 +4,44 @@ import { sendEmail } from '@/lib/send-email';
 
 export const dynamic = 'force-dynamic';
 
-// Sends a single win-back email ~3 days after cancellation.
-// Tracks sends in a simple supabase flag to avoid duplicates.
+function esc(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 export async function GET(request) {
   const authHeader = request.headers.get('authorization');
+  if (!process.env.CRON_SECRET) {
+    console.error('[cron] CRON_SECRET env var is not set');
+    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+  }
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const supabase = createClient();
 
-  // Find users who canceled 3-4 days ago and haven't received a win-back yet
   const windowStart = new Date(Date.now() - 4 * 86400000).toISOString();
   const windowEnd   = new Date(Date.now() - 3 * 86400000).toISOString();
 
-  const { data: users, error } = await supabase
-    .from('users')
-    .select('email, name, plan, updated_at')
-    .eq('plan_status', 'canceled')
-    .eq('win_back_sent', false)
-    .gte('updated_at', windowStart)
-    .lt('updated_at', windowEnd);
+  let users;
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('email, name, plan, updated_at')
+      .eq('plan_status', 'canceled')
+      .eq('win_back_sent', false)
+      .gte('updated_at', windowStart)
+      .lt('updated_at', windowEnd);
 
-  if (error) {
-    // Column may not exist yet — non-fatal
-    console.error('[win-back] query error:', error.message);
-    return NextResponse.json({ ok: true, sent: 0, note: 'win_back_sent column may not exist yet' });
+    if (error) {
+      // Column may not exist yet — non-fatal
+      console.error('[win-back] query error:', error.message);
+      return NextResponse.json({ ok: true, sent: 0, note: 'win_back_sent column may not exist yet' });
+    }
+    users = data;
+  } catch (err) {
+    console.error('[win-back] unexpected error:', err);
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 
   const PLAN_LABELS = {
@@ -41,7 +52,7 @@ export async function GET(request) {
   let sent = 0;
 
   for (const user of users ?? []) {
-    const firstName = user.name ? user.name.split(' ')[0] : 'there';
+    const firstName = esc(user.name ? user.name.split(' ')[0] : 'there');
     const planLabel = PLAN_LABELS[user.plan] || user.plan || 'TheHypeBox';
     const restartUrl = `${process.env.NEXT_PUBLIC_APP_URL}/#pricing`;
 
@@ -70,7 +81,6 @@ export async function GET(request) {
 </html>`,
       });
 
-      // Mark as sent
       await supabase.from('users').update({ win_back_sent: true }).eq('email', user.email);
       sent++;
       console.log(`[win-back] sent to ${user.email}`);

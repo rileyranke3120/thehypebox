@@ -4,9 +4,14 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+const VALID_STATUSES = ['active', 'trialing'];
+
 export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (session.user.role !== 'super_admin' && !VALID_STATUSES.includes(session.user.plan_status)) {
+    return NextResponse.json({ error: 'Subscription required.' }, { status: 402 });
+  }
 
   const supabase = createClient();
   try {
@@ -88,6 +93,6 @@ export async function GET() {
     return NextResponse.json({ calls: all });
   } catch (err) {
     console.error('Calls log API error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 }

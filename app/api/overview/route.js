@@ -1,20 +1,40 @@
 import { auth } from '@/auth';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 import { getContacts, getOpportunities, getAppointments, getReviews } from '@/lib/ghl';
 import { getGHLCredentials } from '@/lib/ghl-session';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+const VALID_STATUSES = ['active', 'trialing'];
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+async function checkOverviewRateLimit(email) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/check_and_increment_checkout_rate_limit`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ p_ip: `overview:${email}`, p_max: 10, p_window_seconds: 60 }),
+    });
+    return res.ok ? await res.json() : false;
+  } catch {
+    return false;
+  }
 }
 
 export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  console.log('[overview] session.user:', { role: session.user?.role, ghl_location_id: session.user?.ghl_location_id, has_api_key: !!session.user?.ghl_api_key });
+  if (session.user.role !== 'super_admin' && !VALID_STATUSES.includes(session.user.plan_status)) {
+    return NextResponse.json({ error: 'Subscription required.' }, { status: 402 });
+  }
+  if (!(await checkOverviewRateLimit(session.user.email))) {
+    return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
+  }
 
   try {
     const user = session.user ?? {};
@@ -32,7 +52,7 @@ export async function GET() {
 
 // Super admin: internal view — clients, MRR, plan breakdown, automation logs (Supabase)
 async function getSuperAdminOverview() {
-  const supabase = getSupabase();
+  const supabase = createClient();
   const { data: clients = [] } = await supabase
     .from('users')
     .select('id, business_name, plan, plan_status, active, created_at')
@@ -88,7 +108,7 @@ async function getSuperAdminOverview() {
 
 // Client view: real data from GoHighLevel
 async function getClientOverview(user, session) {
-  const supabase = getSupabase();
+  const supabase = createClient();
   const { locationId, apiKey } = await getGHLCredentials(session);
   if (!locationId) throw new Error('No GHL location configured for this account.');
   if (!apiKey) throw new Error('No GHL API key configured for this account.');

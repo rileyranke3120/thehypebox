@@ -5,8 +5,8 @@
  * e.g. "this Thursday", "April 28th", "next Monday", or "2026-04-28".
  * Parsed server-side using chrono-node with today's Eastern date as reference.
  *
- * Client credentials are resolved by agent_id (from Retell's call payload),
- * falling back to Dave's env vars so existing calls keep working.
+ * Client credentials are resolved by agent_id (from Retell's call payload).
+ * Fails closed — unknown agent_id returns an error, no fallback credentials.
  *
  * Returns: { slots: ["10:00 AM", "11:30 AM", ...] }
  */
@@ -29,12 +29,13 @@ async function getClientCreds(agentId) {
   return data || null;
 }
 
-// Prefer client record from Supabase, then TheHypeBox's own creds, then Dave's
+// Fail closed — returns null if clientCreds is null (unknown agent_id)
 function resolveGhlCreds(clientCreds) {
+  if (!clientCreds) return null;
   return {
-    apiKey:     clientCreds?.ghl_api_key     || process.env.GHL_API_KEY             || process.env.GHL_DAVE_API_KEY,
-    locationId: clientCreds?.ghl_location_id || process.env.GHL_LOCATION_ID         || process.env.GHL_DAVE_LOCATION_ID,
-    calendarId: clientCreds?.ghl_calendar_id || process.env.GHL_HYPEBOX_CALENDAR_ID || process.env.GHL_DAVE_CALENDAR_ID,
+    apiKey:     clientCreds.ghl_api_key,
+    locationId: clientCreds.ghl_location_id,
+    calendarId: clientCreds.ghl_calendar_id,
   };
 }
 
@@ -87,9 +88,8 @@ function parseDate(raw) {
 }
 
 export async function POST(request) {
-  // Validate Retell tool secret if configured (optional — skip if env var not set)
   const secret = process.env.RETELL_TOOL_SECRET;
-  if (secret && request.headers.get('x-api-key') !== secret) {
+  if (!secret || request.headers.get('x-api-key') !== secret) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -100,13 +100,15 @@ export async function POST(request) {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  console.log('[check-availability] raw body:', JSON.stringify(body));
-
-  // Resolve GHL credentials — look up by agent_id, fall back to Dave's env vars
+  // Resolve GHL credentials by agent_id — fail closed if unknown
   const agentId = body.agent_id ?? null;
   const clientCreds = await getClientCreds(agentId);
   const creds = resolveGhlCreds(clientCreds);
-  console.log(`[check-availability] agent_id=${agentId} using calendarId=${creds.calendarId}`);
+
+  if (!creds || !creds.apiKey || !creds.locationId) {
+    console.error(`[check-availability] no credentials for agent_id=${agentId}`);
+    return Response.json({ error: "This agent isn't configured for booking. Please call us directly." }, { status: 503 });
+  }
 
   if (!creds.calendarId) {
     console.error('[check-availability] no calendarId — client has no ghl_calendar_id set');
@@ -119,6 +121,9 @@ export async function POST(request) {
   if (!rawDate) {
     return Response.json({ error: 'date is required' }, { status: 400 });
   }
+  if (rawDate.length > 200) {
+    return Response.json({ error: "I couldn't understand that date. Please try a clear date like 'next Tuesday' or 'May 25th'." }, { status: 422 });
+  }
 
   let date;
   try {
@@ -127,29 +132,21 @@ export async function POST(request) {
     return Response.json({ error: "I couldn't understand that date. Please try a clear date like 'next Tuesday' or 'May 25th'." }, { status: 422 });
   }
 
-  console.log(`[check-availability] raw="${rawDate}" parsed="${date}"`);
-
   const startMs = easternMidnightMs(date);
   const endMs = startMs + 24 * 3_600_000 - 1;
 
   const url = `${GHL_API_BASE}/calendars/${creds.calendarId}/free-slots?startDate=${startMs}&endDate=${endMs}&timezone=America%2FNew_York`;
 
-  console.log(`[check-availability] date=${date} startMs=${startMs} endMs=${endMs}`);
-  console.log(`[check-availability] calendarId=${creds.calendarId} url=${url}`);
-
   try {
     const res = await fetch(url, { headers: ghlHeaders(creds.apiKey) });
     const raw = await res.json();
 
-    console.log(`[check-availability] GHL status=${res.status} response=${JSON.stringify(raw)}`);
-
     if (!res.ok) {
-      return Response.json({ error: 'Failed to fetch availability from GHL', details: raw }, { status: 502 });
+      console.error(`[check-availability] GHL error status=${res.status}`);
+      return Response.json({ error: 'Failed to fetch availability. Please try again.' }, { status: 502 });
     }
 
     const dateKeys = Object.keys(raw).filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k));
-    console.log(`[check-availability] date keys in response: ${JSON.stringify(dateKeys)}`);
-
     const dateKey = dateKeys.find((k) => k === date) ?? dateKeys[0];
     const slots = dateKey ? (raw[dateKey]?.slots ?? []) : [];
     const formatted = slots.map(formatSlot);
@@ -163,7 +160,7 @@ export async function POST(request) {
         : `No available slots on ${date}`,
     });
   } catch (err) {
-    console.error('[check-availability] Error:', err);
-    return Response.json({ error: String(err) }, { status: 500 });
+    console.error('[check-availability] Error:', err.message);
+    return Response.json({ error: 'An unexpected error occurred.' }, { status: 500 });
   }
 }

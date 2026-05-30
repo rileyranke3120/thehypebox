@@ -6,30 +6,57 @@ function esc(str) {
   return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// Simple in-memory rate limit: 1 submission per email per minute
-const rateLimits = new Map();
-function checkRateLimit(email) {
-  const now = Date.now();
-  const last = rateLimits.get(email);
-  if (last && now - last < 60_000) return false;
-  rateLimits.set(email, now);
-  return true;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const RPC_HEADERS = {
+  apikey: SUPABASE_KEY,
+  Authorization: `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
+};
+
+// IP-based rate limit: 5 submissions per hour per IP — atomic via stored procedure
+async function checkContactRateLimit(ip) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return true;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/check_and_increment_contact_rate_limit`, {
+      method: 'POST',
+      headers: RPC_HEADERS,
+      body: JSON.stringify({ p_ip: ip, p_max: 5, p_window_seconds: 3600 }),
+    });
+    return res.ok ? await res.json() : true; // fail open if RPC unavailable
+  } catch {
+    return true;
+  }
 }
 
 export async function POST(request) {
   try {
+    const ip = request.headers.get('x-real-ip') || request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() || 'unknown';
+    if (!(await checkContactRateLimit(ip))) {
+      return NextResponse.json({ error: 'Too many submissions — please wait before trying again.' }, { status: 429 });
+    }
+
     const { name, email, phone, message, subject } = await request.json();
+
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required.' }, { status: 400 });
     }
+    if (!EMAIL_RE.test(email)) {
+      return NextResponse.json({ error: 'Invalid email address.' }, { status: 400 });
+    }
+
+    // Field length limits
+    if (name.length > 100) return NextResponse.json({ error: 'Name is too long.' }, { status: 400 });
+    if (email.length > 254) return NextResponse.json({ error: 'Email is too long.' }, { status: 400 });
+    if (phone && phone.length > 20) return NextResponse.json({ error: 'Phone is too long.' }, { status: 400 });
+    if (subject && subject.length > 200) return NextResponse.json({ error: 'Subject is too long.' }, { status: 400 });
+    if (message && message.length > 2000) return NextResponse.json({ error: 'Message must be 2000 characters or fewer.' }, { status: 400 });
 
     if (message && message.length < 10) {
       return NextResponse.json({ error: 'Message must be at least 10 characters.' }, { status: 400 });
-    }
-
-    if (!checkRateLimit(email)) {
-      return NextResponse.json({ error: 'Please wait a minute before sending another message.' }, { status: 429 });
     }
 
     const parts = name.trim().split(/\s+/);
@@ -94,30 +121,7 @@ export async function POST(request) {
       console.error('[contact] notification email failed:', emailErr.message);
     }
 
-    // ── 3. Confirmation email to the user ──────────────────────
-    const firstName2 = esc(firstName || name);
-    try {
-      await sendEmail({
-        to: email,
-        subject: "We received your message — TheHypeBox",
-        html: `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0a0a0a;font-family:system-ui,sans-serif;">
-          <div style="max-width:560px;margin:0 auto;padding:48px 24px;">
-            <div style="margin-bottom:32px;"><span style="font-size:1.4rem;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#FFD000;">THE HYPE BOX</span></div>
-            <h1 style="font-size:1.5rem;font-weight:800;color:#fff;margin:0 0 8px;">Got your message, ${firstName2}!</h1>
-            <p style="font-size:0.95rem;color:#999;margin:0 0 24px;">We'll get back to you within 24 hours — usually much faster.</p>
-            <div style="background:#111;border:1px solid #222;border-left:3px solid #FFD000;border-radius:4px;padding:20px;margin-bottom:24px;">
-              <p style="font-size:0.75rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 8px;">Your message</p>
-              <p style="color:#ccc;font-size:0.9rem;line-height:1.6;margin:0;white-space:pre-wrap;">${(message || '').replace(/</g, '&lt;')}</p>
-            </div>
-            <p style="font-size:0.82rem;color:#555;line-height:1.6;">Questions? Reply to this email or reach us at <a href="mailto:riley@thehypeboxllc.com" style="color:#FFD000;">riley@thehypeboxllc.com</a></p>
-          </div>
-        </body></html>`,
-      });
-    } catch (emailErr) {
-      console.error('[contact] confirmation email failed:', emailErr.message);
-    }
-
-    return NextResponse.json({ success: true, contactId });
+    return NextResponse.json({ success: true });
   } catch (err) {
     console.error('Contact API error:', err);
     return NextResponse.json({ error: 'Failed to send your message. Please try calling us directly.' }, { status: 500 });

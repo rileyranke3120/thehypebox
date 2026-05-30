@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { auth } from '@/auth';
+import { insertWithRetry } from '@/lib/insert-with-retry';
 
 const VALID_AUTOMATIONS = [
   'review-request',
@@ -45,7 +46,7 @@ export async function POST(request) {
     // Look up client — include GHL credentials for per-client SMS routing
     const { data: client, error: clientError } = await supabase
       .from('users')
-      .select('id, name, business_name, email, business_phone, ghl_api_key, ghl_location_id')
+      .select('id, name, business_name, email, business_phone')
       .eq('id', client_id)
       .single();
 
@@ -53,11 +54,9 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Client not found' }, { status: 404 });
     }
 
-    // Merge business_name + GHL credentials (payload can override if needed)
+    // Merge business_name into payload — credentials are fetched by each automation route
     const mergedPayload = {
       business_name: client.business_name,
-      ghl_api_key: client.ghl_api_key || undefined,
-      ghl_location_id: client.ghl_location_id || undefined,
       client_id,
       ...payload,
     };
@@ -68,22 +67,25 @@ export async function POST(request) {
 
     const automationUrl = `${baseUrl}/api/automations/${automation}`;
 
+    const internalHeaders = { 'Content-Type': 'application/json' };
+    if (webhookSecret) internalHeaders['x-webhook-secret'] = webhookSecret;
+
     const res = await fetch(automationUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: internalHeaders,
       body: JSON.stringify(mergedPayload),
     });
 
     const result = await res.json();
     const status = res.ok ? 'success' : 'failed';
 
-    supabase.from('automation_logs').insert({
+    await insertWithRetry(supabase, 'automation_logs', {
       client_id,
       automation,
       payload: mergedPayload,
       triggered_at: new Date().toISOString(),
       status,
-    }).catch((e) => console.error('[automations/trigger] log failed:', e.message));
+    }, { tag: '[automations/trigger]' });
 
     if (!res.ok) {
       return NextResponse.json({ ok: false, error: result.error || 'Automation failed', status }, { status: res.status });
@@ -93,14 +95,14 @@ export async function POST(request) {
   } catch (error) {
     console.error('[automations/trigger]', error);
 
-    supabase.from('automation_logs').insert({
+    await insertWithRetry(supabase, 'automation_logs', {
       client_id: client_id || null,
       automation: automation || null,
       payload: payload || null,
       triggered_at: new Date().toISOString(),
       status: 'error',
-    }).catch(() => {});
+    }, { tag: '[automations/trigger]' });
 
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'Something went wrong.' }, { status: 500 });
   }
 }

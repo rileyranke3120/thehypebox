@@ -9,6 +9,10 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   const authHeader = request.headers.get('authorization');
+  if (!process.env.CRON_SECRET) {
+    console.error('[cron] CRON_SECRET env var is not set');
+    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+  }
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -32,10 +36,11 @@ export async function GET(request) {
     try {
       await supabase
         .from('users')
-        .update({ plan_status: 'expired' })
+        .update({ plan_status: 'expired', ghl_api_key: null })
         .eq('email', user.email);
 
       const firstName = user.name ? user.name.split(' ')[0] : 'there';
+      const firstNameEsc = String(firstName).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
       await sendEmail({
         to: user.email,
         subject: `Your TheHypeBox trial has ended`,
@@ -47,7 +52,7 @@ export async function GET(request) {
     <div style="margin-bottom:32px;">
       <span style="font-size:1.4rem;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#FFD000;">THE HYPE BOX</span>
     </div>
-    <h1 style="font-size:1.75rem;font-weight:800;color:#fff;margin:0 0 8px;">Hey ${firstName}, your trial has ended.</h1>
+    <h1 style="font-size:1.75rem;font-weight:800;color:#fff;margin:0 0 8px;">Hey ${firstNameEsc}, your trial has ended.</h1>
     <p style="font-size:1rem;color:#999;margin:0 0 24px;line-height:1.7;">
       Your 14-day free trial is over. To keep your AI receptionist running, automations firing, and leads coming in — subscribe now.
     </p>

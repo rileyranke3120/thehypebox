@@ -7,6 +7,10 @@ export const dynamic = 'force-dynamic';
 const PLAN_PRICES = { launch: 97, starter: 97, rocket: 297, growth: 297, velocity: 497, pro: 497 };
 const PLAN_LABELS = { launch: 'Launch Box', starter: 'Launch Box', rocket: 'Rocket Box', growth: 'Rocket Box', velocity: 'Velocity Box', pro: 'Velocity Box' };
 
+function esc(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function stat(label, value, color = '#fff') {
   return `
     <td style="padding:0 8px 0 0;width:25%;">
@@ -18,20 +22,24 @@ function stat(label, value, color = '#fff') {
 }
 
 function userRow(u) {
-  const plan = PLAN_LABELS[u.plan] || u.plan || '—';
+  const plan = esc(PLAN_LABELS[u.plan] || u.plan || '—');
   const daysLeft = u.trial_ends_at
     ? Math.ceil((new Date(u.trial_ends_at) - Date.now()) / 86400000)
     : null;
   const dayStr = daysLeft != null ? ` · ${daysLeft}d left` : '';
   return `<tr style="border-bottom:1px solid #1a1a1a;">
-    <td style="padding:8px 12px;font-size:0.8rem;color:#fff;">${u.name || u.email}</td>
-    <td style="padding:8px 12px;font-size:0.75rem;color:#aaa;">${u.email}</td>
+    <td style="padding:8px 12px;font-size:0.8rem;color:#fff;">${esc(u.name || u.email)}</td>
+    <td style="padding:8px 12px;font-size:0.75rem;color:#aaa;">${esc(u.email)}</td>
     <td style="padding:8px 12px;font-size:0.72rem;color:#FFD000;font-weight:700;text-transform:uppercase;">${plan}${dayStr}</td>
   </tr>`;
 }
 
 export async function GET(request) {
   const authHeader = request.headers.get('authorization');
+  if (!process.env.CRON_SECRET) {
+    console.error('[cron] CRON_SECRET env var is not set');
+    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+  }
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -194,6 +202,6 @@ export async function GET(request) {
   });
   } catch (err) {
     console.error('[weekly-report] cron error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 }

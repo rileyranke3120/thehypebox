@@ -2,9 +2,14 @@ import { auth } from '@/auth';
 import { createClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
+const VALID_STATUSES = ['active', 'trialing'];
+
 export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ calls: [], error: 'Unauthorized' }, { status: 401 });
+  if (session.user.role !== 'super_admin' && !VALID_STATUSES.includes(session.user.plan_status)) {
+    return NextResponse.json({ calls: [], error: 'Subscription required.' }, { status: 402 });
+  }
 
   try {
     const supabase = createClient();
@@ -40,6 +45,6 @@ export async function GET() {
     return NextResponse.json({ calls: data });
   } catch (error) {
     console.error('[retell/calls GET]', error);
-    return NextResponse.json({ calls: [], error: error.message }, { status: 500 });
+    return NextResponse.json({ calls: [], error: 'Something went wrong.' }, { status: 500 });
   }
 }

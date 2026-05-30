@@ -20,7 +20,7 @@ export async function GET() {
     return NextResponse.json({ ok: true, plan: data?.plan || 'launch' });
   } catch (error) {
     console.error('[billing GET]', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 }
 
@@ -48,6 +48,6 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, plan });
   } catch (error) {
     console.error('[billing POST]', error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'Something went wrong.' }, { status: 500 });
   }
 }

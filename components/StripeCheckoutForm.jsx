@@ -48,7 +48,7 @@ const labelStyle = {
 function CheckoutForm({ plan }) {
   const stripe = useStripe();
   const elements = useElements();
-  const [info, setInfo] = useState({ name: '', email: '' });
+  const [info, setInfo] = useState({ name: '', email: '', phone: '' });
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
@@ -110,7 +110,7 @@ function CheckoutForm({ plan }) {
         fetch('/api/checkout/finalize', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: info.email, name: info.name, plan }),
+          body: JSON.stringify({ email: info.email, name: info.name, plan, subscriptionId: data.subscriptionId }),
         }).catch(() => {});
         window.location.href = onboardingUrl;
       }
@@ -129,6 +129,10 @@ function CheckoutForm({ plan }) {
       <div>
         <label style={labelStyle}>Email Address</label>
         <input type="email" placeholder="jane@yourbusiness.com" value={info.email} onChange={update('email')} required style={inputStyle} />
+      </div>
+      <div>
+        <label style={labelStyle}>Mobile Number</label>
+        <input type="tel" placeholder="(555) 555-5555" value={info.phone} onChange={update('phone')} style={inputStyle} />
       </div>
 
       <PaymentElement

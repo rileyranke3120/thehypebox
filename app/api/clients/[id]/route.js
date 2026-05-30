@@ -12,7 +12,7 @@ export async function GET(_request, { params }) {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('users')
-      .select('*')
+      .select('id, email, name, plan, plan_status, ghl_location_id, ghl_user_id, retell_agent_id, stripe_subscription_id, trial_ends_at, created_at, business_name, business_phone, address, google_review_url')
       .eq('id', params.id)
       .single();
 
@@ -21,7 +21,7 @@ export async function GET(_request, { params }) {
     return NextResponse.json({ ok: true, client: data });
   } catch (error) {
     console.error('[clients/:id GET]', error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'Something went wrong.' }, { status: 500 });
   }
 }
 
@@ -37,7 +37,7 @@ export async function PATCH(request, { params }) {
       'plan', 'active', 'business_name',
       'business_phone', 'business_hours', 'business_industry',
       'after_hours_handling', 'primary_goal', 'onboarding_complete',
-      'retell_agent_id', 'retell_phone_number', 'toggles', 'role',
+      'retell_agent_id', 'retell_phone_number', 'toggles',
     ];
     const sanitized = Object.fromEntries(
       Object.entries(updates).filter(([k]) => allowed.includes(k))
@@ -50,19 +50,24 @@ export async function PATCH(request, { params }) {
       );
     }
 
+    const VALID_PLANS = ['launch', 'rocket', 'velocity', 'starter', 'growth', 'pro'];
+    if (sanitized.plan !== undefined && !VALID_PLANS.includes(sanitized.plan)) {
+      return NextResponse.json({ ok: false, error: 'Invalid plan.' }, { status: 400 });
+    }
+
     const supabase = createClient();
     const { data, error } = await supabase
       .from('users')
       .update(sanitized)
       .eq('id', params.id)
-      .select()
+      .select('id, email, name, plan, plan_status, ghl_location_id, ghl_user_id, retell_agent_id, trial_ends_at, created_at, business_name, business_phone, address, google_review_url')
       .single();
 
     if (error) throw error;
     return NextResponse.json({ ok: true, client: data });
   } catch (error) {
     console.error('[clients/:id PATCH]', error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'Something went wrong.' }, { status: 500 });
   }
 }
 
@@ -85,6 +90,6 @@ export async function DELETE(_request, { params }) {
     return NextResponse.json({ ok: true, client: data });
   } catch (error) {
     console.error('[clients/:id DELETE]', error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'Something went wrong.' }, { status: 500 });
   }
 }

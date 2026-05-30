@@ -19,13 +19,13 @@
   position: relative;
 }
 
-/* Fade image edges into site background */
+/* Fade image edges into pricing cards below */
 .imageHero::after {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to bottom, transparent 40%, #050505 100%),
+    linear-gradient(to bottom, transparent 25%, #050505 85%),
     linear-gradient(to right, #000 0%, transparent 8%, transparent 92%, #000 100%),
     linear-gradient(to bottom, #000 0%, transparent 6%);
   pointer-events: none;
@@ -64,6 +64,24 @@
   mix-blend-mode: screen;
   transform: translate(-50%, -50%);
   z-index: 3;
+}
+
+/* Logo row between image hero and pricing cards */
+.logoRow {
+  background: #050505;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem 1rem 0;
+}
+
+.logoImage {
+  max-height: 160px;
+  width: auto;
+  max-width: 300px;
+  height: auto;
+  background: transparent;
+  display: block;
 }
 
 /* Cards sit directly below the image hero */

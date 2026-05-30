@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/send-email';
+import { signUnsubscribeId } from '@/lib/unsubscribe-token';
+
+function esc(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +15,8 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://thehypeboxllc.com';
 const STEP_DELAYS = { 0: 0, 1: 4, 2: 5 };
 
 function unsubscribeUrl(id) {
-  return `${APP_URL}/api/outreach/unsubscribe?id=${id}`;
+  const sig = signUnsubscribeId(id);
+  return `${APP_URL}/api/outreach/unsubscribe?id=${id}&sig=${sig}`;
 }
 
 function auditUrl(id) {
@@ -21,7 +27,7 @@ function auditPS(prospect) {
   return `
     <div style="margin-top:28px;padding:16px 20px;background:#f9f9f9;border-left:3px solid #FFD000;border-radius:0 4px 4px 0;">
       <p style="margin:0;font-size:0.88rem;color:#444;line-height:1.6;">
-        <strong style="color:#111;">P.S.</strong> — I ran a free marketing audit on <strong>${prospect.company || 'your business'}</strong> and the score wasn't great.
+        <strong style="color:#111;">P.S.</strong> — I ran a free marketing audit on <strong>${esc(prospect.company || 'your business')}</strong> and the score wasn't great.
         <a href="${auditUrl(prospect.id)}" style="color:#000;font-weight:700;text-decoration:underline;">Click here to see your report →</a>
       </p>
     </div>`;
@@ -64,7 +70,7 @@ function buildEmail(step, prospect) {
     return {
       subject: `Missing calls, ${first}?`,
       html: emailWrapper(`
-        <p style="margin:0 0 16px;">Hey ${first},</p>
+        <p style="margin:0 0 16px;">Hey ${esc(first)},</p>
         <p style="margin:0 0 16px;">Quick question — when you're on a job and a new customer calls, what happens to that call?</p>
         <p style="margin:0 0 16px;">Most contractors in Columbus say the same thing: voicemail, no message left, job goes to whoever picked up.</p>
         <p style="margin:0 0 16px;">I built an AI system for home service businesses that <strong>answers every call, books the appointment, and follows up with leads automatically</strong> — 24/7, even when you're on the job.</p>
@@ -76,7 +82,7 @@ function buildEmail(step, prospect) {
           ).join('')}
         </div>
 
-        <p style="margin:0 0 24px;">Free 14-day trial. No credit card. One day to set up.</p>
+        <p style="margin:0 0 24px;">Free 14-day trial. Cancel anytime. One day to set up.</p>
 
         <a href="${APP_URL}" style="display:inline-block;background:#FFD000;color:#000;font-weight:800;font-size:0.95rem;padding:14px 28px;border-radius:4px;text-decoration:none;letter-spacing:0.04em;text-transform:uppercase;">See How It Works →</a>
 
@@ -90,7 +96,7 @@ function buildEmail(step, prospect) {
     return {
       subject: `What it actually looks like`,
       html: emailWrapper(`
-        <p style="margin:0 0 16px;">Hey ${first},</p>
+        <p style="margin:0 0 16px;">Hey ${esc(first)},</p>
         <p style="margin:0 0 16px;">Wanted to show you what this actually does — not just tell you.</p>
 
         <!-- What happens box -->
@@ -143,8 +149,15 @@ function buildEmail(step, prospect) {
 
 export async function GET(request) {
   const authHeader = request.headers.get('authorization');
+  if (!process.env.CRON_SECRET) {
+    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+  }
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!process.env.RESEND_API_KEY) {
+    console.error('[cold-outreach] RESEND_API_KEY is not configured');
+    return NextResponse.json({ error: 'Email provider not configured' }, { status: 500 });
   }
 
   const supabase = createClient();
@@ -163,39 +176,48 @@ export async function GET(request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  let sent = 0;
-  let failed = 0;
-  const failures = [];
-
-  for (const prospect of prospects ?? []) {
-    try {
+  const results = await Promise.all(
+    (prospects ?? []).map(async (prospect) => {
       const step = prospect.sequence_step;
-      const { subject, html } = buildEmail(step, prospect);
-
-      await sendEmail({ to: prospect.email, subject, html });
-
       const nextStep = step + 1;
       const delayDays = STEP_DELAYS[nextStep] ?? 0;
       const nextSendAt = new Date();
       nextSendAt.setDate(nextSendAt.getDate() + delayDays);
 
-      await supabase
+      // Checkpoint first: atomically advance the step so a retry or race can't double-send.
+      // If another process already claimed this row, sequence_step won't match and data is empty.
+      const { data: claimed } = await supabase
         .from('cold_outreach')
         .update({
           sequence_step: nextStep,
           last_sent_at: new Date().toISOString(),
           next_send_at: nextSendAt.toISOString(),
         })
-        .eq('id', prospect.id);
+        .eq('id', prospect.id)
+        .eq('sequence_step', step)
+        .select('id');
 
-      sent++;
-      console.log(`[cold-outreach] step ${step} sent to ${prospect.email}`);
-    } catch (err) {
-      console.error(`[cold-outreach] failed for ${prospect.email}:`, err.message);
-      failures.push({ email: prospect.email, error: err.message });
-      failed++;
-    }
-  }
+      if (!claimed?.length) {
+        return { email: prospect.email, status: 'skipped' };
+      }
+
+      try {
+        const { subject, html } = buildEmail(step, prospect);
+        await sendEmail({ to: prospect.email, subject, html });
+        console.log(`[cold-outreach] step ${step} sent to ${prospect.email}`);
+        return { email: prospect.email, status: 'sent' };
+      } catch (err) {
+        console.error(`[cold-outreach] failed for ${prospect.email}:`, err.message);
+        return { email: prospect.email, status: 'failed', error: err.message };
+      }
+    })
+  );
+
+  const sent = results.filter((r) => r.status === 'sent').length;
+  const failed = results.filter((r) => r.status === 'failed').length;
+  const failures = results
+    .filter((r) => r.status === 'failed')
+    .map(({ email, error }) => ({ email: email.replace(/(.{2}).+(@.+)/, '$1***$2'), error }));
 
   return NextResponse.json({
     ok: true,

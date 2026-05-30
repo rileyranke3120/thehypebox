@@ -4,6 +4,10 @@ import { createClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/send-email';
 import { highLevelAccessEmail } from '@/lib/email-templates';
 
+function esc(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 export const dynamic = 'force-dynamic';
 
 const APP_URL = 'https://thehypeboxllc.com';
@@ -26,6 +30,20 @@ export async function POST(req) {
 
   if (error || !user) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
+  }
+
+  // Atomic update-then-check: claim the send slot only if last_welcome_sent_at is null or
+  // older than 60 seconds. If another request already claimed it, claimed will be empty.
+  const sixtySecondsAgo = new Date(Date.now() - 60000).toISOString();
+  const { data: claimed } = await supabase
+    .from('users')
+    .update({ last_welcome_sent_at: new Date().toISOString() })
+    .eq('id', userId)
+    .or(`last_welcome_sent_at.is.null,last_welcome_sent_at.lt.${sixtySecondsAgo}`)
+    .select('id');
+
+  if (!claimed || claimed.length === 0) {
+    return NextResponse.json({ error: 'Welcome email already sent recently. Please wait 60 seconds.' }, { status: 429 });
   }
 
   try {
@@ -54,11 +72,11 @@ export async function POST(req) {
     <div style="margin-bottom:32px;">
       <a href="${APP_URL}" style="font-size:1.4rem;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#FFD000;text-decoration:none;">THE HYPE BOX</a>
     </div>
-    <h1 style="font-size:1.75rem;font-weight:800;color:#fff;margin:0 0 8px;">Hey ${firstName}, welcome back!</h1>
+    <h1 style="font-size:1.75rem;font-weight:800;color:#fff;margin:0 0 8px;">Hey ${esc(firstName)}, welcome back!</h1>
     <p style="font-size:1rem;color:#999;margin:0 0 32px;">Here's a quick link to get back into your dashboard.</p>
     <a href="${APP_URL}/dashboard" style="display:inline-block;background:#FFD000;color:#000;font-weight:700;font-size:1rem;padding:14px 32px;border-radius:4px;text-decoration:none;">Go to Dashboard →</a>
     <p style="font-size:0.82rem;color:#555;margin:32px 0 0;line-height:1.6;">
-      Log in with your email address: <strong style="color:#ccc;">${user.email}</strong><br>
+      Log in with your email address: <strong style="color:#ccc;">${esc(user.email)}</strong><br>
       Forgot your password? Use the "Forgot Password?" link on the login page.
     </p>
     <div style="margin-top:48px;padding-top:24px;border-top:1px solid #1a1a1a;">
@@ -77,6 +95,6 @@ export async function POST(req) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[resend-welcome]', err);
-    return NextResponse.json({ error: err.message || 'Failed to send email' }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 }

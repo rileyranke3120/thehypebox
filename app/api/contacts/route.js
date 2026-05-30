@@ -3,9 +3,14 @@ import { NextResponse } from 'next/server';
 import { getContacts } from '@/lib/ghl';
 import { getGHLCredentials } from '@/lib/ghl-session';
 
+const VALID_STATUSES = ['active', 'trialing'];
+
 export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (session.user.role !== 'super_admin' && !VALID_STATUSES.includes(session.user.plan_status)) {
+    return NextResponse.json({ error: 'Subscription required.' }, { status: 402 });
+  }
 
   try {
     const { locationId, apiKey } = await getGHLCredentials(session);
@@ -15,6 +20,6 @@ export async function GET() {
     return NextResponse.json({ contacts });
   } catch (err) {
     console.error('Contacts API error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 }

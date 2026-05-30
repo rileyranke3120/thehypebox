@@ -1,10 +1,12 @@
 import Script from 'next/script';
 import Image from 'next/image';
 import Nav from '@/components/Nav';
+import AnnouncementBanner from '@/components/AnnouncementBanner';
+import EntryPopup from '@/components/EntryPopup';
+import ExitIntentPopup from '@/components/ExitIntentPopup';
 import TrialButton from '@/components/TrialButton';
 import HeroPreview from '@/components/HeroPreview';
 import StatsBar from '@/components/StatsBar';
-import AgentCard from '@/components/AgentCard';
 import PricingSection from '@/components/PricingSection';
 import ContactSection from '@/components/ContactSection';
 import Footer from '@/components/Footer';
@@ -108,6 +110,9 @@ export default function Home() {
   return (
     <>
       <Script src="https://api.leadconnectorhq.com/js/form_embed.js" strategy="afterInteractive" />
+      <AnnouncementBanner />
+      <EntryPopup />
+      <ExitIntentPopup />
       <Nav />
       <main>
         <HeroPreview />
@@ -150,16 +155,47 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CORE FEATURES */}
-        <section id="services" className="section" aria-labelledby="features-heading">
-          <div className="container">
-            <div className={styles.sectionHeaderCenter}>
-              <span className="tag">Tools</span>
-              <h2 id="features-heading">Powerful Tools. One System.</h2>
+        {/* CORE FEATURES — THE TOOL BOX */}
+        <section id="services" className={styles.toolboxSection} aria-labelledby="features-heading">
+          <div className={styles.toolboxInner}>
+            <div className={styles.toolboxHeaderRow}>
+              <h2 id="features-heading" className={styles.toolboxHeading}>THE TOOL BOX</h2>
+              <p className={styles.toolboxSubhead}>Fully Stacked. Fully Loaded. Fully Hyped.</p>
             </div>
-            <div className={styles.featuresGrid}>
-              {features.map((feature, i) => (
-                <AgentCard key={i} {...feature} />
+            <div className={styles.toolboxGrid}>
+              {/* Row 1: AI Integration | Mascot center | Scheduling */}
+              <div className={styles.toolboxCard}>
+                <div className={styles.toolboxCardIcon} aria-hidden="true">{features[3].icon}</div>
+                <h3 className={styles.toolboxCardTitle}>{features[3].title}</h3>
+                <ul className={styles.toolboxCardList}>
+                  {features[3].features.map(f => <li key={f}>{f}</li>)}
+                </ul>
+              </div>
+              <div className={styles.toolboxMascotCell} aria-hidden="true">
+                <Image
+                  src="/mascot.png"
+                  alt=""
+                  width={260}
+                  height={320}
+                  style={{ width: '100%', maxWidth: '220px', height: 'auto' }}
+                />
+              </div>
+              <div className={styles.toolboxCard}>
+                <div className={styles.toolboxCardIcon} aria-hidden="true">{features[4].icon}</div>
+                <h3 className={styles.toolboxCardTitle}>{features[4].title}</h3>
+                <ul className={styles.toolboxCardList}>
+                  {features[4].features.map(f => <li key={f}>{f}</li>)}
+                </ul>
+              </div>
+              {/* Row 2: CRM | Communication | Automation */}
+              {[features[0], features[1], features[2]].map((feature) => (
+                <div key={feature.title} className={styles.toolboxCard}>
+                  <div className={styles.toolboxCardIcon} aria-hidden="true">{feature.icon}</div>
+                  <h3 className={styles.toolboxCardTitle}>{feature.title}</h3>
+                  <ul className={styles.toolboxCardList}>
+                    {feature.features.map(f => <li key={f}>{f}</li>)}
+                  </ul>
+                </div>
               ))}
             </div>
           </div>
@@ -306,7 +342,7 @@ export default function Home() {
               <TrialButton>Start Free Trial</TrialButton>
               <a href="/demo" className="btn btn-ghost">View Live Demo</a>
             </div>
-            <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--grey-500)' }}>No credit card required · Cancel anytime</p>
+            <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--grey-500)' }}>Cancel anytime</p>
           </div>
         </section>
 

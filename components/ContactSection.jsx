@@ -69,7 +69,7 @@ export default function ContactSection() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
                 <p style={{ fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey-500)', marginBottom: '4px' }}>Phone</p>
-                <p style={{ fontSize: '1rem', color: 'var(--grey-300)' }}>1-800 number coming soon</p>
+                <a href="tel:+18444973663" style={{ fontSize: '1rem', color: 'var(--yellow)', fontWeight: 700 }}>(844) 4-HYPE-ME</a>
               </div>
               <div>
                 <p style={{ fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey-500)', marginBottom: '4px' }}>Email</p>

@@ -32,7 +32,6 @@ export async function GET() {
         cancelAtPeriodEnd: false,
         last4: null,
         cardBrand: null,
-        stripeCustomerId: user.stripe_customer_id,
       });
     }
 
@@ -61,10 +60,9 @@ export async function GET() {
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       last4,
       cardBrand,
-      stripeCustomerId: user.stripe_customer_id,
     });
   } catch (err) {
     console.error('[billing/subscription GET]', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 }

@@ -33,7 +33,15 @@ export default function HeroPreview() {
       const color = ev[1] === 'green' ? '#1D9E75' : ev[1] === 'yellow' ? '#F5C400' : '#378ADD';
       const item = document.createElement('div');
       item.className = 'hbp-feed-item';
-      item.innerHTML = '<div class="hbp-feed-dot" style="background:' + color + ';width:5px;height:5px;border-radius:50%;flex-shrink:0;"></div><div class="hbp-feed-text" style="font-size:0.6rem;color:#888;line-height:1.4;">' + ev[0] + '</div>';
+      const dot = document.createElement('div');
+      dot.className = 'hbp-feed-dot';
+      dot.style.cssText = `background:${color};width:5px;height:5px;border-radius:50%;flex-shrink:0;`;
+      const txt = document.createElement('div');
+      txt.className = 'hbp-feed-text';
+      txt.style.cssText = 'font-size:0.6rem;color:#888;line-height:1.4;';
+      txt.textContent = ev[0];
+      item.appendChild(dot);
+      item.appendChild(txt);
       feed.insertBefore(item, feed.firstChild);
       while (feed.children.length > 4) feed.removeChild(feed.lastChild);
       if (ev[1] === 'blue' && callsRef.current) {
@@ -65,7 +73,7 @@ export default function HeroPreview() {
                 View Live Demo →
               </Link>
             </div>
-            <p className={styles.heroDemoBanner}>Try It Free for 14 Days — No Credit Card Required</p>
+            <p className={styles.heroDemoBanner}>Try It Free for 14 Days — Cancel Anytime</p>
             <p className={styles.heroDemoNote}>Free trial available on all plans · Cancel anytime</p>
           </div>
         </div>

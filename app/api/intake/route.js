@@ -5,6 +5,11 @@ import { createSubAccount } from '@/lib/highlevel';
 import { highLevelAccessEmail } from '@/lib/email-templates';
 
 export async function POST(request) {
+  const authHeader = request.headers.get('authorization');
+  if (!process.env.ADMIN_SECRET || authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const data = await request.json();
     const {
@@ -78,19 +83,22 @@ export async function POST(request) {
     }
 
     // ── Email Riley the intake summary ───────────────────────────────────────
+    const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const row = (label, value) => value
       ? `<tr><td style="padding:8px 12px;color:#888;font-size:0.8rem;white-space:nowrap;vertical-align:top;">${label}</td><td style="padding:8px 12px;color:#fff;font-size:0.875rem;">${value}</td></tr>`
       : '';
 
+    const safeUrl = (u) => u && /^https?:\/\//i.test(u) ? u : null;
+
     const ghlStatus = ghlResult
-      ? `<div style="margin-bottom:24px;padding:12px 16px;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:6px;color:#4CAF50;font-size:0.875rem;">✓ GHL sub-account auto-provisioned — Location ID: ${ghlResult.locationId}</div>`
+      ? `<div style="margin-bottom:24px;padding:12px 16px;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:6px;color:#4CAF50;font-size:0.875rem;">✓ GHL sub-account auto-provisioned — Location ID: ${esc(ghlResult.locationId)}</div>`
       : ghlError
-      ? `<div style="margin-bottom:24px;padding:12px 16px;background:#2a0a0a;border:1px solid #4a1a1a;border-radius:6px;color:#E24B4A;font-size:0.875rem;">⚠ GHL provisioning failed: ${ghlError} — provision manually at /dashboard/admin/highlevel</div>`
+      ? `<div style="margin-bottom:24px;padding:12px 16px;background:#2a0a0a;border:1px solid #4a1a1a;border-radius:6px;color:#E24B4A;font-size:0.875rem;">⚠ GHL provisioning failed: ${esc(ghlError)} — provision manually at /dashboard/admin/highlevel</div>`
       : '';
 
     await sendEmail({
       to: 'riley@thehypeboxllc.com',
-      subject: `New Client Intake: ${business_name}${ghlResult ? ' ✓ GHL Provisioned' : ''}`,
+      subject: `New Client Intake: ${esc(business_name)}${ghlResult ? ' ✓ GHL Provisioned' : ''}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -103,36 +111,36 @@ export async function POST(request) {
               <span style="display:block;font-size:0.75rem;color:#555;letter-spacing:0.08em;text-transform:uppercase;margin-top:4px;">New Client Intake</span>
             </div>
 
-            <h1 style="font-size:1.5rem;font-weight:800;color:#fff;margin:0 0 24px;">${business_name}</h1>
+            <h1 style="font-size:1.5rem;font-weight:800;color:#fff;margin:0 0 24px;">${esc(business_name)}</h1>
 
             ${ghlStatus}
 
             <table style="width:100%;border-collapse:collapse;background:#111;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden;margin-bottom:24px;">
-              ${row('Owner', owner_name)}
-              ${row('Business', business_name)}
-              ${row('Phone', phone)}
-              ${row('Email', email)}
-              ${row('Address', address)}
-              ${row('EIN', ein)}
-              ${row('Plan', plan)}
+              ${row('Owner', esc(owner_name))}
+              ${row('Business', esc(business_name))}
+              ${row('Phone', esc(phone))}
+              ${row('Email', esc(email))}
+              ${row('Address', esc(address))}
+              ${row('EIN', esc(ein))}
+              ${row('Plan', esc(plan))}
             </table>
 
             <table style="width:100%;border-collapse:collapse;background:#111;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden;margin-bottom:24px;">
               <tr><td colspan="2" style="padding:10px 12px;color:#555;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;border-bottom:1px solid #1a1a1a;">Services Offered</td></tr>
-              <tr><td colspan="2" style="padding:12px;color:#ddd;font-size:0.875rem;line-height:1.6;">${(services || '—').replace(/\n/g, '<br>')}</td></tr>
+              <tr><td colspan="2" style="padding:12px;color:#ddd;font-size:0.875rem;line-height:1.6;">${esc(services || '—').replace(/\n/g, '<br>')}</td></tr>
             </table>
 
             <table style="width:100%;border-collapse:collapse;background:#111;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden;margin-bottom:24px;">
-              ${row('Google Reviews', google_url ? `<a href="${google_url}" style="color:#FFD000;">${google_url}</a>` : null)}
-              ${row('Yelp', yelp_url ? `<a href="${yelp_url}" style="color:#FFD000;">${yelp_url}</a>` : null)}
-              ${row('Facebook', facebook_url ? `<a href="${facebook_url}" style="color:#FFD000;">${facebook_url}</a>` : null)}
-              ${row('Other', other_review_url ? `<a href="${other_review_url}" style="color:#FFD000;">${other_review_url}</a>` : null)}
+              ${row('Google Reviews', safeUrl(google_url) ? `<a href="${esc(safeUrl(google_url))}" style="color:#FFD000;">${esc(google_url)}</a>` : null)}
+              ${row('Yelp', safeUrl(yelp_url) ? `<a href="${esc(safeUrl(yelp_url))}" style="color:#FFD000;">${esc(yelp_url)}</a>` : null)}
+              ${row('Facebook', safeUrl(facebook_url) ? `<a href="${esc(safeUrl(facebook_url))}" style="color:#FFD000;">${esc(facebook_url)}</a>` : null)}
+              ${row('Other', safeUrl(other_review_url) ? `<a href="${esc(safeUrl(other_review_url))}" style="color:#FFD000;">${esc(other_review_url)}</a>` : null)}
             </table>
 
             ${notes ? `
             <table style="width:100%;border-collapse:collapse;background:#111;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden;margin-bottom:24px;">
               <tr><td colspan="2" style="padding:10px 12px;color:#555;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;border-bottom:1px solid #1a1a1a;">Notes</td></tr>
-              <tr><td colspan="2" style="padding:12px;color:#ddd;font-size:0.875rem;line-height:1.6;">${notes.replace(/\n/g, '<br>')}</td></tr>
+              <tr><td colspan="2" style="padding:12px;color:#ddd;font-size:0.875rem;line-height:1.6;">${esc(notes).replace(/\n/g, '<br>')}</td></tr>
             </table>
             ` : ''}
 
@@ -145,6 +153,6 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, ghlProvisioned: !!ghlResult });
   } catch (err) {
     console.error('[api/intake]', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 }

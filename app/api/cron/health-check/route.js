@@ -9,8 +9,10 @@ const CHECKS = [];
 async function checkGHLAgency() {
   const key = process.env.GHL_AGENCY_KEY || process.env.GHL_AGENCY_API_KEY;
   if (!key) return { name: 'GHL Agency Key', ok: false, detail: 'Env var missing' };
+  const companyId = process.env.GHL_COMPANY_ID;
+  if (!companyId) return { name: 'GHL Agency Key', ok: false, detail: 'GHL_COMPANY_ID env var missing' };
   try {
-    const res = await fetch('https://services.leadconnectorhq.com/locations/?companyId=kBxNIbpRIN7ggoYAK7Fg&limit=1', {
+    const res = await fetch(`https://services.leadconnectorhq.com/locations/?companyId=${companyId}&limit=1`, {
       headers: { Authorization: `Bearer ${key}`, Version: '2021-07-28' },
       signal: AbortSignal.timeout(8000),
     });
@@ -93,6 +95,10 @@ async function checkAnthropicKey() {
 
 export async function GET(request) {
   const authHeader = request.headers.get('authorization');
+  if (!process.env.CRON_SECRET) {
+    console.error('[cron] CRON_SECRET env var is not set');
+    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+  }
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

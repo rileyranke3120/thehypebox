@@ -7,6 +7,7 @@ import styles from '@/styles/dashboard.module.css';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { hasFeature, getPlanPrice } from '@/lib/planFeatures';
 import { logout } from '@/app/actions/auth';
+import OnboardingChecklist from '@/components/OnboardingChecklist';
 
 // Read-only anon client — used only for reads (profile, automation logs, missed calls)
 // All writes go through authenticated API routes
@@ -1167,6 +1168,12 @@ export default function DashboardPage() {
               <h1>Command Center</h1>
               <p>Today&apos;s snapshot — updated live</p>
             </div>
+            {userRole !== 'super_admin' && clientProfile && (
+              <OnboardingChecklist
+                initialChecklist={clientProfile.onboarding_checklist}
+                onNavigate={setActivePage}
+              />
+            )}
             <div className={styles.metricsGrid}>
               {overviewData?.isSuperAdmin ? (
                 <>

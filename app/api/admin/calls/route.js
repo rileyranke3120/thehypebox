@@ -11,7 +11,7 @@ export async function GET(request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const days = parseInt(searchParams.get('days') || '30');
+  const days = Math.min(365, Math.max(1, parseInt(searchParams.get('days') || '30') || 30));
 
   const supabase = createClient();
   const since = new Date(Date.now() - days * 86400000).toISOString();
@@ -22,7 +22,10 @@ export async function GET(request) {
     .gte('created_at', since)
     .order('start_timestamp', { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/calls]', error);
+    return NextResponse.json({ error: 'Failed to load calls.' }, { status: 500 });
+  }
 
   // Enrich with client names from users table
   const agentIds = [...new Set((calls || []).map(c => c.agent_id).filter(Boolean))];

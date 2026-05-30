@@ -2,20 +2,32 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { sendSMS } from '@/lib/twilio';
 import { findContactByPhone, createContact, addContactNote } from '@/lib/ghl';
+import crypto from 'crypto';
+
+function verifyRetellSignature(rawBody, signature, apiKey) {
+  if (!signature || !apiKey) return false;
+  const expected = crypto.createHmac('sha256', apiKey).update(rawBody).digest('hex');
+  try {
+    return crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expected, 'hex'));
+  } catch { return false; }
+}
 
 export async function POST(request) {
-  // Verify shared secret if configured (set RETELL_TOOL_SECRET in Vercel env vars,
-  // then add it as a custom header in Retell's webhook settings)
-  const secret = process.env.RETELL_TOOL_SECRET;
-  if (secret && request.headers.get('x-api-key') !== secret) {
+  const rawBody = await request.text();
+  const apiKey = process.env.RETELL_API_KEY;
+  const signature = request.headers.get('x-retell-signature');
+  if (!verifyRetellSignature(rawBody, signature, apiKey)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  let payload;
   try {
-    const payload = await request.json();
+    payload = JSON.parse(rawBody);
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
 
-    console.log('[retell webhook] full payload:', JSON.stringify(payload, null, 2));
-
+  try {
     const { event, call = {} } = payload;
 
     const {
@@ -63,8 +75,11 @@ export async function POST(request) {
 
     // Forward payload to GHL on every event
     const ghlWebhookUrl = process.env.GHL_RETELL_WEBHOOK_URL;
+    const GHL_VALID_URL_PREFIX = 'https://services.leadconnectorhq.com/';
     if (!ghlWebhookUrl) {
       console.error('[retell webhook] GHL_RETELL_WEBHOOK_URL is not set — skipping GHL forward');
+    } else if (!ghlWebhookUrl.startsWith(GHL_VALID_URL_PREFIX)) {
+      console.error('[retell webhook] GHL_RETELL_WEBHOOK_URL is not a valid leadconnectorhq.com URL — skipping forward');
     } else {
       const ghlBody = {
         // Top-level phone lets GHL match/create a contact on inbound webhook trigger
@@ -85,8 +100,6 @@ export async function POST(request) {
           direction: payload.call?.direction,
         }
       };
-      console.log('[retell webhook] sending to GHL url:', ghlWebhookUrl);
-      console.log('[retell webhook] GHL body:', JSON.stringify(ghlBody));
       try {
         const ghlRes = await fetch(ghlWebhookUrl, {
           method: 'POST',
@@ -117,13 +130,17 @@ export async function POST(request) {
     let textSent = false;
 
     if (isMissed && phone) {
-      const businessName = clientRow?.business_name || 'our team';
-      await sendSMS(
-        phone,
-        `Hi! Sorry we missed your call at ${businessName}. How can we help? Reply here and we'll get right back to you!`,
-        { apiKey: clientRow?.ghl_api_key, locationId: clientRow?.ghl_location_id }
-      );
-      textSent = true;
+      if (!clientRow?.ghl_api_key || !clientRow?.ghl_location_id) {
+        console.warn('[retell webhook] no GHL credentials for client, skipping missed-call SMS');
+      } else {
+        const businessName = clientRow.business_name || 'our team';
+        await sendSMS(
+          phone,
+          `Hi! Sorry we missed your call at ${businessName}. How can we help? Reply here and we'll get right back to you!`,
+          { apiKey: clientRow.ghl_api_key, locationId: clientRow.ghl_location_id }
+        );
+        textSent = true;
+      }
     }
 
     if (isMissed) {
@@ -166,6 +183,6 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, text_sent: textSent });
   } catch (error) {
     console.error('[retell webhook]', error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'Something went wrong.' }, { status: 500 });
   }
 }

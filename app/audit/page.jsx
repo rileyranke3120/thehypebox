@@ -176,7 +176,7 @@ export default async function AuditPage({ searchParams }) {
           >
             Start Free 14-Day Trial →
           </Link>
-          <p style={{ fontSize: '0.78rem', color: '#444', margin: '16px 0 0' }}>No credit card required · Cancel anytime · Set up in one day</p>
+          <p style={{ fontSize: '0.78rem', color: '#444', margin: '16px 0 0' }}>Cancel anytime · Set up in one day</p>
         </div>
 
       </div>

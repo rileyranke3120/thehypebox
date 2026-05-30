@@ -10,6 +10,10 @@ const PLAN_PRICES = { launch: 97, rocket: 297, velocity: 497, starter: 97, growt
 export async function GET(request) {
   // Verify this request is from Vercel Cron (or your own call with the secret)
   const authHeader = request.headers.get('authorization');
+  if (!process.env.CRON_SECRET) {
+    console.error('[cron] CRON_SECRET env var is not set');
+    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+  }
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -36,25 +40,29 @@ export async function GET(request) {
     const failures = [];
 
     for (const user of users ?? []) {
-      // Deduplication: skip if reminder already sent (prevents double-send on cron retry)
-      if (user.toggles?.trial_reminder_sent) {
+      const trialEnd = new Date(user.trial_ends_at);
+      const tpl = trialEndingEmail({
+        name: user.name || user.email,
+        plan: user.plan,
+        planPrice: PLAN_PRICES[user.plan] ?? '—',
+        trialEndDate: trialEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      });
+
+      // Atomic guard: claim the row first; 0 rows updated means another process already sent
+      const { data: claimed } = await supabase
+        .from('users')
+        .update({ toggles: { ...(user.toggles || {}), trial_reminder_sent: true } })
+        .eq('email', user.email)
+        .or('toggles.is.null,toggles->>trial_reminder_sent.is.null,toggles->>trial_reminder_sent.neq.true')
+        .select('email');
+
+      if (!claimed?.length) {
         console.log(`[trial-reminders] already sent to ${user.email}, skipping`);
         continue;
       }
 
       try {
-        const trialEnd = new Date(user.trial_ends_at);
-        const tpl = trialEndingEmail({
-          name: user.name || user.email,
-          plan: user.plan,
-          planPrice: PLAN_PRICES[user.plan] ?? '—',
-          trialEndDate: trialEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-        });
         await sendEmail({ to: user.email, ...tpl });
-        await supabase
-          .from('users')
-          .update({ toggles: { ...(user.toggles || {}), trial_reminder_sent: true } })
-          .eq('email', user.email);
         emailsSent++;
         console.log(`[trial-reminders] sent to ${user.email}`);
       } catch (err) {
@@ -71,6 +79,6 @@ export async function GET(request) {
     });
   } catch (err) {
     console.error('[trial-reminders] cron error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 }
