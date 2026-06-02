@@ -16,7 +16,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // IP-based rate limit: 3 checkout attempts per hour per IP — atomic via stored procedure
 async function checkCheckoutRateLimit(ip) {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return true;
+  if (!SUPABASE_URL || !SUPABASE_KEY) return false;
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/check_and_increment_checkout_rate_limit`, {
       method: 'POST',
@@ -27,9 +27,9 @@ async function checkCheckoutRateLimit(ip) {
       },
       body: JSON.stringify({ p_ip: `checkout:${ip}`, p_max: 3, p_window_seconds: 3600 }),
     });
-    return res.ok ? await res.json() : true; // fail open if RPC unavailable
+    return res.ok ? await res.json() : false; // fail closed if RPC unavailable
   } catch {
-    return true;
+    return false;
   }
 }
 

@@ -15,15 +15,15 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function checkFinalizeRateLimit(ip) {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return true;
+  if (!SUPABASE_URL || !SUPABASE_KEY) return false;
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/check_and_increment_checkout_rate_limit`, {
       method: 'POST',
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_ip: `finalize:${ip}`, p_max: 3, p_window_seconds: 3600 }),
     });
-    return res.ok ? await res.json() : true;
-  } catch { return true; }
+    return res.ok ? await res.json() : false;
+  } catch { return false; }
 }
 
 function esc(str) {
@@ -47,6 +47,7 @@ export async function POST(request) {
     if (!(await checkFinalizeRateLimit(ip))) {
       return NextResponse.json({ error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }
+
 
     const { email, name, plan, subscriptionId } = await request.json();
 
@@ -174,7 +175,7 @@ export async function POST(request) {
           `Hey ${firstName}! Welcome to TheHypeBox 🎉 Your AI assistant Sarah is being set up now. You'll get a separate email with your login link. Questions? Reply here or call (844) 4-HYPE-ME — Riley`,
           { apiKey: process.env.GHL_SMS_KEY || process.env.GHL_DAVE_API_KEY, locationId: process.env.GHL_DAVE_LOCATION_ID }
         );
-        console.log(`[checkout/finalize] welcome SMS sent to ${userData.business_phone}`);
+        console.log('[checkout/finalize] welcome SMS sent');
       }
     } catch (smsErr) {
       console.error('[checkout/finalize] SMS failed:', smsErr.message);

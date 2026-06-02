@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase';
 import { sendSMS } from '@/lib/twilio';
 import { auth } from '@/auth';
 import { insertWithRetry } from '@/lib/insert-with-retry';
+import { safeCompare } from '@/lib/safe-compare';
 
 const STEP_MESSAGES = {
   1: (name, biz) =>
@@ -17,7 +18,7 @@ export async function POST(request) {
   const session = await auth();
   const secret = process.env.AUTOMATION_WEBHOOK_SECRET;
   const isAdmin = session?.user?.role === 'super_admin';
-  const isWebhook = secret && request.headers.get('x-webhook-secret') === secret;
+  const isWebhook = secret && safeCompare(request.headers.get('x-webhook-secret') ?? '', secret);
   if (!isAdmin && !isWebhook) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }

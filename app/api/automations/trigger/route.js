@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { auth } from '@/auth';
 import { insertWithRetry } from '@/lib/insert-with-retry';
+import { safeCompare } from '@/lib/safe-compare';
 
 const VALID_AUTOMATIONS = [
-  'review-request',
+  // 'review-request', // session-only endpoint — not reachable via webhook; causes silent 401s in automation_logs
   'reactivation',
   'appointment-reminder',
   'post-service-followup',
@@ -18,7 +19,7 @@ export async function POST(request) {
   const webhookSecret = process.env.AUTOMATION_WEBHOOK_SECRET;
   const reqSecret = request.headers.get('x-webhook-secret');
   const isAdmin = session?.user?.role === 'super_admin';
-  const isWebhook = webhookSecret && reqSecret === webhookSecret;
+  const isWebhook = webhookSecret && safeCompare(reqSecret ?? '', webhookSecret);
   if (!isAdmin && !isWebhook) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -54,11 +55,11 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Client not found' }, { status: 404 });
     }
 
-    // Merge business_name into payload — credentials are fetched by each automation route
+    // Merge business_name into payload — DB value always wins; payload spread cannot override it
     const mergedPayload = {
-      business_name: client.business_name,
       client_id,
       ...payload,
+      business_name: client.business_name,
     };
 
     // Build the internal URL

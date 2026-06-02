@@ -9,6 +9,7 @@
  *   https://thehypeboxllc.com/api/retell/call-start
  */
 import { createClient } from '@/lib/supabase';
+import { safeCompare } from '@/lib/safe-compare';
 
 async function lookupClientByAgentId(agentId) {
   if (!agentId) return null;
@@ -28,7 +29,7 @@ async function lookupClientByAgentId(agentId) {
 export async function POST(request) {
   const secret = process.env.RETELL_TOOL_SECRET;
   const provided = request.headers.get('x-api-key');
-  if (!secret || provided !== secret) {
+  if (!secret || !safeCompare(provided ?? '', secret)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

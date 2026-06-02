@@ -7,8 +7,36 @@ function esc(str) {
   return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// IP-based rate limit: 5 reset attempts per hour — fail closed if Supabase unavailable
+async function checkResetRateLimit(ip) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/check_and_increment_contact_rate_limit`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ p_ip: `reset:${ip}`, p_max: 5, p_window_seconds: 3600 }),
+    });
+    return res.ok ? await res.json() : false;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request) {
   try {
+    const ip = request.headers.get('x-real-ip') || request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() || 'unknown';
+    if (!(await checkResetRateLimit(ip))) {
+      // Silent success — don't reveal rate limiting to attacker
+      return NextResponse.json({ ok: true });
+    }
+
     const { email } = await request.json();
     if (!email) {
       return NextResponse.json({ error: 'Email is required.' }, { status: 400 });

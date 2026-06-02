@@ -3,10 +3,40 @@ import { sendEmail } from '@/lib/send-email';
 import { createClient } from '@/lib/supabase';
 import { createSubAccount } from '@/lib/highlevel';
 import { highLevelAccessEmail } from '@/lib/email-templates';
+import { safeCompare } from '@/lib/safe-compare';
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// IP-based rate limit: 3 intake submissions per hour — reuses the contact RPC, keyed separately
+async function checkIntakeRateLimit(ip) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/check_and_increment_contact_rate_limit`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ p_ip: `intake:${ip}`, p_max: 3, p_window_seconds: 3600 }),
+    });
+    return res.ok ? await res.json() : false;
+  } catch {
+    return false;
+  }
+}
 
 export async function POST(request) {
+  const ip = request.headers.get('x-real-ip')
+    || request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim()
+    || 'unknown';
+  if (!(await checkIntakeRateLimit(ip))) {
+    return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
+  }
+
   const authHeader = request.headers.get('authorization');
-  if (!process.env.ADMIN_SECRET || authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
+  if (!process.env.ADMIN_SECRET || !safeCompare(authHeader ?? '', `Bearer ${process.env.ADMIN_SECRET}`)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -21,6 +51,11 @@ export async function POST(request) {
     if (!business_name || !phone || !owner_name) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+
+    if (owner_name && owner_name.length > 200) return NextResponse.json({ error: 'owner_name too long.' }, { status: 400 });
+    if (business_name && business_name.length > 200) return NextResponse.json({ error: 'business_name too long.' }, { status: 400 });
+    if (notes && notes.length > 5000) return NextResponse.json({ error: 'notes too long.' }, { status: 400 });
+    if (services && services.length > 2000) return NextResponse.json({ error: 'services too long.' }, { status: 400 });
 
     // ── Auto-provision GHL if email + plan provided ─────────────────────────
     let ghlResult = null;

@@ -165,7 +165,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         p === '/api/retell/agent' ||
         p === '/api/retell/provision' ||
         p.startsWith('/api/appointments') ||
-        p === '/api/automations/review-request' ||
         p.startsWith('/api/account');
       if (isProtected) {
         return isLoggedIn;

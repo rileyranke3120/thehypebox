@@ -17,16 +17,16 @@ const RPC_HEADERS = {
 
 // IP-based rate limit: 5 submissions per hour per IP — atomic via stored procedure
 async function checkContactRateLimit(ip) {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return true;
+  if (!SUPABASE_URL || !SUPABASE_KEY) return false;
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/check_and_increment_contact_rate_limit`, {
       method: 'POST',
       headers: RPC_HEADERS,
       body: JSON.stringify({ p_ip: ip, p_max: 5, p_window_seconds: 3600 }),
     });
-    return res.ok ? await res.json() : true; // fail open if RPC unavailable
+    return res.ok ? await res.json() : false; // fail closed if RPC unavailable
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -95,7 +95,10 @@ export async function POST(request) {
     }
 
     // ── 2. Email notification to riley@thehypeboxllc.com ───────
-    const subjectLine = subject ? `[Contact Form] ${subject}` : `[Contact Form] Message from ${name}`;
+    const sanitizeSubject = (s) => String(s ?? '').replace(/[\r\n\0]/g, ' ').trim();
+    const subjectLine = subject
+      ? `[Contact Form] ${sanitizeSubject(subject)}`
+      : `[Contact Form] Message from ${sanitizeSubject(name)}`;
     try {
       await sendEmail({
         to: 'riley@thehypeboxllc.com',

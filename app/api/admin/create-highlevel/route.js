@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase';
 import { createSubAccount } from '@/lib/highlevel';
 import { sendEmail } from '@/lib/send-email';
 import { highLevelAccessEmail } from '@/lib/email-templates';
+import { safeCompare } from '@/lib/safe-compare';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,7 @@ export async function POST(request) {
   const authHeader = request.headers.get('authorization');
   const isAdmin = session?.user?.role === 'super_admin';
   // ADMIN_SECRET bypass — for CLI/automated provisioning only. Rotate this key periodically.
-  const hasSecret = process.env.ADMIN_SECRET && authHeader === `Bearer ${process.env.ADMIN_SECRET}`;
+  const hasSecret = process.env.ADMIN_SECRET && safeCompare(authHeader ?? '', `Bearer ${process.env.ADMIN_SECRET}`);
   if (hasSecret) {
     console.warn('[admin/create-highlevel] ADMIN_SECRET bypass used', {
       ip: request.headers.get('x-real-ip') || request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() || 'unknown',

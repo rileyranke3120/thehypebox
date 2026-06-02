@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/send-email';
 import { signUnsubscribeId } from '@/lib/unsubscribe-token';
+import { safeCompare } from '@/lib/safe-compare';
 
 function esc(str) {
   return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -63,8 +64,12 @@ function emailWrapper(content, id) {
 </html>`;
 }
 
+function sanitizeSubject(s) {
+  return String(s ?? '').replace(/[\r\n\0]/g, ' ').trim();
+}
+
 function buildEmail(step, prospect) {
-  const first = prospect.first_name || 'there';
+  const first = sanitizeSubject(prospect.first_name || 'there');
 
   if (step === 0) {
     return {
@@ -127,7 +132,7 @@ function buildEmail(step, prospect) {
   return {
     subject: `Last one from me`,
     html: emailWrapper(`
-      <p style="margin:0 0 16px;">Hey ${first},</p>
+      <p style="margin:0 0 16px;">Hey ${esc(first)},</p>
       <p style="margin:0 0 16px;">Last email, I promise.</p>
       <p style="margin:0 0 16px;">If missing calls isn't costing you anything, ignore this. But if you're losing even 2–3 jobs a month to it:</p>
 
@@ -152,7 +157,7 @@ export async function GET(request) {
   if (!process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
   }
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!safeCompare(authHeader ?? '', `Bearer ${process.env.CRON_SECRET ?? ''}`)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   if (!process.env.RESEND_API_KEY) {
@@ -173,7 +178,7 @@ export async function GET(request) {
 
   if (error) {
     console.error('[cold-outreach cron] failed to load prospects:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 
   const results = await Promise.all(

@@ -19,6 +19,7 @@
 
 import * as chrono from 'chrono-node';
 import { createClient } from '@/lib/supabase';
+import { safeCompare } from '@/lib/safe-compare';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const GHL_API_VERSION = '2021-07-28';
@@ -213,7 +214,7 @@ async function bookAppointment({ contactId, startTime }, creds) {
 
 export async function POST(request) {
   const secret = process.env.RETELL_TOOL_SECRET;
-  if (!secret || request.headers.get('x-api-key') !== secret) {
+  if (!secret || !safeCompare(request.headers.get('x-api-key') ?? '', secret)) {
     return Response.json({ success: false, message: 'Unauthorized.' }, { status: 401 });
   }
 

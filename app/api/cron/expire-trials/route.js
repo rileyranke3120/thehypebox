@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/send-email';
+import { safeCompare } from '@/lib/safe-compare';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ export async function GET(request) {
     console.error('[cron] CRON_SECRET env var is not set');
     return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
   }
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!safeCompare(authHeader ?? '', `Bearer ${process.env.CRON_SECRET ?? ''}`)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -27,7 +28,7 @@ export async function GET(request) {
 
   if (error) {
     console.error('[expire-trials] query error:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
 
   let expiredCount = 0;

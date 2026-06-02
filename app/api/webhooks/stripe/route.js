@@ -124,26 +124,32 @@ export async function POST(request) {
 
           if (existing && !existing.ghl_location_id) {
             const hlAccount = await createSubAccount({ name, email: customer.email, plan });
-            await supabase.from('users').update({
+            // Atomic guard: only write if ghl_location_id is still null — prevents double-provisioning
+            // when checkout.session.completed and setup_intent.succeeded fire simultaneously.
+            const { data: claimed } = await supabase.from('users').update({
               ghl_location_id: hlAccount.locationId,
               ghl_user_id: hlAccount.userId || null,
               retell_agent_id: hlAccount.retellAgentId || null,
-            }).eq('id', existing.id);
+            }).eq('id', existing.id).is('ghl_location_id', null).select('id');
 
-            if (hlAccount.userId) {
-              const tpl = highLevelAccessEmail({
-                name: name || customer.email,
-                plan,
-                locationId: hlAccount.locationId,
-                hlEmail: customer.email,
-                hlPassword: hlAccount.password,
-                dashboardUrl: hlAccount.dashboardUrl,
-                hasRetell: !!hlAccount.retellAgentId,
-              });
-              await sendEmail({ to: customer.email, ...tpl });
+            if (!claimed?.length) {
+              console.log(`[stripe webhook] GHL already claimed for ${customer.email}, skipping`);
+            } else {
+              if (hlAccount.userId) {
+                const tpl = highLevelAccessEmail({
+                  name: name || customer.email,
+                  plan,
+                  locationId: hlAccount.locationId,
+                  hlEmail: customer.email,
+                  hlPassword: hlAccount.password,
+                  dashboardUrl: hlAccount.dashboardUrl,
+                  hasRetell: !!hlAccount.retellAgentId,
+                });
+                await sendEmail({ to: customer.email, ...tpl });
+              }
+              ghlProvisioned = true;
+              console.log(`[stripe webhook] auto-provisioned GHL for ${customer.email}: ${hlAccount.locationId}`);
             }
-            ghlProvisioned = true;
-            console.log(`[stripe webhook] auto-provisioned GHL for ${customer.email}: ${hlAccount.locationId}`);
           }
         } catch (ghlErr) {
           console.error(`[stripe webhook] auto-GHL provision failed for ${customer.email}:`, ghlErr.message);
@@ -398,28 +404,36 @@ export async function POST(request) {
             };
             if (hlAccount.retellAgentId) hlUpdates.retell_agent_id = hlAccount.retellAgentId;
 
-            await supabase
+            // Atomic guard: only write if ghl_location_id is still null — prevents double-provisioning
+            // when setup_intent.succeeded and checkout.session.completed fire simultaneously.
+            const { data: claimed } = await supabase
               .from('users')
               .update(hlUpdates)
-              .eq('email', customer.email.toLowerCase());
+              .eq('email', customer.email.toLowerCase())
+              .is('ghl_location_id', null)
+              .select('id');
 
-            // Send HL access email to customer
-            try {
-              const tpl = highLevelAccessEmail({
-                name: user?.name || customer.name || customer.email,
-                plan: user?.plan,
-                locationId: hlAccount.locationId,
-                hlEmail: customer.email,
-                hlPassword: hlAccount.password,
-                dashboardUrl: hlAccount.dashboardUrl,
-                hasRetell: !!hlAccount.retellAgentId,
-              });
-              await sendEmail({ to: customer.email, ...tpl });
-            } catch (emailErr) {
-              console.error('[stripe webhook] HL access email failed:', emailErr.message);
+            if (!claimed?.length) {
+              console.log(`[stripe webhook] GHL already claimed for ${customer.email}, skipping`);
+            } else {
+              // Send HL access email to customer
+              try {
+                const tpl = highLevelAccessEmail({
+                  name: user?.name || customer.name || customer.email,
+                  plan: user?.plan,
+                  locationId: hlAccount.locationId,
+                  hlEmail: customer.email,
+                  hlPassword: hlAccount.password,
+                  dashboardUrl: hlAccount.dashboardUrl,
+                  hasRetell: !!hlAccount.retellAgentId,
+                });
+                await sendEmail({ to: customer.email, ...tpl });
+              } catch (emailErr) {
+                console.error('[stripe webhook] HL access email failed:', emailErr.message);
+              }
+
+              console.log(`[stripe webhook] HL account created: ${hlAccount.locationId} for ${customer.email}`);
             }
-
-            console.log(`[stripe webhook] HL account created: ${hlAccount.locationId} for ${customer.email}`);
           } catch (hlErr) {
             console.error(`[stripe webhook] HL provisioning failed for ${customer.email}:`, hlErr.message);
 

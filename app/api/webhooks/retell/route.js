@@ -54,7 +54,23 @@ export async function POST(request) {
 
     // Save full call record when call is complete — Retell v2 sends event==='call_analyzed',
     // older payloads may use call_status==='ended'
+    //
+    // isNewCall is checked BEFORE the upsert so we can gate downstream side-effects
+    // (missed-call SMS, missed_calls insert) on first-time processing only.
+    // On Retell webhook retries the upsert is idempotent; SMS and DB inserts are not.
+    let isNewCall = false;
     if (event === 'call_analyzed' || call_status === 'ended') {
+      if (call_id) {
+        const { data: priorCall } = await supabase
+          .from('retell_calls')
+          .select('call_id')
+          .eq('call_id', call_id)
+          .maybeSingle();
+        isNewCall = !priorCall;
+      } else {
+        isNewCall = false; // can't deduplicate without call_id — skip all side effects
+      }
+
       const { error: upsertError } = await supabase.from('retell_calls').upsert({
         call_id:            call_id || null,
         agent_id:           agent_id || null,
@@ -129,7 +145,9 @@ export async function POST(request) {
     const isMissed = missedReasons.includes(disconnection_reason);
     let textSent = false;
 
-    if (isMissed && phone) {
+    // Only send missed-call SMS on first-time processing — not on Retell webhook retries.
+    // isNewCall is set above based on whether call_id already existed in retell_calls.
+    if (isMissed && phone && isNewCall) {
       if (!clientRow?.ghl_api_key || !clientRow?.ghl_location_id) {
         console.warn('[retell webhook] no GHL credentials for client, skipping missed-call SMS');
       } else {
@@ -143,19 +161,27 @@ export async function POST(request) {
       }
     }
 
-    if (isMissed) {
-      await supabase.from('missed_calls').insert({
-        call_id:       call_id || null,
+    if (isMissed && call_id) {
+      // Upsert on call_id so Retell webhook retries don't create duplicate missed_calls rows.
+      // Requires a unique constraint on missed_calls.call_id.
+      // Skipped when call_id is null — NULL != NULL in Postgres unique constraints, so dedup doesn't work.
+      const { error: missedUpsertErr } = await supabase.from('missed_calls').upsert({
+        call_id,
         from_number:   phone,
         business_name: clientRow?.business_name || null,
         client_id:     clientRow?.id || null,
         timestamp:     start_timestamp ? new Date(start_timestamp).toISOString() : new Date().toISOString(),
         text_sent:     textSent,
-      });
+      }, { onConflict: 'call_id', ignoreDuplicates: true });
+      if (missedUpsertErr) {
+        console.error('[retell webhook] missed_calls upsert error:', missedUpsertErr.message);
+      }
     }
 
-    // For completed calls with a summary, create/update the GHL contact and log the call
+    // For completed calls with a summary, create/update the GHL contact and log the call.
+    // Gated on isNewCall so webhook retries don't append duplicate notes to the GHL contact.
     if (
+      isNewCall &&
       (event === 'call_analyzed' || call_status === 'ended') &&
       phone &&
       call_summary &&
