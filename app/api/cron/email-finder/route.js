@@ -8,6 +8,7 @@ export const maxDuration = 300;
 const LOCATION_ID  = process.env.GHL_LOCATION_ID;
 const BATCH_LIMIT  = 15;
 const DELAY_MS     = 500;
+const DEADLINE_MS  = 45_000;
 
 // Emails to skip — too generic to be useful
 const SKIP_PREFIXES = new Set([
@@ -67,8 +68,8 @@ async function findViaWebsiteScrape(website) {
   const url = website.startsWith('http') ? website : `https://${website}`;
   const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 
-  // Pages most likely to have contact email
-  const paths = ['', '/contact', '/about', '/contact-us'];
+  // Pages most likely to have contact email — limit to 2 to stay within time budget
+  const paths = ['', '/contact'];
 
   for (const path of paths) {
     try {
@@ -105,10 +106,11 @@ export async function GET(request) {
   if (!apiKey)      return NextResponse.json({ error: 'GHL_LOCATION_KEY not configured' }, { status: 500 });
   if (!LOCATION_ID) return NextResponse.json({ error: 'GHL_LOCATION_ID not configured' }, { status: 500 });
 
-  // Contacts that were scraped but haven't had email-found or email-skip tagged yet
+  // Contacts that were scraped but haven't had email-found or email-skip tagged yet.
+  // Cap at 3 pages (300 contacts) — enough to find BATCH_LIMIT candidates without timing out.
   let contacts = [];
   try {
-    contacts = await getContactsByTag(LOCATION_ID, 'google-maps-scraped', apiKey);
+    contacts = await getContactsByTag(LOCATION_ID, 'google-maps-scraped', apiKey, 3);
   } catch (err) {
     console.error('[email-finder] contacts fetch error:', err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -124,11 +126,16 @@ export async function GET(request) {
     })
     .slice(0, BATCH_LIMIT);
 
-  console.log(`[email-finder] ${contacts.length} scraped contacts, ${needsEmail.length} missing email`);
+  console.log(`[email-finder] ${contacts.length} scraped contacts (first 3 pages), ${needsEmail.length} missing email`);
 
   const results = { found: 0, skipped: 0, errors: [] };
+  const startedAt = Date.now();
 
   for (const contact of needsEmail) {
+    if (Date.now() - startedAt > DEADLINE_MS) {
+      console.log('[email-finder] approaching time limit — stopping early');
+      break;
+    }
     const domain = extractDomain(contact.website);
 
     let email = null;

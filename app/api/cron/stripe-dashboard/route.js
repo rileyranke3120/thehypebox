@@ -78,11 +78,12 @@ async function getMetrics(stripe, now) {
   const newSubsToday = newToday + trialingSubs.length;
 
   // ── Churned today: canceled subscriptions ────────────────────────────────
-  const canceledToday = await stripeAutoPaginate(
+  // canceled_at is not a filterable list param in Stripe — fetch all canceled and filter client-side
+  const allCanceled = await stripeAutoPaginate(
     stripe.subscriptions.list.bind(stripe.subscriptions),
-    { status: 'canceled', limit: 100, canceled_at: { gte: todayStartTs } }
+    { status: 'canceled', limit: 100 }
   );
-  const churnedToday = canceledToday.length;
+  const churnedToday = allCanceled.filter((s) => s.canceled_at >= todayStartTs).length;
 
   // ── Revenue MTD (successful charges this month) ──────────────────────────
   const chargesMtd = await stripeAutoPaginate(

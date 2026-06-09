@@ -27,7 +27,7 @@ async function getPipelineByStage(apiKey) {
 
 async function getNewLeads(apiKey, sinceMs) {
   const data = await ghlFetch(
-    `/contacts/?locationId=${LOC}&limit=100&sortBy=date_added&sort=desc`,
+    `/contacts/?locationId=${LOC}&limit=100&sortBy=date_added&sortOrder=desc`,
     apiKey
   );
   const contacts = data?.contacts ?? [];

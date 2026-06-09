@@ -10,6 +10,8 @@ const GHL_BASE = 'https://services.leadconnectorhq.com';
 const LOCATION_ID = 'Ra79aZSYkl96uPQajjkJ';
 const DELAY_MS = 350;
 
+const DEADLINE_MS = 45_000;
+
 const CITIES = [
   { name: 'Columbus',      state: 'Ohio',          stateCode: 'OH' },
   { name: 'Cleveland',     state: 'Ohio',          stateCode: 'OH' },
@@ -43,12 +45,19 @@ const TRADES = [
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// Rotate cities by day of year so each daily run hits a different city
-function getCurrentCity() {
+// Rotate cities and trades by day of year so each daily run hits a different city+trade combo
+function getDayOfYear() {
   const now = new Date();
   const jan1 = new Date(now.getFullYear(), 0, 1);
-  const dayOfYear = Math.floor((now - jan1) / (24 * 60 * 60 * 1000));
-  return CITIES[dayOfYear % CITIES.length];
+  return Math.floor((now - jan1) / (24 * 60 * 60 * 1000));
+}
+
+function getCurrentCity() {
+  return CITIES[getDayOfYear() % CITIES.length];
+}
+
+function getCurrentTrade() {
+  return TRADES[getDayOfYear() % TRADES.length];
 }
 
 function normalizePhone(raw) {
@@ -154,70 +163,75 @@ async function handler(request) {
   if (!placesKey) return NextResponse.json({ error: 'GOOGLE_PLACES_API_KEY not configured' }, { status: 500 });
 
   const city  = getCurrentCity();
-  const stats = { city: city.name, pushed: 0, newLeads: 0, skipped: 0, failed: 0 };
+  const trade = getCurrentTrade();
+  const startedAt = Date.now();
+  const stats = { city: city.name, trade: trade.tag, pushed: 0, newLeads: 0, skipped: 0, failed: 0 };
 
-  console.log(`[scrape-leads] Starting — ${city.name}, ${city.state}`);
+  console.log(`[scrape-leads] Starting — ${city.name}, ${city.state} / trade: ${trade.tag}`);
 
   const seenPhones = new Set(); // dedup within this run before GHL handles cross-run dedup
 
-  for (const trade of TRADES) {
-    const query = `${trade.query} ${city.name} ${city.state}`;
-    console.log(`[scrape-leads] Searching: ${query}`);
+  const query = `${trade.query} ${city.name} ${city.state}`;
+  console.log(`[scrape-leads] Searching: ${query}`);
 
-    let places;
+  let places;
+  try {
+    places = await searchPlaces(query, placesKey);
+  } catch (err) {
+    console.error(`[scrape-leads] Search failed for "${query}":`, err.message);
+    places = [];
+  }
+
+  console.log(`[scrape-leads] ${places.length} results for "${query}"`);
+
+  for (const place of places) {
+    if (Date.now() - startedAt > DEADLINE_MS) {
+      console.log('[scrape-leads] approaching time limit — stopping early');
+      break;
+    }
+
+    const name = place.displayName?.text || '';
+    if (!name) continue;
+
+    const phone   = normalizePhone(place.nationalPhoneNumber || '');
+    const website = place.websiteUri || '';
+
+    if (!phone && !website) { stats.skipped++; continue; }
+
+    const phoneKey = phone ? phone.replace(/\D/g, '').slice(-10) : null;
+    if (phoneKey && seenPhones.has(phoneKey)) continue;
+    if (phoneKey) seenPhones.add(phoneKey);
+
+    const { firstName, lastName } = splitName(name);
+    const { address1, city: addrCity, state, postalCode } = parseAddress(place.formattedAddress);
+
+    const body = {
+      locationId: LOCATION_ID,
+      firstName,
+      lastName,
+      name,
+      tags: [trade.tag, 'google-maps-scraped', city.name.toLowerCase()],
+      source: 'google-maps-scraper',
+      country: 'US',
+    };
+
+    if (phone)     body.phone      = phone;
+    if (website)   body.website    = website;
+    if (address1)  body.address1   = address1;
+    if (addrCity)  body.city       = addrCity;
+    if (state)     body.state      = state;
+    if (postalCode) body.postalCode = postalCode;
+
     try {
-      places = await searchPlaces(query, placesKey);
+      const { isNew } = await upsertToGHL(body, ghlKey);
+      stats.pushed++;
+      if (isNew) stats.newLeads++;
     } catch (err) {
-      console.error(`[scrape-leads] Search failed for "${query}":`, err.message);
-      continue;
+      console.error(`[scrape-leads] GHL upsert failed for "${name}":`, err.message);
+      stats.failed++;
     }
 
-    console.log(`[scrape-leads] ${places.length} results for "${query}"`);
-
-    for (const place of places) {
-      const name = place.displayName?.text || '';
-      if (!name) continue;
-
-      const phone   = normalizePhone(place.nationalPhoneNumber || '');
-      const website = place.websiteUri || '';
-
-      if (!phone && !website) { stats.skipped++; continue; }
-
-      const phoneKey = phone ? phone.replace(/\D/g, '').slice(-10) : null;
-      if (phoneKey && seenPhones.has(phoneKey)) continue;
-      if (phoneKey) seenPhones.add(phoneKey);
-
-      const { firstName, lastName } = splitName(name);
-      const { address1, city: addrCity, state, postalCode } = parseAddress(place.formattedAddress);
-
-      const body = {
-        locationId: LOCATION_ID,
-        firstName,
-        lastName,
-        name,
-        tags: [trade.tag, 'google-maps-scraped', city.name.toLowerCase()],
-        source: 'google-maps-scraper',
-        country: 'US',
-      };
-
-      if (phone)     body.phone      = phone;
-      if (website)   body.website    = website;
-      if (address1)  body.address1   = address1;
-      if (addrCity)  body.city       = addrCity;
-      if (state)     body.state      = state;
-      if (postalCode) body.postalCode = postalCode;
-
-      try {
-        const { isNew } = await upsertToGHL(body, ghlKey);
-        stats.pushed++;
-        if (isNew) stats.newLeads++;
-      } catch (err) {
-        console.error(`[scrape-leads] GHL upsert failed for "${name}":`, err.message);
-        stats.failed++;
-      }
-
-      await sleep(DELAY_MS);
-    }
+    await sleep(DELAY_MS);
   }
 
   console.log(
