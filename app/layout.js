@@ -31,8 +31,7 @@ export default function RootLayout({ children }) {
         <Script
           src="https://widgets.leadconnectorhq.com/loader.js"
           data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
-          data-widget-id="6a27119dea8f17ad15de44fe"
-          data-source="WEB_USER"
+          data-location-id="Ra79aZSYkl96uPQajjkJ"
           strategy="afterInteractive"
         />
         {GA_ID && (

@@ -1,7 +1,7 @@
 .bubble {
   position: fixed;
   bottom: 24px;
-  right: 24px;
+  right: 110px;
   width: 72px;
   height: 72px;
   border-radius: 50%;
@@ -34,7 +34,7 @@
 .panel {
   position: fixed;
   bottom: 108px;
-  right: 24px;
+  right: 110px;
   width: 360px;
   max-width: calc(100vw - 48px);
   height: 520px;

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const ANTHROPIC_BASE = 'https://api.anthropic.com';
-const MODEL = 'claude-sonnet-4-20250514';
+const MODEL = 'claude-sonnet-4-6';
 const LOC_ID = 'Ra79aZSYkl96uPQajjkJ';
 
 const NICHES = ['plumber', 'HVAC', 'electrician', 'concrete contractor'];
