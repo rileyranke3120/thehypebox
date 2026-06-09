@@ -1,208 +1,307 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
-import { sendEmail } from '@/lib/send-email';
+import { ghlFetch, getContactsByTag, getAppointments } from '@/lib/ghl';
+import { sendSMS } from '@/lib/twilio';
 import { safeCompare } from '@/lib/safe-compare';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
-const PLAN_PRICES = { launch: 97, starter: 97, rocket: 297, growth: 297, velocity: 497, pro: 497 };
-const PLAN_LABELS = { launch: 'Launch Box', starter: 'Launch Box', rocket: 'Rocket Box', growth: 'Rocket Box', velocity: 'Velocity Box', pro: 'Velocity Box' };
+const LOC = process.env.GHL_LOCATION_ID || 'Ra79aZSYkl96uPQajjkJ';
 
-function esc(str) {
-  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const PLAN_PRICES = {
+  launch: 97, starter: 97,
+  rocket: 297, growth: 297,
+  velocity: 497, pro: 497,
+};
+
+// ── GHL helpers ────────────────────────────────────────────────────────────
+
+async function getContactsByTagSince(tag, sinceMs, apiKey) {
+  try {
+    const contacts = await getContactsByTag(LOC, tag, apiKey);
+    return contacts.filter((c) => {
+      const added = c.dateAdded ? new Date(c.dateAdded).getTime() : 0;
+      return added >= sinceMs;
+    });
+  } catch (err) {
+    console.warn(`[weekly-report] tag "${tag}" fetch error:`, err.message);
+    return [];
+  }
 }
 
-function stat(label, value, color = '#fff') {
-  return `
-    <td style="padding:0 8px 0 0;width:25%;">
-      <div style="background:#111;border:1px solid #1a1a1a;border-radius:6px;padding:14px 16px;">
-        <div style="font-size:0.65rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">${label}</div>
-        <div style="font-size:1.4rem;font-weight:800;color:${color};line-height:1;">${value}</div>
-      </div>
-    </td>`;
+async function getInboundReplies(sinceMs, apiKey) {
+  try {
+    const data = await ghlFetch(
+      `/conversations/search?locationId=${LOC}&sort=last_message_date&sortBy=desc&limit=100`,
+      apiKey
+    );
+    const convs = data?.conversations ?? [];
+    return convs.filter((c) => {
+      const lastDate = c.lastMessageDate ? new Date(c.lastMessageDate).getTime() : 0;
+      return lastDate >= sinceMs && c.lastMessageDirection === 'inbound';
+    }).length;
+  } catch (err) {
+    console.warn('[weekly-report] conversations fetch error:', err.message);
+    return 0;
+  }
 }
 
-function userRow(u) {
-  const plan = esc(PLAN_LABELS[u.plan] || u.plan || '—');
-  const daysLeft = u.trial_ends_at
-    ? Math.ceil((new Date(u.trial_ends_at) - Date.now()) / 86400000)
-    : null;
-  const dayStr = daysLeft != null ? ` · ${daysLeft}d left` : '';
-  return `<tr style="border-bottom:1px solid #1a1a1a;">
-    <td style="padding:8px 12px;font-size:0.8rem;color:#fff;">${esc(u.name || u.email)}</td>
-    <td style="padding:8px 12px;font-size:0.75rem;color:#aaa;">${esc(u.email)}</td>
-    <td style="padding:8px 12px;font-size:0.72rem;color:#FFD000;font-weight:700;text-transform:uppercase;">${plan}${dayStr}</td>
-  </tr>`;
+async function getDemosBooked(sinceMs, apiKey) {
+  try {
+    const weekAgo = new Date(sinceMs);
+    const now = new Date();
+    const events = await getAppointments(LOC, weekAgo.toISOString(), now.toISOString(), apiKey);
+    return events.filter(
+      (e) => e.appointmentStatus !== 'cancelled' && e.appointmentStatus !== 'invalid'
+    ).length;
+  } catch (err) {
+    console.warn('[weekly-report] appointments fetch error:', err.message);
+    return 0;
+  }
 }
+
+function getTopNiche(contacts) {
+  const NICHES = ['plumber', 'hvac', 'electrician', 'concrete', 'roofer', 'landscaper'];
+  const counts = {};
+  for (const c of contacts) {
+    for (const tag of c.tags || []) {
+      const niche = NICHES.find((n) => tag.toLowerCase().includes(n));
+      if (niche) counts[niche] = (counts[niche] || 0) + 1;
+    }
+  }
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return sorted[0]?.[0] ?? null;
+}
+
+function getBestCity(contacts) {
+  const counts = {};
+  for (const c of contacts) {
+    const city = (c.city || '').trim();
+    if (city) counts[city] = (counts[city] || 0) + 1;
+  }
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return sorted[0]?.[0] ?? null;
+}
+
+// ── Supabase helpers ───────────────────────────────────────────────────────
+
+async function getClientMetrics(supabase, sinceIso) {
+  const { data: allUsers } = await supabase
+    .from('users')
+    .select('plan, plan_status, created_at')
+    .not('plan_status', 'is', null)
+    .neq('role', 'super_admin');
+
+  const users = allUsers ?? [];
+
+  const totalMrr = users
+    .filter((u) => u.plan_status === 'active' || u.plan_status === 'trialing')
+    .reduce((sum, u) => sum + (PLAN_PRICES[u.plan] || 0), 0);
+
+  const newClients = users.filter(
+    (u) => u.plan_status === 'active' && u.created_at >= sinceIso
+  );
+
+  const mrrAdded = newClients.reduce((sum, u) => sum + (PLAN_PRICES[u.plan] || 0), 0);
+
+  return { totalMrr, newClientsSigned: newClients.length, mrrAdded };
+}
+
+async function getHealthScores(supabase) {
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+  const { data } = await supabase
+    .from('client_health_log')
+    .select('user_id, health_score, date')
+    .gte('date', weekAgo)
+    .order('date', { ascending: false });
+
+  const seen = new Set();
+  const scores = { green: 0, yellow: 0, red: 0 };
+  for (const row of data ?? []) {
+    if (!seen.has(row.user_id)) {
+      seen.add(row.user_id);
+      if (row.health_score in scores) scores[row.health_score]++;
+    }
+  }
+  return scores;
+}
+
+// ── AI summary ─────────────────────────────────────────────────────────────
+
+async function buildAiSummary(metrics) {
+  const {
+    leadsScraped, barryOutreachSent, repliesReceived, hotLeadsGenerated,
+    demosBooked, newClientsSigned, mrrAdded, totalMrr,
+    healthGreen, healthYellow, healthRed,
+    topNiche, bestCity, weekLabel,
+  } = metrics;
+
+  const replyRate = barryOutreachSent > 0
+    ? Math.round((repliesReceived / barryOutreachSent) * 100)
+    : 0;
+
+  const prompt = `You're writing a weekly business summary text for Riley and his dad. They run TheHypeBox — a SaaS selling AI voice agents to local trade businesses (plumbers, HVAC, electricians, etc). Barry is their AI outreach agent that texts scraped leads.
+
+Week of ${weekLabel}:
+- Leads scraped from Google Maps: ${leadsScraped}
+- Barry outreach texts sent: ${barryOutreachSent}
+- Replies received: ${repliesReceived} (${replyRate}% reply rate)
+- Hot leads generated: ${hotLeadsGenerated}
+- Demo calls booked: ${demosBooked}
+- New clients signed: ${newClientsSigned}
+- MRR added this week: $${mrrAdded}
+- Total MRR: $${totalMrr}
+- Client health — Green: ${healthGreen}, Yellow: ${healthYellow}, Red: ${healthRed}
+- Top performing niche: ${topNiche || 'unclear'}
+- Best performing city: ${bestCity || 'unclear'}
+
+Write a weekly business summary. Be direct and honest — what worked, what didn't, what Riley should focus on next week. Lead with the biggest win or the biggest problem, whichever matters more. Keep it to 5–6 sentences. No bullet points, no headers, no emojis. Plain text only.`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Anthropic API ${res.status}: ${err}`);
+  }
+
+  const result = await res.json();
+  return result.content?.[0]?.text ?? 'Weekly metrics collected but AI summary generation failed.';
+}
+
+// ── Main handler ───────────────────────────────────────────────────────────
 
 export async function GET(request) {
   const authHeader = request.headers.get('authorization');
   if (!process.env.CRON_SECRET) {
-    console.error('[cron] CRON_SECRET env var is not set');
+    console.error('[weekly-report] CRON_SECRET not set');
     return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
   }
   if (!safeCompare(authHeader ?? '', `Bearer ${process.env.CRON_SECRET ?? ''}`)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  try {
+  const apiKey = process.env.GHL_LOCATION_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ error: 'GHL_LOCATION_KEY not configured' }, { status: 500 });
+  }
+
   const supabase = createClient();
   const now = new Date();
-  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
-  const weekAhead = new Date(Date.now() + 7 * 86400000).toISOString();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const sinceMs = weekAgo.getTime();
+  const sinceIso = weekAgo.toISOString();
+  const weekLabel = `${weekAgo.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
-  const [{ data: usersData }, { data: callsData }, { data: autosData }] = await Promise.all([
-    supabase.from('users').select('plan,plan_status,created_at,trial_ends_at,name,email').not('plan_status', 'is', null),
-    supabase.from('retell_calls').select('call_id,call_status,call_summary').gte('created_at', weekAgo),
-    supabase.from('automation_logs').select('id').gte('triggered_at', weekAgo),
-  ]);
+  try {
+    const [
+      scrapedContacts,
+      smsContacts,
+      hotLeadContacts,
+      repliesReceived,
+      demosBooked,
+      clientMetrics,
+      healthScores,
+    ] = await Promise.all([
+      getContactsByTagSince('google-maps-scraped', sinceMs, apiKey),
+      getContactsByTagSince('sms-sent', sinceMs, apiKey),
+      getContactsByTagSince('hot-lead', sinceMs, apiKey),
+      getInboundReplies(sinceMs, apiKey),
+      getDemosBooked(sinceMs, apiKey),
+      getClientMetrics(supabase, sinceIso),
+      getHealthScores(supabase),
+    ]);
 
-  const users_ = usersData || [];
-  const calls_ = callsData || [];
-  const autos_ = autosData || [];
+    const metrics = {
+      leadsScraped: scrapedContacts.length,
+      barryOutreachSent: smsContacts.length,
+      repliesReceived,
+      hotLeadsGenerated: hotLeadContacts.length,
+      demosBooked,
+      newClientsSigned: clientMetrics.newClientsSigned,
+      mrrAdded: clientMetrics.mrrAdded,
+      totalMrr: clientMetrics.totalMrr,
+      healthGreen: healthScores.green,
+      healthYellow: healthScores.yellow,
+      healthRed: healthScores.red,
+      topNiche: getTopNiche(smsContacts),
+      bestCity: getBestCity(hotLeadContacts),
+      weekLabel,
+    };
 
-  const mrr = users_
-    .filter(u => u.plan_status === 'active' || u.plan_status === 'trialing')
-    .reduce((sum, u) => sum + (PLAN_PRICES[u.plan] || 0), 0);
+    console.log('[weekly-report] metrics:', JSON.stringify(metrics));
 
-  const activeCount = users_.filter(u => u.plan_status === 'active').length;
-  const trialingCount = users_.filter(u => u.plan_status === 'trialing').length;
-  const pastDueCount = users_.filter(u => u.plan_status === 'past_due').length;
-  const canceledCount = users_.filter(u => u.plan_status === 'canceled').length;
+    const aiSummary = await buildAiSummary(metrics);
 
-  const newSignups = users_.filter(u => u.created_at >= weekAgo);
-  const trialsExpiring = users_.filter(u =>
-    u.plan_status === 'trialing' && u.trial_ends_at &&
-    u.trial_ends_at > now.toISOString() && u.trial_ends_at < weekAhead
-  );
-  const pastDueUsers = users_.filter(u => u.plan_status === 'past_due');
+    const phones = [process.env.RILEY_PHONE, process.env.DAD_PHONE].filter(Boolean);
+    const smsResults = [];
+    const smsText = `TheHypeBox Weekly (${weekLabel}):\n\n${aiSummary}`;
 
-  const callsCount = calls_.length;
-  const bookedCount = calls_.filter(c =>
-    c.call_summary?.toLowerCase().includes('appointment') ||
-    c.call_summary?.toLowerCase().includes('booked')
-  ).length;
-  const bookingRate = callsCount ? Math.round((bookedCount / callsCount) * 100) : 0;
-  const automationsCount = autos_.length;
+    for (const phone of phones) {
+      try {
+        await sendSMS(phone, smsText, { apiKey, locationId: LOC });
+        smsResults.push({ phone, ok: true });
+        console.log(`[weekly-report] SMS sent to ${phone}`);
+      } catch (err) {
+        smsResults.push({ phone, ok: false, error: err.message });
+        console.error(`[weekly-report] SMS failed to ${phone}:`, err.message);
+      }
+    }
 
-  const weekLabel = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const { error: insertErr } = await supabase.from('weekly_reports').upsert({
+      week_start: weekAgo.toISOString().split('T')[0],
+      week_end: now.toISOString().split('T')[0],
+      leads_scraped: metrics.leadsScraped,
+      barry_outreach_sent: metrics.barryOutreachSent,
+      replies_received: metrics.repliesReceived,
+      hot_leads_generated: metrics.hotLeadsGenerated,
+      demos_booked: metrics.demosBooked,
+      new_clients_signed: metrics.newClientsSigned,
+      mrr_added: metrics.mrrAdded,
+      total_mrr: metrics.totalMrr,
+      health_green: metrics.healthGreen,
+      health_yellow: metrics.healthYellow,
+      health_red: metrics.healthRed,
+      top_niche: metrics.topNiche,
+      best_city: metrics.bestCity,
+      ai_summary: aiSummary,
+      raw_metrics: metrics,
+      sms_sent_to: smsResults,
+      created_at: now.toISOString(),
+    }, { onConflict: 'week_start' });
 
-  const html = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:system-ui,-apple-system,sans-serif;">
-<div style="max-width:600px;margin:0 auto;padding:40px 24px;">
+    if (insertErr) {
+      console.warn('[weekly-report] Supabase upsert failed (run migration 033_weekly_reports.sql):', insertErr.message);
+    }
 
-  <div style="margin-bottom:8px;">
-    <span style="font-size:1.3rem;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#FFD000;">THE HYPE BOX</span>
-  </div>
-  <div style="margin-bottom:28px;">
-    <span style="font-size:0.72rem;color:#555;letter-spacing:0.1em;text-transform:uppercase;">Weekly Report — ${weekLabel}</span>
-  </div>
+    console.log(
+      `[weekly-report] done — scraped=${metrics.leadsScraped} barry=${metrics.barryOutreachSent} ` +
+      `replies=${metrics.repliesReceived} hot=${metrics.hotLeadsGenerated} demos=${metrics.demosBooked} ` +
+      `clients=${metrics.newClientsSigned} mrr_added=$${metrics.mrrAdded} total_mrr=$${metrics.totalMrr} ` +
+      `sms=${smsResults.filter((r) => r.ok).length}/${phones.length}`
+    );
 
-  <h1 style="font-size:1.25rem;font-weight:800;color:#fff;margin:0 0 20px;">
-    $${mrr.toLocaleString()}/mo MRR &nbsp;·&nbsp; ${users_.length} total clients
-  </h1>
-
-  <!-- Stats row 1 -->
-  <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
-    <tr>
-      ${stat('MRR', '$' + mrr.toLocaleString(), '#FFD000')}
-      ${stat('Active', activeCount, '#4CAF50')}
-      ${stat('Trialing', trialingCount, '#FFD000')}
-      ${stat('Past Due', pastDueCount, pastDueCount > 0 ? '#FF8C00' : '#555')}
-    </tr>
-  </table>
-  <!-- Stats row 2 -->
-  <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
-    <tr>
-      ${stat('Calls (7d)', callsCount, '#fff')}
-      ${stat('Booked', bookedCount, '#4CAF50')}
-      ${stat('Booking Rate', bookingRate + '%', bookingRate >= 30 ? '#4CAF50' : bookingRate >= 15 ? '#FFD000' : '#FF8C00')}
-      ${stat('Automations (7d)', automationsCount, '#888')}
-    </tr>
-  </table>
-
-  ${newSignups.length > 0 ? `
-  <!-- New signups -->
-  <div style="margin-bottom:24px;">
-    <div style="font-size:0.7rem;color:#555;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">
-      New Signups This Week (${newSignups.length})
-    </div>
-    <div style="background:#111;border:1px solid #1a1a1a;border-radius:8px;overflow:hidden;">
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr style="border-bottom:1px solid #222;">
-            <th style="padding:8px 12px;text-align:left;font-size:0.65rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Name</th>
-            <th style="padding:8px 12px;text-align:left;font-size:0.65rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Email</th>
-            <th style="padding:8px 12px;text-align:left;font-size:0.65rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Plan</th>
-          </tr>
-        </thead>
-        <tbody>${newSignups.map(userRow).join('')}</tbody>
-      </table>
-    </div>
-  </div>
-  ` : `
-  <div style="padding:16px;background:#111;border:1px solid #1a1a1a;border-radius:8px;color:#555;font-size:0.85rem;margin-bottom:24px;">
-    No new signups this week.
-  </div>
-  `}
-
-  ${trialsExpiring.length > 0 ? `
-  <!-- Trials expiring -->
-  <div style="margin-bottom:24px;">
-    <div style="font-size:0.7rem;color:#FF8C00;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">
-      Trials Expiring This Week (${trialsExpiring.length}) — follow up!
-    </div>
-    <div style="background:#111;border:1px solid #2a1a00;border-radius:8px;overflow:hidden;">
-      <table style="width:100%;border-collapse:collapse;">
-        <tbody>${trialsExpiring.map(userRow).join('')}</tbody>
-      </table>
-    </div>
-  </div>
-  ` : ''}
-
-  ${pastDueUsers.length > 0 ? `
-  <!-- Past due -->
-  <div style="margin-bottom:24px;">
-    <div style="font-size:0.7rem;color:#E24B4A;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">
-      Past Due — Card Issues (${pastDueUsers.length})
-    </div>
-    <div style="background:#111;border:1px solid #2a0a0a;border-radius:8px;overflow:hidden;">
-      <table style="width:100%;border-collapse:collapse;">
-        <tbody>${pastDueUsers.map(userRow).join('')}</tbody>
-      </table>
-    </div>
-  </div>
-  ` : ''}
-
-  <div style="margin-top:8px;padding-top:20px;border-top:1px solid #1a1a1a;">
-    <p style="font-size:0.75rem;color:#555;margin:0;line-height:1.8;">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/admin/clients" style="color:#FFD000;">Admin Dashboard</a>
-      &nbsp;·&nbsp; ${canceledCount} canceled all-time &nbsp;·&nbsp; Generated ${weekLabel}
-    </p>
-  </div>
-
-</div>
-</body>
-</html>`;
-
-  await sendEmail({
-    to: 'riley@thehypeboxllc.com',
-    subject: `TheHypeBox Weekly — $${mrr.toLocaleString()} MRR · ${newSignups.length} new · ${trialsExpiring.length} expiring`,
-    html,
-  });
-
-  return NextResponse.json({
-    ok: true,
-    mrr,
-    newSignups: newSignups.length,
-    trialsExpiring: trialsExpiring.length,
-    pastDue: pastDueCount,
-    calls: callsCount,
-  });
+    return NextResponse.json({
+      ok: true,
+      week: weekLabel,
+      metrics,
+      aiSummary,
+      smsResults,
+    });
   } catch (err) {
-    console.error('[weekly-report] cron error:', err);
-    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
+    console.error('[weekly-report] fatal error:', err);
+    return NextResponse.json({ error: err.message || 'Something went wrong.' }, { status: 500 });
   }
 }

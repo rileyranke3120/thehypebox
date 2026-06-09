@@ -17,7 +17,7 @@ const inputStyle = {
 };
 
 export default function ContactSection() {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
+  const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [status, setStatus] = useState('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -111,8 +111,7 @@ export default function ContactSection() {
                   <input type="text" placeholder="Your name" value={form.name} onChange={update('name')} required style={inputStyle} />
                   <input type="email" placeholder="Email address" value={form.email} onChange={update('email')} required style={inputStyle} />
                 </div>
-                <input type="tel" placeholder="Phone number (optional)" value={form.phone} onChange={update('phone')} style={inputStyle} />
-                <textarea placeholder="What would you like to know?" value={form.message} onChange={update('message')} rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
+<textarea placeholder="What would you like to know?" value={form.message} onChange={update('message')} rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
 
                 {status === 'error' && (
                   <p style={{ color: '#ff6b6b', fontSize: '0.9rem' }}>⚠ {errorMsg}</p>

@@ -1036,6 +1036,36 @@
   opacity: 0.85;
 }
 
+/* --- Footer contact info --- */
+.footerContact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--grey-400);
+  letter-spacing: 0.04em;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--grey-700);
+  margin-bottom: 0;
+}
+
+.footerContact a {
+  color: var(--grey-400);
+  transition: color var(--transition);
+}
+
+.footerContact a:hover {
+  color: var(--white);
+  opacity: 1;
+}
+
+.footerContactDivider {
+  color: var(--grey-700);
+  user-select: none;
+}
+
 /* --- Footer micro text --- */
 .footerMicro {
   text-align: center;

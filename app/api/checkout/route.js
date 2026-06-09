@@ -47,7 +47,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid submission.' }, { status: 400 });
     }
 
-    const { plan, email, name, phone } = body;
+    const { plan, email, name, phone, niche, ref } = body;
+    const nicheSlug = typeof niche === 'string' ? niche.slice(0, 50).replace(/[^a-z0-9_-]/gi, '') : '';
 
     if (!plan || !PLAN_CONFIG[plan]) {
       return NextResponse.json({ error: 'Invalid plan selected.' }, { status: 400 });
@@ -112,7 +113,7 @@ export async function POST(request) {
       {
         email: normalizedEmail,
         name: name.trim(),
-        metadata: { plan, source: 'thehypeboxllc.com' },
+        metadata: { plan, source: 'thehypeboxllc.com', ...(nicheSlug ? { niche: nicheSlug } : {}) },
       },
       { idempotencyKey: `cus-${idempotencyBase}` }
     );
@@ -144,6 +145,10 @@ export async function POST(request) {
     // user's name if an attacker submits checkout with a known email address.
     if (!existingUser) upsertData.name = name.trim();
     if (phone?.trim()) upsertData.business_phone = phone.trim();
+    // Store referral code only for brand-new users (never overwrite an existing one)
+    if (!existingUser && ref && /^[A-Z0-9]{8}$/.test(ref.toUpperCase())) {
+      upsertData.referred_by_code = ref.toUpperCase();
+    }
 
     const { error: upsertError } = await supabase.from('users').upsert(upsertData, { onConflict: 'email' });
     if (upsertError) {

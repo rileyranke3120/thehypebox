@@ -229,10 +229,23 @@ export async function POST(request) {
   const args = body.args ?? body;
   const { name, phone, email, address, date: rawDate, time: rawTime } = args;
 
-  // Resolve GHL credentials by agent_id — fail closed if unknown
+  // Resolve GHL credentials by agent_id
+  // TheHypeBox's own Sarah uses platform-level creds directly
   const agentId = body.agent_id ?? null;
-  const clientCreds = await getClientCreds(agentId);
-  const creds = resolveGhlCreds(clientCreds);
+  const THEHYPEBOX_AGENT_ID = process.env.THEHYPEBOX_RETELL_AGENT_ID;
+  const isHypeBoxAgent = THEHYPEBOX_AGENT_ID && agentId === THEHYPEBOX_AGENT_ID;
+
+  let creds;
+  if (isHypeBoxAgent) {
+    creds = {
+      apiKey:     process.env.GHL_LOCATION_KEY,
+      locationId: process.env.GHL_LOCATION_ID,
+      calendarId: 'Ws5pQCTkYNNeqtSwGII4',
+    };
+  } else {
+    const clientCreds = await getClientCreds(agentId);
+    creds = resolveGhlCreds(clientCreds);
+  }
 
   if (!creds || !creds.apiKey || !creds.locationId) {
     console.error(`[book-appointment] no credentials for agent_id=${agentId}`);
@@ -244,16 +257,18 @@ export async function POST(request) {
     return Response.json({ success: false, message: "I'm sorry, booking isn't set up for this account yet. Please call us directly." });
   }
 
-  if (!name || !phone || !address || !rawDate || !rawTime) {
+  // TheHypeBox demos don't require a physical address (address = business name/type)
+  const requiresAddress = !isHypeBoxAgent;
+  if (!name || !phone || (requiresAddress && !address) || !rawDate || !rawTime) {
     return Response.json({
       success: false,
-      message: "I'm missing some information. Could you provide your name, phone number, address, preferred date, and preferred time?",
+      message: "I'm missing some information. Could you provide your name, phone number, preferred date, and preferred time?",
     });
   }
 
   if (name.length > 200) return Response.json({ success: false, message: 'Name too long.' });
   if (phone.length > 30) return Response.json({ success: false, message: 'Phone too long.' });
-  if (address.length > 500) return Response.json({ success: false, message: 'Address too long.' });
+  if (address && address.length > 500) return Response.json({ success: false, message: 'Address too long.' });
   if (rawDate.length > 100) return Response.json({ success: false, message: 'Date too long.' });
   if (rawTime.length > 100) return Response.json({ success: false, message: 'Time too long.' });
 

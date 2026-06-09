@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { sendSMS } from '@/lib/twilio';
-import { findContactByPhone, createContact, addContactNote } from '@/lib/ghl';
+import { findContactByPhone, createContact, addContactNote, addContactTags } from '@/lib/ghl';
+import { analyzeCall, sendAlertSMS, logAlert } from '@/lib/inbound-alert';
 import crypto from 'crypto';
 
 function verifyRetellSignature(rawBody, signature, apiKey) {
@@ -129,9 +130,18 @@ export async function POST(request) {
       }
     }
 
-    // Look up client by agent_id — needed for branding, SMS credentials, and client_id on the log
+    // Look up client by agent_id — needed for branding, SMS credentials, and client_id on the log.
+    // TheHypeBox's own Sarah uses platform-level GHL creds directly (not a client row).
     let clientRow = null;
-    if (agent_id) {
+    const THEHYPEBOX_AGENT_ID = process.env.THEHYPEBOX_RETELL_AGENT_ID;
+    if (THEHYPEBOX_AGENT_ID && agent_id === THEHYPEBOX_AGENT_ID) {
+      clientRow = {
+        id: null,
+        business_name: 'The HypeBox',
+        ghl_api_key: process.env.GHL_LOCATION_KEY,
+        ghl_location_id: process.env.GHL_LOCATION_ID,
+      };
+    } else if (agent_id) {
       const { data } = await supabase
         .from('users')
         .select('id, business_name, ghl_api_key, ghl_location_id')
@@ -203,6 +213,52 @@ export async function POST(request) {
         }
       } catch (ghlErr) {
         console.error('[retell webhook] GHL contact sync error:', ghlErr.message);
+      }
+    }
+
+    // AI call analysis + Riley/Dad alert — fires on any completed call with a summary
+    if (isNewCall && event === 'call_analyzed' && call_summary) {
+      try {
+        const analysis = await analyzeCall({ call_summary, transcript });
+
+        const callerLabel = analysis.callerName || phone || 'Unknown';
+        const bizLabel = analysis.businessName || 'Unknown business';
+        const smsMessage =
+          `📞 SARAH CALL — ${analysis.interestLevel.toUpperCase()}\n` +
+          `${callerLabel} | ${bizLabel}\n` +
+          `${phone || ''}\n\n` +
+          `${analysis.summary}`;
+
+        await sendAlertSMS(smsMessage).catch((err) =>
+          console.error('[retell webhook] alert SMS error:', err.message)
+        );
+
+        // Tag the GHL contact with interest level
+        if (clientRow?.ghl_api_key && clientRow?.ghl_location_id && phone) {
+          try {
+            let contactId = await findContactByPhone(clientRow.ghl_location_id, phone, clientRow.ghl_api_key);
+            if (!contactId) {
+              contactId = await createContact(clientRow.ghl_location_id, { phone }, clientRow.ghl_api_key);
+            }
+            if (contactId) {
+              await addContactTags(contactId, [`interest-${analysis.interestLevel}`], clientRow.ghl_api_key);
+            }
+          } catch (tagErr) {
+            console.error('[retell webhook] interest tag error:', tagErr.message);
+          }
+        }
+
+        logAlert({
+          type: 'retell-call',
+          call_id,
+          phone,
+          interestLevel: analysis.interestLevel,
+          callerName: analysis.callerName,
+          businessName: analysis.businessName,
+          summary: analysis.summary,
+        });
+      } catch (err) {
+        console.error('[retell webhook] AI analysis error:', err.message);
       }
     }
 

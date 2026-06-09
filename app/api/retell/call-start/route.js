@@ -42,10 +42,17 @@ export async function POST(request) {
 
   // ── Per-client lookup ───────────────────────────────────────────────────────
   const agentId = body.agent_id ?? null;
-  const client = await lookupClientByAgentId(agentId);
+  const THEHYPEBOX_AGENT_ID = process.env.THEHYPEBOX_RETELL_AGENT_ID;
 
-  if (!client) {
-    console.warn(`[call-start] no client found for agent_id=${agentId} — per-client vars will be empty`);
+  let client;
+  if (THEHYPEBOX_AGENT_ID && agentId === THEHYPEBOX_AGENT_ID) {
+    // TheHypeBox's own Sarah — inject platform-level calendar vars
+    client = { business_name: 'The HypeBox', ghl_calendar_id: 'Ws5pQCTkYNNeqtSwGII4' };
+  } else {
+    client = await lookupClientByAgentId(agentId);
+    if (!client) {
+      console.warn(`[call-start] no client found for agent_id=${agentId} — per-client vars will be empty`);
+    }
   }
 
   // ── Time variables (Eastern) ────────────────────────────────────────────────

@@ -37,6 +37,14 @@ export default function Footer() {
           </div>
         </div>
 
+        <div className={styles.footerContact}>
+          <span>243 Cherrington Rd, Westerville, OH 43081</span>
+          <span className={styles.footerContactDivider}>·</span>
+          <a href="mailto:riley@thehypeboxllc.com">riley@thehypeboxllc.com</a>
+          <span className={styles.footerContactDivider}>·</span>
+          <a href="tel:+13802462387">(380) 246-2387</a>
+        </div>
+
         <div className={styles.footerMicro}>
           No contracts. No complicated setup. Just a smarter way to run your business.
         </div>

@@ -45,7 +45,7 @@ const labelStyle = {
   marginBottom: '6px',
 };
 
-function CheckoutForm({ plan }) {
+function CheckoutForm({ plan, referralCode, niche }) {
   const stripe = useStripe();
   const elements = useElements();
   const [info, setInfo] = useState({ name: '', email: '', phone: '' });
@@ -81,7 +81,7 @@ function CheckoutForm({ plan }) {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, ...info }),
+        body: JSON.stringify({ plan, ...info, ...(referralCode ? { ref: referralCode } : {}), ...(niche ? { niche } : {}) }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {
@@ -163,10 +163,10 @@ function CheckoutForm({ plan }) {
   );
 }
 
-export default function StripeCheckoutForm({ plan }) {
+export default function StripeCheckoutForm({ plan, referralCode, niche }) {
   return (
     <Elements stripe={stripePromise} options={{ mode: 'setup', currency: 'usd', payment_method_types: ['card'], appearance: APPEARANCE }}>
-      <CheckoutForm plan={plan} />
+      <CheckoutForm plan={plan} referralCode={referralCode} niche={niche} />
     </Elements>
   );
 }

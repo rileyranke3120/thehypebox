@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Facebook scraper session (contains auth cookies — never commit)
+.fb-session.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

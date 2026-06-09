@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { updateSubAccount } from '@/lib/highlevel';
 import { auth } from '@/auth';
+import { detectNiche, getSnapshotForNiche } from '@/lib/niche-detector';
+import { sendEmail } from '@/lib/send-email';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,11 +45,18 @@ export async function POST(request) {
       return NextResponse.json({ ok: true });
     }
 
+    // Detect niche from business name and update if it changed
+    if (business_name) {
+      const detected = detectNiche(business_name, email);
+      updates.niche = detected.niche;
+      updates.niche_confidence = detected.confidence;
+    }
+
     const { data: user, error } = await supabase
       .from('users')
       .update(updates)
       .eq('email', email.toLowerCase())
-      .select('ghl_location_id')
+      .select('id, ghl_location_id, niche, niche_confidence')
       .single();
 
     if (error) throw error;
@@ -64,6 +73,52 @@ export async function POST(request) {
       } catch (hlErr) {
         // Non-fatal — Supabase is updated; GHL can be corrected from the admin panel.
         console.error('[api/onboarding] GHL location update failed:', hlErr.message);
+      }
+
+      // Alert Riley if a niche-specific snapshot now exists that wasn't available at signup.
+      // The GHL API cannot re-apply snapshots post-creation, so Riley must do this manually.
+      if (business_name) {
+        const { isNicheSpecific } = getSnapshotForNiche(user.niche);
+        if (isNicheSpecific) {
+          const { snapshotId } = getSnapshotForNiche(user.niche);
+          sendEmail({
+            to: 'riley@thehypeboxllc.com',
+            subject: `Snapshot upgrade available: ${business_name} (${user.niche})`,
+            html: `<div style="background:#0a0a0a;padding:32px 24px;font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
+              <p style="font-size:1.2rem;font-weight:900;color:#FFD000;margin:0 0 16px;text-transform:uppercase;letter-spacing:0.08em;">Snapshot Upgrade Available</p>
+              <p style="color:#fff;margin:0 0 12px;">A niche-specific GHL snapshot exists for a client that signed up with the default Contractor Box.</p>
+              <div style="background:#111;border:1px solid #222;border-radius:6px;padding:16px;margin-bottom:20px;">
+                <p style="margin:0 0 6px;font-size:0.75rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Business</p>
+                <p style="margin:0 0 12px;color:#fff;">${business_name}</p>
+                <p style="margin:0 0 6px;font-size:0.75rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Detected Niche</p>
+                <p style="margin:0 0 12px;color:#FFD000;font-weight:700;">${user.niche}</p>
+                <p style="margin:0 0 6px;font-size:0.75rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">GHL Location</p>
+                <p style="margin:0 0 12px;color:#fff;font-family:monospace;">${user.ghl_location_id}</p>
+                <p style="margin:0 0 6px;font-size:0.75rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;">Niche Snapshot ID</p>
+                <p style="margin:0;color:#fff;font-family:monospace;">${snapshotId}</p>
+              </div>
+              <p style="color:#999;font-size:0.85rem;margin:0 0 8px;">To apply the niche snapshot manually in GHL:</p>
+              <ol style="color:#999;font-size:0.85rem;padding-left:20px;margin:0;">
+                <li>Go to Agency View → Sub-accounts → find <strong style="color:#fff;">${business_name}</strong></li>
+                <li>Click the three-dot menu → <strong>Load Snapshot</strong></li>
+                <li>Select the <strong style="color:#FFD000;">${user.niche}</strong> snapshot</li>
+                <li>Choose <strong>Add missing data only</strong> (avoid overwriting existing contacts)</li>
+              </ol>
+            </div>`,
+          }).catch(() => {});
+
+          supabase.from('snapshot_deployments').insert({
+            user_id: user.id,
+            location_id: user.ghl_location_id,
+            niche: user.niche,
+            snapshot_id: snapshotId,
+            status: 'manual_required',
+            confidence: user.niche_confidence,
+            matched_keyword: null,
+            is_niche_specific: true,
+            notes: `Niche confirmed at onboarding (business_name: ${business_name}). Manual re-snapshot required.`,
+          }).then(() => {}).catch(() => {});
+        }
       }
     }
 

@@ -6,6 +6,10 @@ import { createClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/send-email';
 import { sendSMS } from '@/lib/twilio';
 
+function generateReferralCode() {
+  return randomBytes(4).toString('hex').toUpperCase(); // 8-char hex code
+}
+
 const PLAN_LABELS = {
   launch: 'The Launch Box',   rocket: 'The Rocket Box',   velocity: 'The Velocity Box',
   starter: 'The Launch Box',  growth: 'The Rocket Box',   pro: 'The Velocity Box',
@@ -81,16 +85,18 @@ export async function POST(request) {
     const password_hash = await bcrypt.hash(tempPassword, 12);
 
     // Atomic: only writes if password_hash is still null — prevents duplicate welcome emails
+    const referralCode = generateReferralCode();
     const { data: updated, error: updateError } = await supabase
       .from('users')
       .update({
         password_hash,
         name: name || email.split('@')[0],
         plan_status: 'trialing',
+        referral_code: referralCode,
       })
       .eq('email', email.toLowerCase())
       .is('password_hash', null)
-      .select()
+      .select('id, name, business_phone, referred_by_code, stripe_customer_id')
       .single();
 
     if (updateError && updateError.code !== 'PGRST116') throw updateError;
@@ -181,9 +187,89 @@ export async function POST(request) {
       console.error('[checkout/finalize] SMS failed:', smsErr.message);
     }
 
+    // Process referral credit if this user was referred
+    if (updated?.referred_by_code) {
+      try {
+        await processReferral(supabase, updated, email.toLowerCase());
+      } catch (refErr) {
+        console.error('[checkout/finalize] referral processing failed:', refErr.message);
+      }
+    }
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[checkout/finalize]', err);
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
   }
+}
+
+async function processReferral(supabase, newUser, newUserEmail) {
+  const CREDIT_CENTS = 5000; // $50.00
+
+  // Find the referrer by referral code
+  const { data: referrer } = await supabase
+    .from('users')
+    .select('id, email, name, business_phone, stripe_customer_id, referral_credits_cents')
+    .eq('referral_code', newUser.referred_by_code)
+    .single();
+
+  if (!referrer || referrer.email === newUserEmail) return; // code invalid or self-referral
+
+  // Insert tracking row — unique constraint on referred_user_id prevents double credit
+  const { error: insertErr } = await supabase.from('referral_tracking').insert({
+    referrer_user_id: referrer.id,
+    referred_user_id: newUser.id,
+    referrer_email: referrer.email,
+    referred_email: newUserEmail,
+    credit_cents: CREDIT_CENTS,
+  });
+
+  if (insertErr?.code === '23505') {
+    console.log('[referral] already processed for referred user', newUser.id);
+    return;
+  }
+  if (insertErr) throw insertErr;
+
+  // Apply $50 Stripe balance credit to referrer
+  let stripeApplied = false;
+  if (referrer.stripe_customer_id) {
+    try {
+      await stripe.customers.createBalanceTransaction(referrer.stripe_customer_id, {
+        amount: -CREDIT_CENTS,
+        currency: 'usd',
+        description: `Referral credit — ${newUserEmail} signed up`,
+      });
+      stripeApplied = true;
+    } catch (stripeErr) {
+      console.error('[referral] Stripe credit failed:', stripeErr.message);
+    }
+  }
+
+  // Atomic increment of referrer's credit balance
+  await supabase.rpc('increment_referral_credits', {
+    p_user_id: referrer.id,
+    p_amount: CREDIT_CENTS,
+  });
+
+  await supabase.from('referral_tracking').update({
+    stripe_credit_applied: stripeApplied,
+  }).eq('referrer_user_id', referrer.id).eq('referred_user_id', newUser.id);
+
+  // SMS the referrer
+  if (referrer.business_phone) {
+    try {
+      const newUserName = newUser.name || newUserEmail;
+      await sendSMS(
+        referrer.business_phone,
+        `Your referral just signed up! ${newUserName} is now a TheHypeBox client. $50 credit has been applied to your account. Keep spreading the word!`,
+        { apiKey: process.env.GHL_SMS_KEY, locationId: process.env.GHL_LOCATION_ID }
+      );
+      await supabase.from('referral_tracking').update({ sms_sent: true })
+        .eq('referrer_user_id', referrer.id).eq('referred_user_id', newUser.id);
+    } catch (smsErr) {
+      console.error('[referral] referrer SMS failed:', smsErr.message);
+    }
+  }
+
+  console.log(`[referral] $${CREDIT_CENTS / 100} credit applied to ${referrer.email} for referring ${newUserEmail}`);
 }

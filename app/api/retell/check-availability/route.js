@@ -101,10 +101,22 @@ export async function POST(request) {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  // Resolve GHL credentials by agent_id — fail closed if unknown
+  // Resolve GHL credentials by agent_id
+  // TheHypeBox's own Sarah uses platform-level creds directly
   const agentId = body.agent_id ?? null;
-  const clientCreds = await getClientCreds(agentId);
-  const creds = resolveGhlCreds(clientCreds);
+  const THEHYPEBOX_AGENT_ID = process.env.THEHYPEBOX_RETELL_AGENT_ID;
+
+  let creds;
+  if (THEHYPEBOX_AGENT_ID && agentId === THEHYPEBOX_AGENT_ID) {
+    creds = {
+      apiKey:     process.env.GHL_LOCATION_KEY,
+      locationId: process.env.GHL_LOCATION_ID,
+      calendarId: 'Ws5pQCTkYNNeqtSwGII4',
+    };
+  } else {
+    const clientCreds = await getClientCreds(agentId);
+    creds = resolveGhlCreds(clientCreds);
+  }
 
   if (!creds || !creds.apiKey || !creds.locationId) {
     console.error(`[check-availability] no credentials for agent_id=${agentId}`);

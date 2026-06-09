@@ -25,11 +25,10 @@ const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <head>
-        <script src="/widget.js" data-client="marketing" async />
-      </head>
+      <head></head>
       <body className={`${barlowCondensed.variable} ${dmSans.variable}`}>
         <Providers>{children}</Providers>
+        <div dangerouslySetInnerHTML={{ __html: '<script src="https://widgets.leadconnectorhq.com/loader.js" data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js" data-widget-id="6a27119dea8f17ad15de44fe" data-source="WEB_USER"></script>' }} />
         {GA_ID && (
           <>
             <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />

@@ -6,11 +6,160 @@ import { createClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/send-email';
 import { paymentSuccessEmail, paymentFailedEmail, subscriptionCanceledEmail, highLevelAccessEmail } from '@/lib/email-templates';
 import { createSubAccount } from '@/lib/highlevel';
+import { sendAlertSMS } from '@/lib/inbound-alert';
+import { sendSMS } from '@/lib/twilio';
+import { detectNiche, getSnapshotForNiche } from '@/lib/niche-detector';
 
 const PLAN_LABELS = {
   launch: 'The Launch Box',   rocket: 'The Rocket Box',   velocity: 'The Velocity Box',
   starter: 'The Launch Box',  growth: 'The Rocket Box',   pro: 'The Velocity Box',
 };
+
+// ── Cancellation deflection ──────────────────────────────────
+
+async function fetchUsageSnapshot(user) {
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  let conversations30d = null;
+  let pipelineActive = null;
+
+  if (user?.ghl_location_id && user?.ghl_api_key) {
+    try {
+      const r = await fetch(
+        `https://services.leadconnectorhq.com/conversations/search?locationId=${user.ghl_location_id}&sort=last_message_date&sortBy=desc&limit=100`,
+        { headers: { Authorization: `Bearer ${user.ghl_api_key}`, Version: '2021-07-28' } }
+      );
+      if (r.ok) {
+        const d = await r.json();
+        conversations30d = (d?.conversations ?? []).filter((c) => {
+          const ts = c.lastMessageDate ? new Date(c.lastMessageDate).getTime() : 0;
+          return ts >= since.getTime();
+        }).length;
+      }
+    } catch (_) {}
+
+    try {
+      const r = await fetch(
+        `https://services.leadconnectorhq.com/opportunities/search?location_id=${user.ghl_location_id}&limit=100`,
+        { headers: { Authorization: `Bearer ${user.ghl_api_key}`, Version: '2021-07-28' } }
+      );
+      if (r.ok) {
+        const d = await r.json();
+        pipelineActive = (d?.opportunities ?? []).some((opp) => {
+          const ts = opp.lastStageChangeAt || opp.date_updated || opp.updatedAt;
+          return ts && new Date(ts).getTime() >= since.getTime();
+        });
+      }
+    } catch (_) {}
+  }
+
+  const lastLoginDays = user?.last_login_at
+    ? Math.floor((Date.now() - new Date(user.last_login_at).getTime()) / (24 * 60 * 60 * 1000))
+    : null;
+
+  return { conversations30d, pipelineActive, lastLoginDays };
+}
+
+async function generateRetentionSMS(name, plan, usage) {
+  const { conversations30d, pipelineActive, lastLoginDays } = usage;
+  const firstName = (name || 'there').split(' ')[0];
+  const planLabel = PLAN_LABELS[plan] || plan || 'TheHypeBox';
+
+  const usageLines = [
+    conversations30d != null ? `${conversations30d} customer conversations handled last 30 days` : null,
+    pipelineActive ? 'active pipeline movement recorded' : null,
+    lastLoginDays != null && lastLoginDays <= 7
+      ? `last login ${lastLoginDays === 0 ? 'today' : `${lastLoginDays}d ago`}`
+      : null,
+  ].filter(Boolean);
+
+  const usageCtx = usageLines.length
+    ? `Recent usage: ${usageLines.join('; ')}.`
+    : 'No usage data available.';
+
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 250,
+      messages: [{
+        role: 'user',
+        content: `You are Riley, founder of TheHypeBox — AI automation for home service businesses. A client just cancelled. Write a short, personal SMS to try to retain them.
+
+Client: ${firstName} | Plan: ${planLabel}
+${usageCtx}
+
+Requirements:
+- 3-4 sentences max, casual and genuine (not salesy)
+- Reference 1-2 specific usage details if available
+- Offer 1 free month to stay — feel like a personal favor
+- End with "— Riley"
+- No emojis
+- Return ONLY the SMS text, no quotes`,
+      }],
+    }),
+    signal: AbortSignal.timeout(20000),
+  });
+
+  if (!r.ok) throw new Error(`Anthropic ${r.status}`);
+  const data = await r.json();
+  return (data.content?.[0]?.text || '').trim().replace(/^"|"$/g, '');
+}
+
+async function deflectCancellation(supabase, customer, sub, user) {
+  const phone = customer.phone || null;
+  const email = customer.email.toLowerCase();
+  const name = customer.name || user?.name || email;
+  const plan = user?.plan;
+
+  const usage = await fetchUsageSnapshot(user);
+
+  const { data: row } = await supabase
+    .from('cancellation_deflection')
+    .insert({
+      user_id: user?.id ?? null,
+      email,
+      name,
+      plan,
+      phone,
+      stripe_customer_id: customer.id,
+      stripe_subscription_id: sub.id,
+      conversations_30d: usage.conversations30d,
+      pipeline_active: usage.pipelineActive,
+      last_login_days: usage.lastLoginDays,
+    })
+    .select('id')
+    .single();
+
+  if (!phone) {
+    console.log(`[deflection] no phone on file for ${email} — row tracked, SMS skipped`);
+    return;
+  }
+
+  const smsBody = await generateRetentionSMS(name, plan, usage);
+
+  await sendSMS(phone, smsBody, {
+    apiKey: process.env.GHL_SMS_KEY,
+    locationId: process.env.GHL_LOCATION_ID,
+  });
+
+  await supabase
+    .from('cancellation_deflection')
+    .update({ initial_sms_body: smsBody, initial_sms_sent_at: new Date().toISOString() })
+    .eq('id', row.id);
+
+  await sendAlertSMS(
+    `CANCEL: ${name} (${PLAN_LABELS[plan] || plan}) cancelled. Retention SMS sent. If they reply YES -> extend in Stripe.`
+  );
+
+  console.log(`[deflection] retention SMS sent to ${email}`);
+}
+
+// ─────────────────────────────────────────────────────────────
 
 function esc(str) {
   return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -68,6 +217,31 @@ async function createAccount(email, name, plan) {
   }
 }
 
+async function seedOnboardingSequence(supabase, { userId, email, phone, name, plan }) {
+  if (!email) return;
+  const now = Date.now();
+  const steps = [
+    { step: 'day1',  offsetMs: 4 * 60 * 60 * 1000 },
+    { step: 'day3',  offsetMs: 3 * 24 * 60 * 60 * 1000 },
+    { step: 'day7',  offsetMs: 7 * 24 * 60 * 60 * 1000 },
+    { step: 'day14', offsetMs: 14 * 24 * 60 * 60 * 1000 },
+  ];
+  const rows = steps.map(({ step, offsetMs }) => ({
+    user_id: userId || null,
+    email:   email.toLowerCase(),
+    phone:   phone || null,
+    name:    name || null,
+    plan:    plan || null,
+    step,
+    fire_at: new Date(now + offsetMs).toISOString(),
+  }));
+  const { error } = await supabase
+    .from('onboarding_sequences')
+    .upsert(rows, { onConflict: 'email,step', ignoreDuplicates: true });
+  if (error) console.error('[stripe webhook] onboarding seed failed:', error.message);
+  else console.log(`[stripe webhook] onboarding sequence seeded for ${email}`);
+}
+
 // Next.js must NOT parse the body — Stripe needs the raw bytes to verify signature
 export const dynamic = 'force-dynamic';
 
@@ -122,19 +296,56 @@ export async function POST(request) {
             .eq('email', customer.email.toLowerCase())
             .single();
 
+          // Seed onboarding SMS sequence (deduped by unique constraint)
+          await seedOnboardingSequence(supabase, {
+            userId: existing?.id,
+            email:  customer.email,
+            phone:  customer.phone || null,
+            name,
+            plan,
+          });
+
           if (existing && !existing.ghl_location_id) {
-            const hlAccount = await createSubAccount({ name, email: customer.email, plan });
+            // Detect niche from metadata (set by landing page) or name/email, then pick snapshot
+            const metaNiche = session.metadata?.niche || customer.metadata?.niche || '';
+            const detected = metaNiche
+              ? { niche: metaNiche, confidence: 'high', matchedKeyword: 'metadata' }
+              : detectNiche(name, customer.email);
+            const { snapshotId, isNicheSpecific } = getSnapshotForNiche(detected.niche);
+
+            const hlAccount = await createSubAccount({
+              name, email: customer.email, plan, snapshotId,
+            });
             // Atomic guard: only write if ghl_location_id is still null — prevents double-provisioning
             // when checkout.session.completed and setup_intent.succeeded fire simultaneously.
-            const { data: claimed } = await supabase.from('users').update({
+            const dbUpdate = {
               ghl_location_id: hlAccount.locationId,
               ghl_user_id: hlAccount.userId || null,
               retell_agent_id: hlAccount.retellAgentId || null,
-            }).eq('id', existing.id).is('ghl_location_id', null).select('id');
+              niche: detected.niche,
+              niche_confidence: detected.confidence,
+            };
+            if (hlAccount.apiKey) dbUpdate.ghl_api_key = hlAccount.apiKey;
+
+            const { data: claimed } = await supabase.from('users').update(dbUpdate)
+              .eq('id', existing.id).is('ghl_location_id', null).select('id');
 
             if (!claimed?.length) {
               console.log(`[stripe webhook] GHL already claimed for ${customer.email}, skipping`);
             } else {
+              // Log snapshot deployment
+              supabase.from('snapshot_deployments').insert({
+                user_id: existing.id,
+                location_id: hlAccount.locationId,
+                niche: detected.niche,
+                snapshot_id: snapshotId,
+                status: 'applied',
+                confidence: detected.confidence,
+                matched_keyword: detected.matchedKeyword,
+                is_niche_specific: isNicheSpecific,
+                notes: `checkout.session.completed — ${isNicheSpecific ? 'niche snapshot' : 'default Contractor Box snapshot'}`,
+              }).then(() => {}).catch(() => {});
+
               if (hlAccount.userId) {
                 const tpl = highLevelAccessEmail({
                   name: name || customer.email,
@@ -147,8 +358,27 @@ export async function POST(request) {
                 });
                 await sendEmail({ to: customer.email, ...tpl });
               }
+
+              // Welcome SMS to client (if phone on file)
+              if (customer.phone) {
+                try {
+                  await sendSMS(customer.phone,
+                    `Welcome to TheHypeBox! Your AI automation system is being set up. Log in at thehypeboxllc.com — reply STOP to opt out.`,
+                    { apiKey: process.env.GHL_SMS_KEY, locationId: process.env.GHL_LOCATION_ID }
+                  );
+                } catch (smsErr) {
+                  console.error('[stripe webhook] welcome SMS failed:', smsErr.message);
+                }
+              }
+
+              // Alert SMS to Riley (and Dad via sendAlertSMS)
+              try {
+                const planLabel = PLAN_LABELS[plan] || plan;
+                await sendAlertSMS(`New HypeBox client: ${name || customer.email} — ${planLabel}. GHL: ${hlAccount.locationId}`);
+              } catch (_) {}
+
               ghlProvisioned = true;
-              console.log(`[stripe webhook] auto-provisioned GHL for ${customer.email}: ${hlAccount.locationId}`);
+              console.log(`[stripe webhook] auto-provisioned GHL for ${customer.email}: ${hlAccount.locationId} | niche: ${detected.niche} (${detected.confidence}) | snapshot: ${isNicheSpecific ? 'niche-specific' : 'default'}`);
             }
           }
         } catch (ghlErr) {
@@ -228,7 +458,7 @@ export async function POST(request) {
 
         const { data: canceledUser } = await supabase
           .from('users')
-          .select('plan, ghl_user_id')
+          .select('id, plan, name, ghl_user_id, ghl_location_id, ghl_api_key, last_login_at, stripe_subscription_id')
           .eq('email', customer.email.toLowerCase())
           .single();
 
@@ -290,6 +520,11 @@ export async function POST(request) {
         } catch (emailErr) {
           console.error('[stripe webhook] cancellation email failed:', emailErr.message);
         }
+
+        // Cancellation deflection — fire-and-forget
+        deflectCancellation(supabase, customer, sub, canceledUser).catch((err) =>
+          console.error('[stripe webhook] deflection error:', err.message)
+        );
 
         console.log(`[stripe webhook] subscription canceled for ${customer.email}`);
         break;
@@ -378,7 +613,7 @@ export async function POST(request) {
 
         const { data: user } = await supabase
           .from('users')
-          .select('plan, name, ghl_location_id')
+          .select('id, plan, name, ghl_location_id')
           .eq('email', customer.email.toLowerCase())
           .single();
 
@@ -388,21 +623,42 @@ export async function POST(request) {
           .update({ plan_status: 'trialing' })
           .eq('email', customer.email.toLowerCase());
 
+        // Seed onboarding SMS sequence (deduped by unique constraint)
+        await seedOnboardingSequence(supabase, {
+          userId: user?.id,
+          email:  customer.email,
+          phone:  customer.phone || null,
+          name:   user?.name || customer.name || '',
+          plan:   user?.plan || 'launch',
+        });
+
         // Create HighLevel sub-account if not already provisioned
         if (!user?.ghl_location_id) {
           try {
+            // Detect niche from customer metadata (set by landing page at checkout) or name/email
+            const metaNiche = customer.metadata?.niche || '';
+            const clientName = user?.name || customer.name || '';
+            const detected = metaNiche
+              ? { niche: metaNiche, confidence: 'high', matchedKeyword: 'metadata' }
+              : detectNiche(clientName, customer.email);
+            const { snapshotId, isNicheSpecific } = getSnapshotForNiche(detected.niche);
+
             const hlAccount = await createSubAccount({
-              name: user?.name || customer.name || '',
+              name: clientName,
               email: customer.email,
               phone: customer.phone || '',
               plan: user?.plan || 'launch',
+              snapshotId,
             });
 
             const hlUpdates = {
               ghl_location_id: hlAccount.locationId,
               ghl_user_id: hlAccount.userId,
+              niche: detected.niche,
+              niche_confidence: detected.confidence,
             };
             if (hlAccount.retellAgentId) hlUpdates.retell_agent_id = hlAccount.retellAgentId;
+            if (hlAccount.apiKey) hlUpdates.ghl_api_key = hlAccount.apiKey;
 
             // Atomic guard: only write if ghl_location_id is still null — prevents double-provisioning
             // when setup_intent.succeeded and checkout.session.completed fire simultaneously.
@@ -416,10 +672,23 @@ export async function POST(request) {
             if (!claimed?.length) {
               console.log(`[stripe webhook] GHL already claimed for ${customer.email}, skipping`);
             } else {
+              // Log snapshot deployment
+              supabase.from('snapshot_deployments').insert({
+                user_id: user?.id,
+                location_id: hlAccount.locationId,
+                niche: detected.niche,
+                snapshot_id: snapshotId,
+                status: 'applied',
+                confidence: detected.confidence,
+                matched_keyword: detected.matchedKeyword,
+                is_niche_specific: isNicheSpecific,
+                notes: `setup_intent.succeeded — ${isNicheSpecific ? 'niche snapshot' : 'default Contractor Box snapshot'}`,
+              }).then(() => {}).catch(() => {});
+
               // Send HL access email to customer
               try {
                 const tpl = highLevelAccessEmail({
-                  name: user?.name || customer.name || customer.email,
+                  name: clientName || customer.email,
                   plan: user?.plan,
                   locationId: hlAccount.locationId,
                   hlEmail: customer.email,
@@ -432,7 +701,25 @@ export async function POST(request) {
                 console.error('[stripe webhook] HL access email failed:', emailErr.message);
               }
 
-              console.log(`[stripe webhook] HL account created: ${hlAccount.locationId} for ${customer.email}`);
+              // Welcome SMS to client (if phone on file)
+              if (customer.phone) {
+                try {
+                  await sendSMS(customer.phone,
+                    `Welcome to TheHypeBox! Your AI automation system is being set up. Log in at thehypeboxllc.com — reply STOP to opt out.`,
+                    { apiKey: process.env.GHL_SMS_KEY, locationId: process.env.GHL_LOCATION_ID }
+                  );
+                } catch (smsErr) {
+                  console.error('[stripe webhook] welcome SMS failed:', smsErr.message);
+                }
+              }
+
+              // Alert SMS to Riley (and Dad via sendAlertSMS)
+              try {
+                const plan = user?.plan || 'launch';
+                await sendAlertSMS(`New HypeBox client: ${clientName || customer.email} — ${PLAN_LABELS[plan] || plan}. GHL: ${hlAccount.locationId}`);
+              } catch (_) {}
+
+              console.log(`[stripe webhook] HL account created: ${hlAccount.locationId} for ${customer.email} | niche: ${detected.niche} (${detected.confidence}) | snapshot: ${isNicheSpecific ? 'niche-specific' : 'default'}`);
             }
           } catch (hlErr) {
             console.error(`[stripe webhook] HL provisioning failed for ${customer.email}:`, hlErr.message);

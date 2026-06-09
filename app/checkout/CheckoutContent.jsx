@@ -47,6 +47,8 @@ const PLANS = {
 export default function CheckoutContent() {
   const searchParams = useSearchParams();
   const plan = searchParams.get('plan');
+  const ref = searchParams.get('ref') || '';
+  const niche = searchParams.get('niche') || '';
   const planData = PLANS[plan];
 
   if (!plan || !planData) {
@@ -98,7 +100,7 @@ export default function CheckoutContent() {
         <div style={{ padding: '3rem 2rem 3rem 3rem' }}>
           <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.15rem', color: '#fff', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>Start Your Free Trial</h2>
           <p style={{ fontSize: '0.88rem', color: '#666', marginBottom: '2rem' }}>No charge today — trial starts free.</p>
-          <StripeCheckoutForm plan={plan} planLabel={planData.label} price={planData.price} />
+          <StripeCheckoutForm plan={plan} planLabel={planData.label} price={planData.price} referralCode={ref} niche={niche} />
         </div>
       </div>
     </div>

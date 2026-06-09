@@ -1,0 +1,240 @@
+/* ============================================================
+   NICHE.MODULE.CSS — Niche landing page styles
+   /plumbers, /hvac, /electricians, /concrete
+   Supplements marketing.module.css — does not replace it.
+   ============================================================ */
+
+.page {
+  background: #0a0a0a;
+}
+
+/* ── Live badge above call demo ───────────────── */
+.liveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(40, 200, 64, 0.1);
+  border: 1px solid rgba(40, 200, 64, 0.3);
+  color: #28C840;
+  font-family: var(--font-heading);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.85rem;
+  border-radius: 4px;
+  margin-bottom: 0.85rem;
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #28C840;
+  flex-shrink: 0;
+  animation: livePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
+
+/* ── Benefits section ─────────────────────────── */
+.benefitsSection {
+  padding: 5rem 0;
+  background: #000;
+}
+
+.benefitsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+  margin-top: 3rem;
+}
+
+.benefitCard {
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-left: 3px solid #F5C400;
+  border-radius: 4px;
+  padding: 1.75rem 1.5rem;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.benefitCard:hover {
+  border-color: #F5C400;
+  transform: translateY(-2px);
+}
+
+.benefitNum {
+  font-family: var(--font-heading);
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  color: #F5C400;
+  opacity: 0.5;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.benefitTitle {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+  margin-bottom: 0.6rem;
+}
+
+.benefitDesc {
+  font-size: 0.875rem;
+  color: #aaa;
+  line-height: 1.75;
+  margin: 0;
+}
+
+/* ── Pricing section ──────────────────────────── */
+.pricingSection {
+  padding: 5rem 0;
+  background: #060606;
+}
+
+.pricingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  max-width: 720px;
+  margin: 3rem auto 0;
+}
+
+/* ── Contact section ──────────────────────────── */
+.contactSection {
+  padding: 5rem 0;
+  background: #0a0a0a;
+}
+
+.contactGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 4rem;
+  align-items: start;
+  max-width: 860px;
+  margin: 3rem auto 0;
+}
+
+.contactInfoHeading {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #F5C400;
+  margin-bottom: 1.25rem;
+}
+
+.contactDetailList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.contactDetailLabel {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #555;
+  margin-bottom: 3px;
+}
+
+.contactDetailValue {
+  font-size: 0.95rem;
+  color: #F5C400;
+  font-weight: 600;
+}
+
+/* ── Contact form ─────────────────────────────── */
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.formInput {
+  padding: 14px 18px;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 1rem;
+  font-family: var(--font-body);
+  width: 100%;
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.formInput:focus {
+  border-color: #F5C400;
+}
+
+.formSubmitBtn {
+  width: 100%;
+  justify-content: center;
+}
+
+.formNote {
+  text-align: center;
+  font-size: 0.82rem;
+  color: #555;
+  margin-top: 2px;
+}
+
+.formError {
+  color: #ff6b6b;
+  font-size: 0.88rem;
+}
+
+.successBox {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+}
+
+.successCheck {
+  display: block;
+  font-size: 2.25rem;
+  color: #F5C400;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Responsive ───────────────────────────────── */
+@media (max-width: 900px) {
+  .benefitsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pricingGrid {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
+
+  .contactGrid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+}

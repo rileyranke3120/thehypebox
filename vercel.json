@@ -1,6 +1,14 @@
 {
   "crons": [
     {
+      "path": "/api/cron/angi-scraper",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/master",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/cron/trial-reminders",
       "schedule": "0 9 * * *"
     },
@@ -18,7 +26,7 @@
     },
     {
       "path": "/api/cron/weekly-report",
-      "schedule": "0 12 * * 1"
+      "schedule": "0 20 * * 0"
     },
     {
       "path": "/api/cron/key-audit",
@@ -42,15 +50,51 @@
     },
     {
       "path": "/api/cron/monthly-client-report",
-      "schedule": "0 8 1 * *"
+      "schedule": "0 9 1 * *"
     },
     {
-      "path": "/api/cron/riley-digest",
-      "schedule": "0 7 * * *"
+      "path": "/api/cron/social-posts",
+      "schedule": "0 14 * * 1,3,5"
     },
     {
-      "path": "/api/cron/churn-alerts",
+      "path": "/api/cron/social-publish",
+      "schedule": "0 17 * * 1,3,5"
+    },
+    {
+      "path": "/api/cron/competitor-monitor",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron/review-requests",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/facebook-leads",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/stripe-dashboard",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/annual-upsell",
+      "schedule": "0 10 1 * *"
+    },
+    {
+      "path": "/api/cron/nps-survey",
+      "schedule": "0 9 15 * *"
+    },
+    {
+      "path": "/api/cron/nps-report",
+      "schedule": "0 9 1 * *"
+    },
+    {
+      "path": "/api/cron/onboarding-sequence",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/cancellation-followup",
+      "schedule": "0 10 * * *"
     }
   ]
 }

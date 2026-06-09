@@ -999,6 +999,17 @@ export default function DashboardPage() {
             </svg>
           )
         },
+        {
+          page: 'referral', href: '/dashboard/referral', label: 'Referrals', requiredFeature: 'billing', icon: (
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '5px', background: '#1A1A1A', display: 'block' }}>
+              <path d="M16 9a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="#888780" strokeWidth="1.5"/>
+              <path d="M8 27v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2" stroke="#888780" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="25" cy="14" r="3" stroke="#FFD000" strokeWidth="1.5"/>
+              <line x1="25" y1="12" x2="25" y2="16" stroke="#FFD000" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="23" y1="14" x2="27" y2="14" stroke="#FFD000" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          )
+        },
       ]
     },
   ];
