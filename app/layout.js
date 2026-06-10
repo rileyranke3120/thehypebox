@@ -28,12 +28,9 @@ export default function RootLayout({ children }) {
       <head></head>
       <body className={`${barlowCondensed.variable} ${dmSans.variable}`}>
         <Providers>{children}</Providers>
-        <Script
-          src="https://widgets.leadconnectorhq.com/loader.js"
-          data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
-          data-location-id="Ra79aZSYkl96uPQajjkJ"
-          strategy="afterInteractive"
-        />
+        <div dangerouslySetInnerHTML={{
+          __html: `<script src="https://widgets.leadconnectorhq.com/loader.js" data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js" data-widget-id="6a27119dea8f17ad15de44fe"></script>`
+        }} />
         {GA_ID && (
           <>
             <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
