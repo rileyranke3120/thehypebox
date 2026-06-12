@@ -49,3 +49,6 @@ next-env.d.ts
 
 # MCP config (contains API keys)
 .mcp.json
+
+# Scraped lead data (large, sensitive, not for version control)
+scripts/scraped-leads.json
