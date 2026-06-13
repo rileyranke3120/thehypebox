@@ -11,7 +11,7 @@ const LOCATION_ID = process.env.GHL_LOCATION_ID;
 const TARGET_TAGS = ['plumber', 'hvac', 'electrician', 'concrete'];
 const SCORED_TAGS = new Set(['hot-lead', 'warm-lead', 'cold-lead']);
 const SKIP_TAGS = new Set(['opted-out']);
-const BATCH_LIMIT = 15;
+const BATCH_LIMIT = 10;
 
 const CORPORATE_SUFFIX = /\b(inc\.?|llc\.?|corp\.?|ltd\.?|group|systems|solutions|enterprises|associates|industries|national|regional|professional)\b/i;
 const SOLO_POSSESSIVE  = /\w+'s\s/i;
@@ -164,8 +164,13 @@ async function handler(request) {
   }
 
   const results = { scored: 0, hot: 0, warm: 0, cold: 0, errors: [] };
+  const startTime = Date.now();
 
   for (const contact of unscored) {
+    if (Date.now() - startTime > 45000) {
+      console.log('[lead-score] 45s limit reached, exiting early');
+      break;
+    }
     const name = contact.name || contact.companyName || contact.id;
     try {
       const { score: base, pts } = baseScore(contact);

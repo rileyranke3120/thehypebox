@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { ghlFetch, getOpportunities, getAppointments } from '@/lib/ghl';
-import { sendSMS } from '@/lib/twilio';
 import { safeCompare } from '@/lib/safe-compare';
 import { withErrorMonitor } from '@/lib/error-monitor';
 
@@ -11,9 +10,39 @@ export const maxDuration = 60;
 // TheHypeBox GHL location — Ra79aZSYkl96uPQajjkJ
 const LOC = process.env.GHL_LOCATION_ID;
 
-// Set these in your Vercel env vars before enabling the cron
-// RILEY_PHONE=+15551234567
-// DAD_PHONE=+15551234567
+const GHL_BASE = 'https://services.leadconnectorhq.com';
+
+// Send SMS via GHL without any contact search — create-or-return contact by phone, then send.
+async function sendSMSDirect(phone, message) {
+  const smsKey = process.env.GHL_SMS_KEY;
+  if (!smsKey) throw new Error('GHL_SMS_KEY not configured');
+  const headers = {
+    Authorization: `Bearer ${smsKey}`,
+    'Content-Type': 'application/json',
+    Version: '2021-07-28',
+  };
+
+  const createRes = await fetch(`${GHL_BASE}/contacts/`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ locationId: LOC, phone }),
+    signal: AbortSignal.timeout(10000),
+  });
+  const createData = await createRes.json();
+  if (!createRes.ok) throw new Error(`Contact upsert failed: ${createData?.message || createRes.status}`);
+  const contactId = createData?.contact?.id ?? createData?.id;
+  if (!contactId) throw new Error('No contactId returned from GHL');
+
+  const msgRes = await fetch(`${GHL_BASE}/conversations/messages`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ type: 'SMS', contactId, locationId: LOC, message }),
+    signal: AbortSignal.timeout(10000),
+  });
+  const msgData = await msgRes.json();
+  if (!msgRes.ok) throw new Error(msgData?.message || `GHL SMS error: ${msgRes.status}`);
+  return msgData;
+}
 
 async function getPipelineByStage(apiKey) {
   const opps = await getOpportunities(LOC, apiKey);
@@ -140,9 +169,9 @@ async function handler(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const apiKey = process.env.GHL_API_KEY;
+  const apiKey = process.env.GHL_LOCATION_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: 'GHL_API_KEY not configured' }, { status: 500 });
+    return NextResponse.json({ error: 'GHL_LOCATION_KEY not configured' }, { status: 500 });
   }
   if (!LOC) {
     return NextResponse.json({ error: 'GHL_LOCATION_ID not configured' }, { status: 500 });
@@ -172,13 +201,13 @@ async function handler(request) {
 
     const summary = await buildSummary(digest);
 
-    // Send SMS to Riley and Dad
+    // Send SMS directly to Riley and Dad — no contact lookup, no search API
     const phones = [process.env.RILEY_PHONE, process.env.DAD_PHONE].filter(Boolean);
     const smsResults = [];
 
     for (const phone of phones) {
       try {
-        await sendSMS(phone, summary, { apiKey, locationId: LOC });
+        await sendSMSDirect(phone, summary);
         smsResults.push({ phone, ok: true });
         console.log(`[morning-digest] SMS sent to ${phone}`);
       } catch (err) {

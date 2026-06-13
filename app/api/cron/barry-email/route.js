@@ -5,10 +5,10 @@ import { safeCompare } from '@/lib/safe-compare';
 import { Resend } from 'resend';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 const LOCATION_ID = process.env.GHL_LOCATION_ID;
-const BATCH_LIMIT = 20;
+const BATCH_LIMIT = 10;
 const DELAY_MS    = 500;
 
 const NICHE_LABEL = {
@@ -140,8 +140,13 @@ export async function GET(request) {
   console.log(`[barry-email] ${contacts.length} email-found contacts, ${eligible.length} eligible`);
 
   const results = { sent: 0, skipped: 0, errors: [] };
+  const startTime = Date.now();
 
   for (const contact of eligible) {
+    if (Date.now() - startTime > 45000) {
+      console.log('[barry-email] 45s limit reached, exiting early');
+      break;
+    }
     if (!contact.email) { results.skipped++; continue; }
 
     const first = contact.firstName || (contact.fullName || '').split(' ')[0] || 'there';
